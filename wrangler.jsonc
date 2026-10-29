@@ -1,0 +1,10 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "mixlog",
+	"compatibility_date": "2026-10-23",
+	"compatibility_flags": ["nodejs_compat"],
+	"main": "@tanstack/react-start/server-entry",
+	"observability": { "enabled": true },
+	"upload_source_maps": true
+	// D1 (metadata) and R2 (files) bindings are added with the first feature that needs them.
+}

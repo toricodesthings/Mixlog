@@ -1,0 +1,123 @@
+/*
+ * CONTRAST FLOOR: every text and accent token is ≥ 4.5:1 on every ground and surface
+ * in its mode. Never use text opacity below /90 on muted text.
+ * This file is the design source of truth (Blue Hour); docs/MANIFESTO.md §5 is the why.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400..700&family=Sora:wght@300..700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Sora", system-ui, -apple-system, sans-serif;
+  --font-display: "Outfit", system-ui, sans-serif;
+
+  /* Tailwind colors read the mode-aware tokens below. */
+  --color-void: var(--void);
+  --color-deep: var(--deep);
+  --color-base: var(--base);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-hover: var(--surface-hover);
+  --color-elevated: var(--elevated);
+  --color-text: var(--text);
+  --color-text-soft: var(--text-soft);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-border-interactive: var(--border-interactive);
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-soft: var(--accent-primary-soft);
+  --color-accent-primary-dim: var(--accent-primary-dim);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-tertiary: var(--accent-tertiary);
+  --color-on-primary: var(--accent-on-primary);
+  --color-feedback-success: var(--feedback-success);
+  --color-feedback-error: var(--feedback-error);
+
+  --radius-base: 1rem;
+}
+
+/* === BLUE HOUR (dark, default) === */
+:root {
+  color-scheme: dark;
+
+  --void: #060a14;
+  --deep: #0a1020;
+  --base: #0e162a;
+  --surface: #141e38;
+  --surface-muted: #0c1324;
+  --surface-hover: #19253f;
+  --elevated: #1b2848;
+
+  --text: #e8edf5;
+  --text-soft: #b8c5d4;
+  --text-muted: #8a9ab3;
+
+  --border: rgba(255, 255, 255, 0.10);
+  --border-light: rgba(255, 255, 255, 0.15);
+  --border-interactive: rgba(255, 255, 255, 0.20);
+
+  /* Signal (brand) · Tube (warm counterpoint) · Haze (quiet differentiation) */
+  --accent-primary: #6cb4ff;
+  --accent-primary-soft: rgba(108, 180, 255, 0.12);
+  --accent-primary-dim: rgba(108, 180, 255, 0.06);
+  --accent-secondary: #e8b26a;
+  --accent-tertiary: #aaa8f2;
+  --accent-on-primary: #0a1020;
+  --accent-glow: rgba(108, 180, 255, 0.18);
+  --accent-surface: rgba(108, 180, 255, 0.025);
+
+  --feedback-success: #5dba72;
+  --feedback-error: #d97756;
+
+  /* Motion, carried over from Cadence unchanged. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-smooth: 300ms;
+  --duration-expressive: 450ms;
+  --sheet-in: 280ms var(--ease-sheet);
+  --sheet-out: 200ms var(--ease-sheet);
+}
+
+/* === DAYLIGHT STUDIO (light) — Cadence's warm cream, never cold white === */
+[data-theme="daylight"] {
+  color-scheme: light;
+
+  --void: #f8f6f3;
+  --deep: #f3f0ec;
+  --base: #ece8e2;
+  --surface: #e4dfd8;
+  --surface-muted: #eee9e3;
+  --surface-hover: #ddd7cf;
+  --elevated: #d8d1c8;
+
+  --text: #1e293b;
+  --text-soft: #475569;
+  --text-muted: #4f5b6e;
+
+  --border: rgba(0, 0, 0, 0.10);
+  --border-light: rgba(0, 0, 0, 0.08);
+  --border-interactive: rgba(0, 0, 0, 0.18);
+
+  --accent-primary: #1449c2;
+  --accent-primary-soft: rgba(20, 73, 194, 0.08);
+  --accent-primary-dim: rgba(20, 73, 194, 0.04);
+  --accent-secondary: #7a4a0c;
+  --accent-tertiary: #4a44a6;
+  --accent-on-primary: #ffffff;
+  --accent-glow: rgba(20, 73, 194, 0.14);
+  --accent-surface: rgba(20, 73, 194, 0.02);
+
+  --feedback-success: #005f29;
+  --feedback-error: #a11c10;
+}
+
+@layer base {
+  body {
+    background: var(--deep);
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+}

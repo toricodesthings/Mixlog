@@ -1,0 +1,30 @@
+# Local-only docs, design and planning (rules in AGENTS.md)
+/docs/
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# Builds and local outputs
+dist
+dist-ssr
+.output
+.tanstack
+.wrangler
+*.local
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.dev.vars*
+!.dev.vars.example
+
+# Logs
+pnpm-debug.log*
+npm-debug.log*
+
+# OS noise
+.DS_Store
+*:Zone.Identifier
+*Zone.Identifier
