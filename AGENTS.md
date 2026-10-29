@@ -48,7 +48,7 @@ tests/               # Mirrors src/, never next to source
 
 ## Commands
 
-`pnpm dev` (http://localhost:3000) · `pnpm db:migrate` (local D1; `db:migrate:remote` for production) · `pnpm test` (Vitest, plain Node: `tests/`) · `pnpm build` · `pnpm typecheck` · `pnpm preview` · `pnpm deploy` · `pnpm cf-typegen` (after changing bindings in `wrangler.jsonc`).
+`pnpm dev` (http://localhost:3000) · `pnpm db:migrate` (local D1; `db:migrate:remote` for production) · `pnpm test` (Vitest, plain Node: `tests/`) · `pnpm build` · `pnpm typecheck` · `pnpm preview` · `pnpm run deploy` (plain `pnpm deploy` is a pnpm built-in) · `pnpm cf-typegen` (after changing bindings in `wrangler.jsonc`).
 
 ## Versions and releases
 
