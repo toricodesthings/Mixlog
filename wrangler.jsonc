@@ -5,6 +5,14 @@
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "@tanstack/react-start/server-entry",
 	"observability": { "enabled": true },
-	"upload_source_maps": true
-	// D1 (metadata) and R2 (files) bindings are added with the first feature that needs them.
+	"upload_source_maps": true,
+
+	// `pnpm dev` simulates both locally (.wrangler/state). No database ID: the first deploy creates it and writes it back.
+	"d1_databases": [{ "binding": "DB", "database_name": "mixlog", "migrations_dir": "migrations" }],
+	"r2_buckets": [{ "binding": "FILES", "bucket_name": "mixlog" }],
+	// Cloudflare Access: Zero Trust → Access → Applications → your app. Not secrets.
+	"vars": {
+		"ACCESS_TEAM_DOMAIN": "", // https://<team>.cloudflareaccess.com
+		"ACCESS_AUD": "" // the application's "Application Audience (AUD) Tag"
+	},
 }

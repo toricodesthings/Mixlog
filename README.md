@@ -9,7 +9,7 @@ Mixlog keeps a song's whole life in one place: test bounces and final masters, a
 
 ## How it's built
 
-One TanStack Start app on Cloudflare Workers. Files live in a private R2 bucket and are uploaded straight from the browser. Track and version details live in D1. Cloudflare Access handles sign-in, so Mixlog never stores a password.
+One TanStack Start app on Cloudflare Workers. Files live in a private R2 bucket and go up in resumable chunks through the Worker. Track and version details live in D1. Cloudflare Access handles sign-in, so Mixlog never stores a password.
 
 ## Run it locally
 

@@ -1,0 +1,30 @@
+import * as React from "react"
+import { cn } from "../../lib/utils"
+
+export interface InputProps
+    extends React.InputHTMLAttributes<HTMLInputElement> {
+    icon?: React.ReactNode;
+}
+
+const Input = ({ className, type, icon, ...props }: InputProps & { ref?: React.Ref<HTMLInputElement> }) => {
+    return (
+        <div className="relative flex items-center w-full">
+            {icon && (
+                <div className="absolute left-3 flex items-center justify-center text-ink-muted pointer-events-none">
+                    {icon}
+                </div>
+            )}
+            <input
+                type={type}
+                className={cn(
+                    "flex h-11 w-full rounded-xl border border-line-light bg-white/[0.05] px-3 py-2 text-sm text-ink shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40 focus-visible:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50",
+                    icon ? "pl-10" : "",
+                    className
+                )}
+                {...props}
+            />
+        </div>
+    )
+};
+
+export { Input }

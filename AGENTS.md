@@ -6,7 +6,16 @@ Read `docs/MANIFESTO.md` before changing anything, especially UI. It is local on
 
 ## Stack
 
-One full-stack app on one Cloudflare Worker: TanStack Start (SPA mode: the browser renders every page; the Worker runs server functions and server routes) · React 19 · Tailwind CSS v4 (tokens in `src/styles/app.css`) · Cloudflare D1 (metadata) · Cloudflare R2 (files, private) · Cloudflare Access (auth, verified in request middleware). No Hono, no SSR, no hand-rolled auth.
+One full-stack app on one Cloudflare Worker: TanStack Start (SPA mode: the browser renders every page; the Worker runs server functions and server routes) · React 19 · Tailwind CSS v4 (tokens in `src/styles/app.css`) + `tw-animate-css` · Radix UI (wrapped in `components/primitives/`) · `cn` (`clsx` + `tailwind-merge`, `src/lib/utils.ts`) · Sora + Outfit via `@fontsource-variable` · Cloudflare D1 (metadata) · Cloudflare R2 (files, private) · Cloudflare Access (auth, verified in request middleware). No Hono, no SSR, no hand-rolled auth.
+
+## Design system (ported from Cadence)
+
+- **Token names:** `room-*` (grounds and surfaces: `bg-room-surface`) · `ink`, `ink-soft`, `ink-muted` (text) · `line`, `line-light`, `line-strong` (borders) · `accent`, `accent-soft`, `accent-dim`, `accent-secondary`, `accent-tertiary` (the active palette; components never use the named `signal`/`tube`/`haze` directly) · `on-accent` (text on a solid accent) · `panel`, `panel-raised` (the background's own bases) · `bg-atmosphere` (the page background) · `glow-accent`.
+- **Porting from Cadence:** copy the file, then run `sed -i -E -f scripts/cadence-names.sed <files>` on it (and on any CSS you bring), which maps Cadence's names (`twilight-*`, `accent-primary`, `glow-lantern`, `data-cadence-*`…) to Mixlog's; then grep the file for `twilight|lantern|cadence` and map anything the script doesn't know, adding the rule to the script. Keep relative imports (`../../lib/utils`, `../../hooks/ui/…`), since the layout mirrors Cadence's; bring its CSS utilities and hooks with it; swap React Router APIs for TanStack Router ones (`useNavigate`, `Link`, `Route.useSearch()`).
+- Ported so far: primitives `Button`, `Input`, `Skeleton`, `Switch`, `ActivityBadge`, `Tooltip`/`Tip`, `Popover`, `ScrollArea` (+ `menu-styles`), and `hooks/ui/use-shell-mode.ts`. Dialogs, menus, `Select` and `SegmentedControl` come next with their gesture hooks.
+- Surface ladder, top to bottom: `bg-atmosphere` (ground) → `surface-deck` → `surface-shell` → `surface-card` → `surface-item` → `surface-row` → `surface-control` → floating (`surface-dialog`, `surface-floating`). Tints are tuned per mode only in `app.css`.
+- Layout and input come from `useShellMode()` only, never raw breakpoints or `matchMedia` in components. Z-index only through `.layer-*`. Daylight is `data-theme="daylight"` on `<html>`; every surface must work in both modes.
+- Hit targets ≥ 44×44px on touch; icon-only controls need `aria-label` + `Tip`; never `outline-none` without a replacement.
 
 ## Where things go
 
@@ -25,8 +34,10 @@ src/
 tests/               # Mirrors src/, never next to source
 ```
 
+- **Data:** `env` from `cloudflare:workers` gives `env.DB` (D1) and `env.FILES` (R2). `pnpm dev` simulates both locally (`.wrangler/state`, wiped by deleting it); production is bucket `mixlog`. Schema changes are new files in `migrations/` (`NNNN_what.sql`), never edits to an applied one; the current schema is `migrations/`. After changing `wrangler.jsonc`, run `pnpm cf-typegen`.
+- **Auth:** `src/start.ts` runs `access` (`src/server/access.ts`) on every server function: it verifies the Cloudflare Access token and refuses without it. It's skipped under `pnpm dev`. `defaultSsr: false` keeps loaders in the browser. A new `/api` server route must add `access` to its `middleware`.
 - UI talks to the server through **server functions** (`createServerFn`) in `src/server/`. Plain HTTP endpoints exist only for non-browser clients (the later Go sync helper) as **server routes** under `/api/`.
-- Files never pass through the Worker: the browser uploads straight to R2 with signed multipart URLs.
+- Files pass through the Worker in chunks, never whole: the browser sends ~10 MB parts and the Worker writes each with `env.FILES` multipart (a Worker request body caps near 100 MB). Playback streams from `env.FILES` with range requests. One path in dev and production; no R2 API tokens, CORS, or signed URLs.
 - Never hardcode a hex in a component; add a semantic token to `app.css`.
 - A future Go sync helper and CLI lives in `sync/` as its own Go module.
 
@@ -37,7 +48,7 @@ tests/               # Mirrors src/, never next to source
 
 ## Commands
 
-`pnpm dev` (http://localhost:3000) · `pnpm build` · `pnpm typecheck` · `pnpm preview` · `pnpm deploy` · `pnpm cf-typegen` (after changing bindings in `wrangler.jsonc`).
+`pnpm dev` (http://localhost:3000) · `pnpm db:migrate` (local D1; `db:migrate:remote` for production) · `pnpm test` (Vitest, plain Node: `tests/`) · `pnpm build` · `pnpm typecheck` · `pnpm preview` · `pnpm deploy` · `pnpm cf-typegen` (after changing bindings in `wrangler.jsonc`).
 
 ## Versions and releases
 

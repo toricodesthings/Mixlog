@@ -1,0 +1,71 @@
+/**
+ * Primitive: Tooltip
+ *
+ * Pre-themed Radix Tooltip with Blue Hour.
+ * Domain components import from here — never from @radix-ui/react-tooltip directly.
+ */
+import * as RadixTooltip from "@radix-ui/react-tooltip";
+import { useState, useRef, type ReactNode } from "react";
+import { FLOATING_SURFACE } from "./menu-styles";
+import { isTouchFirst } from "../../hooks/ui/use-shell-mode";
+
+/* ── Re-exports ─────────────────────────────────────────────────── */
+export const Provider = RadixTooltip.Provider;
+const Root = RadixTooltip.Root;
+const Trigger = RadixTooltip.Trigger;
+const Portal = RadixTooltip.Portal;
+const Arrow = RadixTooltip.Arrow;
+
+/* ── Content ────────────────────────────────────────────────────── */
+const Content = ({ className = "", sideOffset = 10, ...props }: RadixTooltip.TooltipContentProps & { ref?: React.Ref<HTMLDivElement> }) => (
+    <RadixTooltip.Content
+        sideOffset={sideOffset}
+        className={[
+            FLOATING_SURFACE,
+            "pointer-events-none rounded-lg px-3 py-1.5 text-xs text-ink",
+            "data-[state=delayed-open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=delayed-open]:fade-in data-[state=closed]:fade-out",
+            "data-[state=delayed-open]:zoom-in-95 data-[state=closed]:zoom-out-95",
+            "duration-200",
+            className,
+        ].join(" ")}
+        {...props}
+    />
+);
+
+/* ── Tip ────────────────────────────────────────────────────────────
+ * The canonical one-liner tooltip for interactive, icon-only controls
+ * (§6.6). Composes the themed Root/Trigger/Portal/Content/Arrow so callers
+ * never re-derive the boilerplate. Pair with an `aria-label` on the child for
+ * assistive tech; `Tip` carries the visible, themed hint. Requires a
+ * `Tooltip.Provider` ancestor (mounted once in `providers.tsx`). */
+export interface TipProps {
+    /** Visible tooltip content. */
+    label: ReactNode;
+    side?: "top" | "right" | "bottom" | "left";
+    /** A single focusable/hoverable element — receives the trigger via asChild. */
+    children: ReactNode;
+    /** Suppress the preview while keeping the trigger mounted (for example, during a drag). */
+    disabled?: boolean;
+}
+
+/** Touch screens have no hover: a tip only follows keyboard focus, never a sheet's initial focus. */
+const focusedWithoutKeyboard = () =>
+    isTouchFirst() &&
+    !document.activeElement?.matches(":focus-visible");
+
+export function Tip({ label, side = "right", children, disabled = false }: TipProps) {
+    const [open, setOpen] = useState(false);
+    const touch = useRef(false);
+    return (
+        <Root open={open && !disabled} onOpenChange={(next) => setOpen(next && !disabled && !touch.current && !focusedWithoutKeyboard())}>
+            <Trigger asChild onPointerDown={(event) => { touch.current = event.pointerType === "touch"; if (touch.current) setOpen(false); }} onPointerMove={(event) => { if (event.pointerType === "mouse") touch.current = false; }}>{children}</Trigger>
+            {!disabled && <Portal>
+                <Content side={side}>
+                    {label}
+                    <Arrow className="fill-room-surface" />
+                </Content>
+            </Portal>}
+        </Root>
+    );
+}

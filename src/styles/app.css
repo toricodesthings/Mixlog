@@ -1,123 +1,488 @@
 /*
- * CONTRAST FLOOR: every text and accent token is ≥ 4.5:1 on every ground and surface
- * in its mode. Never use text opacity below /90 on muted text.
- * This file is the design source of truth (Blue Hour); docs/MANIFESTO.md §5 is the why.
+ * BLUE HOUR — Mixlog's design source of truth (docs/MANIFESTO.md §5 is the why).
+ *
+ * Names: room-* (grounds and surfaces) · ink-* (text) · line-* (borders) · accent-* (the active palette;
+ * Signal by default) · panel (the background's own bases). Files ported from Cadence are renamed
+ * with scripts/cadence-names.sed.
+ *
+ * CONTRAST FLOOR: every ink and accent token is ≥ 4.5:1 on every room in its mode.
+ * Never use text opacity below /90 on ink-muted.
  */
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400..700&family=Sora:wght@300..700&display=swap");
 @import "tailwindcss";
+@import "tw-animate-css";
 
-@theme {
-  --font-sans: "Sora", system-ui, -apple-system, sans-serif;
-  --font-display: "Outfit", system-ui, sans-serif;
+@theme static {
+  /* === TYPOGRAPHY === */
+  --font-sans: "Sora Variable", "Sora", system-ui, -apple-system, sans-serif;
+  --font-display: "Outfit Variable", "Outfit", system-ui, sans-serif;
 
-  /* Tailwind colors read the mode-aware tokens below. */
-  --color-void: var(--void);
-  --color-deep: var(--deep);
-  --color-base: var(--base);
-  --color-surface: var(--surface);
-  --color-surface-muted: var(--surface-muted);
-  --color-surface-hover: var(--surface-hover);
-  --color-elevated: var(--elevated);
-  --color-text: var(--text);
-  --color-text-soft: var(--text-soft);
-  --color-text-muted: var(--text-muted);
-  --color-border: var(--border);
-  --color-border-light: var(--border-light);
-  --color-border-interactive: var(--border-interactive);
-  --color-accent-primary: var(--accent-primary);
-  --color-accent-primary-soft: var(--accent-primary-soft);
-  --color-accent-primary-dim: var(--accent-primary-dim);
+  /* === BLUE HOUR (default dark) === */
+  --color-room-void: #060a14;
+  --color-room-deep: #0a1020;
+  --color-room-base: #0e162a;
+  --color-room-surface: #141e38;
+  --color-room-surface-muted: #0c1324;
+  --color-room-surface-hover: #19253f;
+  --color-room-elevated: #1b2848;
+
+  --color-ink: #e8edf5;
+  --color-ink-soft: #b8c5d4;
+  --color-ink-muted: #8a9ab3;
+
+  --color-line: rgba(255, 255, 255, 0.10);
+  --color-line-strong: rgba(255, 255, 255, 0.20);
+  --color-line-light: rgba(255, 255, 255, 0.15);
+
+  /* === FEEDBACK (warm on purpose, so a problem never blends into the brand) === */
+  --color-feedback-success: #5dba72;
+  --color-feedback-error: #d97756;
+
+  /* === NAMED ACCENTS — Signal (brand) · Tube (warm counterpoint) · Haze (quiet) === */
+  --color-signal: #6cb4ff;
+  --color-tube: #e8b26a;
+  --color-haze: #aaa8f2;
+
+  /* === ACCENT INDIRECTION (palette-responsive; components use these, never a named accent) === */
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-dim: var(--accent-dim);
   --color-accent-secondary: var(--accent-secondary);
   --color-accent-tertiary: var(--accent-tertiary);
-  --color-on-primary: var(--accent-on-primary);
-  --color-feedback-success: var(--feedback-success);
-  --color-feedback-error: var(--feedback-error);
 
-  --radius-base: 1rem;
+  /* === PANEL SURFACES — the background's own dark bases === */
+  --color-panel: var(--color-room-void);
+  --color-panel-raised: var(--color-room-base);
+
+  /* Text on a solid accent fill. */
+  --color-on-accent: var(--on-accent);
+  --radius: 1rem;
 }
 
-/* === BLUE HOUR (dark, default) === */
+/* === MOTION, LAYERS & THE ACTIVE PALETTE === */
 :root {
-  color-scheme: dark;
-
-  --void: #060a14;
-  --deep: #0a1020;
-  --base: #0e162a;
-  --surface: #141e38;
-  --surface-muted: #0c1324;
-  --surface-hover: #19253f;
-  --elevated: #1b2848;
-
-  --text: #e8edf5;
-  --text-soft: #b8c5d4;
-  --text-muted: #8a9ab3;
-
-  --border: rgba(255, 255, 255, 0.10);
-  --border-light: rgba(255, 255, 255, 0.15);
-  --border-interactive: rgba(255, 255, 255, 0.20);
-
-  /* Signal (brand) · Tube (warm counterpoint) · Haze (quiet differentiation) */
-  --accent-primary: #6cb4ff;
-  --accent-primary-soft: rgba(108, 180, 255, 0.12);
-  --accent-primary-dim: rgba(108, 180, 255, 0.06);
-  --accent-secondary: #e8b26a;
-  --accent-tertiary: #aaa8f2;
-  --accent-on-primary: #0a1020;
-  --accent-glow: rgba(108, 180, 255, 0.18);
-  --accent-surface: rgba(108, 180, 255, 0.025);
-
-  --feedback-success: #5dba72;
-  --feedback-error: #d97756;
-
-  /* Motion, carried over from Cadence unchanged. */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
   --duration-fast: 150ms;
   --duration-normal: 200ms;
   --duration-smooth: 300ms;
   --duration-expressive: 450ms;
+  --spring-snap: 400ms linear(0, 0.2271, 0.5535, 0.7826, 0.9088, 0.9679, 0.9918, 0.9997, 1.0015, 1.0013, 1.0008, 1, 1);
+  --spring-glide: 500ms linear(0, 0.0953, 0.2805, 0.4696, 0.6291, 0.7511, 0.8386, 0.8986, 0.9383, 0.9636, 0.9792, 0.9886, 0.9941, 0.9972, 0.9988, 0.9996, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --morph-in: 200ms var(--ease-out-expo);
+  --morph-out: 130ms var(--ease-out-quart);
+  --pop-in: 200ms var(--ease-out-quart);
+  --pop-out: 150ms ease-in;
   --sheet-in: 280ms var(--ease-sheet);
   --sheet-out: 200ms var(--ease-sheet);
+
+  --shell-header-h: 4.5rem;
+  --z-shell-base: 10;
+  --z-shell-header: 20;
+  --z-floating-bar: 30;
+  --z-route-backdrop: 60;
+  --z-route-overlay: 70;
+  --z-utility-surface: 80;
+  --z-fullscreen-surface: 90;
+  --z-system-dialog: 110;
+  /* Floating UI sits above system dialogs so it stays usable when triggered from inside a modal. */
+  --z-floating-ui: 120;
+  --z-loading-screen: 200;
+
+  --accent: var(--color-signal);
+  --accent-soft: rgba(108, 180, 255, 0.12);
+  --accent-dim: rgba(108, 180, 255, 0.06);
+  --accent-secondary: var(--color-tube);
+  --accent-tertiary: var(--color-haze);
+  --accent-glow: rgba(108, 180, 255, 0.18);
+  --accent-surface: rgba(108, 180, 255, 0.025);
+  --on-accent: #0a1020;
 }
 
-/* === DAYLIGHT STUDIO (light) — Cadence's warm cream, never cold white === */
+/* === DAYLIGHT STUDIO — warm cream, never a cold white === */
 [data-theme="daylight"] {
   color-scheme: light;
 
-  --void: #f8f6f3;
-  --deep: #f3f0ec;
-  --base: #ece8e2;
-  --surface: #e4dfd8;
-  --surface-muted: #eee9e3;
-  --surface-hover: #ddd7cf;
-  --elevated: #d8d1c8;
+  --color-room-void: #f8f6f3;
+  --color-room-deep: #f3f0ec;
+  --color-room-base: #ece8e2;
+  --color-room-surface: #e4dfd8;
+  --color-room-surface-muted: #eee9e3;
+  --color-room-surface-hover: #ddd7cf;
+  --color-room-elevated: #d8d1c8;
 
-  --text: #1e293b;
-  --text-soft: #475569;
-  --text-muted: #4f5b6e;
+  --color-ink: #1e293b;
+  --color-ink-soft: #475569;
+  --color-ink-muted: #4f5b6e;
 
-  --border: rgba(0, 0, 0, 0.10);
-  --border-light: rgba(0, 0, 0, 0.08);
-  --border-interactive: rgba(0, 0, 0, 0.18);
+  --color-line: rgba(0, 0, 0, 0.10);
+  --color-line-strong: rgba(0, 0, 0, 0.18);
+  --color-line-light: rgba(0, 0, 0, 0.08);
 
-  --accent-primary: #1449c2;
-  --accent-primary-soft: rgba(20, 73, 194, 0.08);
-  --accent-primary-dim: rgba(20, 73, 194, 0.04);
-  --accent-secondary: #7a4a0c;
-  --accent-tertiary: #4a44a6;
-  --accent-on-primary: #ffffff;
+  --color-feedback-success: #005f29;
+  --color-feedback-error: #a11c10;
+
+  --color-signal: #1449c2;
+  --color-tube: #7a4a0c;
+  --color-haze: #4a44a6;
+
+  --accent-soft: rgba(20, 73, 194, 0.08);
+  --accent-dim: rgba(20, 73, 194, 0.04);
   --accent-glow: rgba(20, 73, 194, 0.14);
   --accent-surface: rgba(20, 73, 194, 0.02);
-
-  --feedback-success: #005f29;
-  --feedback-error: #a11c10;
+  --on-accent: #ffffff;
 }
 
 @layer base {
+  :root {
+    color-scheme: dark;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    @apply font-sans antialiased;
+    background-color: var(--color-room-void);
+    color: var(--color-ink);
+    overflow-x: hidden;
+  }
+
   body {
-    background: var(--deep);
-    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--color-room-void);
+  }
+
+  /* Installed app: the shell never rubber-bands; inner scrollers still do. */
+  @media (display-mode: standalone), (display-mode: fullscreen) {
+    html, body { overscroll-behavior: none; }
+  }
+
+  /* Tailwind v4 Preflight no longer sets cursor:pointer on buttons. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]),
+  label[for],
+  summary,
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-ink) 12%, transparent) transparent;
+  }
+
+  *:focus-visible {
+    @apply outline-none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
+    transition: box-shadow var(--duration-smooth) var(--ease-out-expo);
+  }
+
+  /* Standalone text inputs get a lighter 1px ring rather than the full 2px button ring. */
+  input[type="text"]:focus-visible,
+  input:not([type]):focus-visible,
+  textarea:focus-visible {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  /* Composite wrappers that draw their own focus state opt out with data-focus-container. */
+  [role="form"] input:focus-visible,
+  [data-focus-container] input:focus-visible,
+  [data-focus-container] textarea:focus-visible,
+  [data-focus-container] select:focus-visible {
+    box-shadow: none;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--color-ink);
+  }
+
+  /* Timecodes, version numbers and levels never jitter while playing. */
+  time, [data-numeric] {
     font-variant-numeric: tabular-nums;
   }
+}
+
+@layer utilities {
+  /* ── Atmospheric background: the city at blue hour, one warm lamp ── */
+  .bg-atmosphere {
+    background:
+      /* Signal mist — top-left cool glow, like a meter in the dark */
+      radial-gradient(ellipse 100% 70% at 8% 0%, rgba(108, 180, 255, 0.07) 0%, transparent 55%),
+      /* Tube warmth — the one lamp on the desk */
+      radial-gradient(ellipse 70% 50% at 92% 8%, rgba(232, 178, 106, 0.04) 0%, transparent 50%),
+      /* Haze horizon — last light over the skyline */
+      radial-gradient(ellipse 80% 40% at 50% 100%, rgba(170, 168, 242, 0.05) 0%, transparent 50%),
+      /* Depth vignette */
+      radial-gradient(ellipse 60% 60% at 50% 50%, transparent 40%, rgba(6, 10, 20, 0.5) 100%),
+      linear-gradient(175deg, var(--color-room-deep) 0%, #080d1b 40%, var(--color-room-void) 100%);
+  }
+
+  [data-theme="daylight"] .bg-atmosphere {
+    background:
+      radial-gradient(ellipse 100% 70% at 8% 0%, rgba(20, 73, 194, 0.05) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 50% at 92% 8%, rgba(122, 74, 12, 0.04) 0%, transparent 50%),
+      linear-gradient(175deg, var(--color-room-deep) 0%, var(--color-room-void) 100%);
+  }
+
+  /* ── Glass surfaces ──
+     Keep the standard backdrop-filter last: the production CSS optimizer
+     otherwise retains only the WebKit spelling, which Chromium ignores. */
+  .glass {
+    background: color-mix(in srgb, var(--color-panel) 45%, transparent);
+    -webkit-backdrop-filter: blur(32px) saturate(1.3);
+    backdrop-filter: blur(32px) saturate(1.3);
+    border: 1px solid var(--color-line);
+  }
+
+  .glass-surface {
+    background: var(--glass-surface-lighting, none), color-mix(in srgb, var(--color-room-surface) var(--glass-surface-tint, 85%), transparent);
+    -webkit-backdrop-filter: blur(var(--glass-surface-blur, 24px));
+    backdrop-filter: blur(var(--glass-surface-blur, 24px));
+    border: 1px solid var(--color-line-light);
+  }
+
+  .safe-top { padding-top: max(1rem, env(safe-area-inset-top)); }
+  .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  /* Compact page headers: their surface runs under the iOS status bar. */
+  .safe-header-top { padding-top: max(0.625rem, env(safe-area-inset-top)); }
+
+  .layer-shell-base { z-index: var(--z-shell-base); }
+  .layer-shell-header { z-index: var(--z-shell-header); }
+  .layer-floating-bar { z-index: var(--z-floating-bar); }
+  .layer-route-backdrop { z-index: var(--z-route-backdrop); }
+  .layer-route-overlay { z-index: var(--z-route-overlay); }
+  .layer-utility-surface { z-index: var(--z-utility-surface); }
+  .layer-fullscreen-surface { z-index: var(--z-fullscreen-surface); }
+  .layer-system-dialog { z-index: var(--z-system-dialog); }
+  .layer-floating-ui { z-index: var(--z-floating-ui); }
+  .layer-loading-screen { z-index: var(--z-loading-screen); }
+}
+
+/* ── Skeleton shimmer (primitives/Skeleton.tsx) ── */
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* ── ScrollArea thumb ── */
+[data-radix-scroll-area-thumb] {
+  transition: opacity 250ms var(--ease-out-quart), background-color 250ms var(--ease-out-quart);
+}
+
+/* A faint halo in the accent tone around a lit surface. */
+@utility glow-accent {
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 6%, transparent),
+              0 0 80px color-mix(in srgb, var(--accent) 3%, transparent);
+}
+
+/* Dialogs: glass on the background's own raised base, translucent so the page reads through the blur. */
+@utility surface-dialog {
+  background: color-mix(in srgb, var(--color-panel-raised) 80%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
+  border: 1px solid var(--color-line-light);
+  box-shadow: 0 32px 72px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* Press response: on touch a control swells under the finger; a fine pointer presses in slightly.
+   `scale` is the individual property, so it never fights a transform. press-none keeps a control still. */
+@utility press {
+  transition: scale var(--spring-snap), filter var(--duration-fast) ease, color var(--duration-normal) ease,
+    background-color var(--duration-normal) ease, border-color var(--duration-normal) ease,
+    box-shadow var(--duration-normal) ease, opacity var(--duration-normal) ease;
+  @media (pointer: coarse) {
+    &:active:not(:disabled) { scale: var(--press-scale, 1.05); filter: brightness(var(--press-bright, 1.08)); }
+  }
+  @media (pointer: fine) {
+    &:active:not(:disabled) { scale: var(--press-fine, 0.98); }
+  }
+}
+@utility press-none {
+  --press-scale: 1;
+  --press-fine: 1;
+  --press-bright: 1;
+}
+.press:is(.w-full, [data-press="wide"]) { --press-scale: 1.025; }
+
+/* Glass edge: a 1px specular rim. The element must already be positioned. */
+@utility glass-edge {
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    padding: 1px;
+    opacity: var(--edge-strength, 1);
+    background: linear-gradient(160deg, rgb(255 255 255 / 0.38), rgb(255 255 255 / 0.06) 38%, transparent 62%, rgb(255 255 255 / 0.14));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+}
+[data-theme="daylight"] .glass-edge { --edge-strength: 0.75; }
+
+/* Primary fills: a lit material in the accent tone (lighter top, rim, inner highlight, tinted shadow).
+   Indicators (dots, progress, checks) stay flat. */
+@utility accent-fill {
+  --fill-tone: var(--accent);
+  color: var(--color-on-accent);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--fill-tone), white var(--fill-lift, 14%)), var(--fill-tone) 58%, color-mix(in oklab, var(--fill-tone), black 6%));
+  border: 1px solid color-mix(in oklab, var(--fill-tone), white 20%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), inset 0 -1px 0 rgb(0 0 0 / 0.12), 0 6px 18px -6px color-mix(in srgb, var(--fill-tone) 45%, transparent);
+  &:hover { --fill-lift: 20%; }
+}
+[data-theme="daylight"] .accent-fill {
+  --fill-lift: 8%;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.32), inset 0 -1px 0 rgb(0 0 0 / 0.08), 0 4px 12px -6px color-mix(in srgb, var(--fill-tone) 35%, transparent);
+}
+[data-theme="daylight"] .accent-fill:hover { --fill-lift: 12%; }
+
+/* Menus, popovers, selects and tooltips: see-through glass that takes the colour of the page beneath it.
+   --floating-tint is the lowest fill that keeps text legible over worst-case backdrops. */
+@utility surface-floating {
+  background: color-mix(in srgb, var(--color-panel-raised) var(--floating-tint), transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8) brightness(var(--floating-brightness));
+  backdrop-filter: blur(22px) saturate(1.8) brightness(var(--floating-brightness));
+  border: 1px solid var(--color-line-light);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+:root { --floating-tint: 74%; --floating-brightness: 0.92; }
+[data-theme="daylight"] { --floating-tint: 85%; --floating-brightness: 1.04; }
+
+/* On touch, popovers grow out of their trigger (a clip-path from the anchor rect); a mouse gets a pop-in. */
+.morph-surface {
+  --aw: var(--radix-popper-anchor-width, 100%);
+  --ah: var(--radix-popper-anchor-height, 100%);
+  --m-top: 0px;
+  --m-right: max(0px, 100% - var(--aw));
+  --m-bottom: max(0px, 100% - var(--ah));
+  --m-left: 0px;
+  animation: morph-in var(--morph-in) backwards;
+}
+.morph-surface[data-align="end"] { --m-left: max(0px, 100% - var(--aw)); --m-right: 0px; }
+.morph-surface[data-align="center"] { --m-left: max(0px, (100% - var(--aw)) / 2); --m-right: var(--m-left); }
+.morph-surface[data-side="top"] { --m-top: max(0px, 100% - var(--ah)); --m-bottom: 0px; }
+.morph-surface:is([data-side="left"], [data-side="right"]) { --m-top: 0px; --m-bottom: max(0px, 100% - var(--ah)); }
+.morph-surface:is([data-side="left"], [data-side="right"])[data-align="end"] { --m-top: max(0px, 100% - var(--ah)); --m-bottom: 0px; }
+.morph-surface:is([data-side="left"], [data-side="right"])[data-align="center"] { --m-top: max(0px, (100% - var(--ah)) / 2); --m-bottom: var(--m-top); }
+.morph-surface[data-side="left"] { --m-left: max(0px, 100% - var(--aw)); --m-right: 0px; }
+.morph-surface[data-side="right"] { --m-left: 0px; --m-right: max(0px, 100% - var(--aw)); }
+.morph-surface[data-state="closed"] { animation: morph-out var(--morph-out) forwards; }
+.morph-surface[data-state="open"] > * { animation: morph-rows 160ms var(--ease-out-quart) 30ms backwards; }
+@keyframes morph-in {
+  from { clip-path: inset(var(--m-top) var(--m-right) var(--m-bottom) var(--m-left) round var(--morph-from-radius, 1rem)); opacity: 0.7; }
+  to { clip-path: inset(0 round var(--morph-to-radius, 0.75rem)); opacity: 1; }
+}
+@keyframes morph-out {
+  from { clip-path: inset(0 round var(--morph-to-radius, 0.75rem)); opacity: 1; }
+  to { clip-path: inset(var(--m-top) var(--m-right) var(--m-bottom) var(--m-left) round var(--morph-from-radius, 1rem)); opacity: 0; }
+}
+@keyframes morph-rows { from { opacity: 0; } }
+.morph-surface.rounded-2xl { --morph-to-radius: 1rem; }
+@media (max-width: 767px) { .morph-surface { --morph-from-radius: calc(var(--ah) / 2); } }
+@media (pointer: coarse) {
+  .morph-surface[data-side="bottom"] { translate: 0 calc(-1 * var(--ah) - var(--side-gap, 4px)); }
+  .morph-surface[data-side="top"] { translate: 0 calc(var(--ah) + var(--side-gap, 4px)); }
+  :is([aria-haspopup="menu"]:not([role="menuitem"]), button[role="combobox"], [data-morph-trigger])[aria-expanded="true"] { opacity: 0; transition: opacity var(--morph-out); }
+}
+@media not (pointer: coarse) {
+  .morph-surface { animation: menu-pop-in var(--pop-in) backwards; transform-origin: var(--radix-popper-transform-origin); }
+  .morph-surface[data-state="closed"] { animation: menu-pop-out var(--pop-out) forwards; }
+  .morph-surface[data-state="open"] > * { animation: none; }
+}
+@keyframes menu-pop-in { from { opacity: 0; scale: 0.95; } }
+@keyframes menu-pop-out { to { opacity: 0; scale: 0.95; } }
+
+/* Shell chrome — page headers and side rails: a darker, lightly blurred plane over the background. */
+@utility surface-shell {
+  background: color-mix(in srgb, var(--color-panel) 38%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(115%);
+  backdrop-filter: blur(10px) saturate(115%);
+}
+
+/* Content ladder: `surface-card` holds things; `surface-item` is a thing inside one; `surface-row` stacks.
+   Tints are tuned here per mode, never in components. */
+:root {
+  --card-tint: 22%;
+  --card-tint-up: 32%;
+  --item-tint: 40%;
+  --row-tint: 8%;
+  --row-tint-up: 16%;
+  --control-tint: 35%;
+  --control-tint-up: 50%;
+  --hero-tint: 62%;
+}
+
+/* Unlayered on purpose, so they win over a component's own default fill. */
+.surface-control {
+  background-color: color-mix(in srgb, var(--color-panel-raised) var(--control-tint), transparent);
+}
+.surface-control-accent {
+  --control-tone-mix: 15%;
+  background-color: color-mix(
+    in srgb,
+    var(--control-tone, var(--accent)) var(--control-tone-mix),
+    color-mix(in srgb, var(--color-panel-raised) var(--control-tint), transparent)
+  );
+}
+button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint-up); }
+.surface-control-accent:hover { --control-tone-mix: 25%; }
+
+.surface-row {
+  background-color: color-mix(in srgb, var(--color-panel) var(--row-tint), transparent);
+  background-image: linear-gradient(var(--row-wash, transparent), var(--row-wash, transparent));
+}
+.surface-row:hover { --row-tint: var(--row-tint-up); }
+
+@utility surface-card {
+  background: color-mix(in srgb, var(--color-panel) var(--card-tint), transparent);
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  border-top-color: color-mix(in srgb, white 18%, transparent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+@utility surface-item {
+  background: color-mix(in srgb, var(--color-panel-raised) var(--item-tint), transparent);
+}
+
+/* The deck: the page's top surface (the now-playing player), a step above cards. */
+@utility surface-deck {
+  background: color-mix(in srgb, var(--color-panel-raised) var(--hero-tint), transparent);
+  border: 1px solid var(--color-line-light);
+}
+
+.surface-card[data-lift]:hover,
+.surface-card[data-state="selected"] {
+  --card-tint: var(--card-tint-up);
+}
+
+[data-theme="daylight"] .surface-card {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: rgba(0, 0, 0, 0.05);
+  border-bottom-color: rgba(0, 0, 0, 0.14);
+  box-shadow: 0 6px 18px rgba(60, 40, 10, 0.08);
+}
+
+/* One finish for navigation counts and unread indicators. */
+@utility activity-badge {
+  color: var(--color-ink);
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--accent) 24%, var(--color-panel)),
+    color-mix(in srgb, var(--accent) 16%, var(--color-panel)) 70%);
+  box-shadow:
+    0 0 0 2px var(--color-panel),
+    inset 0 1px 0 color-mix(in srgb, var(--color-ink) 12%, transparent),
+    0 2px 6px color-mix(in srgb, var(--color-panel) 20%, transparent);
 }
