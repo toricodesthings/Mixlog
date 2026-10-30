@@ -2,6 +2,9 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import '@fontsource-variable/outfit'
 import '@fontsource-variable/sora'
 
+import { AppShell } from '#/components/layout/AppShell'
+import { APPEARANCE_BOOT } from '#/hooks/ui/use-appearance'
+import { NotFound } from '#/components/layout/NotFound'
 import { Provider as TooltipProvider } from '#/components/primitives/Tooltip'
 import appCss from '#/styles/app.css?url'
 
@@ -14,13 +17,21 @@ export const Route = createRootRoute({
       { title: 'Mixlog' },
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
+    // Before first paint, so a Daylight device never flashes Blue Hour.
+    scripts: [{ children: APPEARANCE_BOOT }],
   }),
+  // `?settings=<tab>` opens Settings over any page.
+  validateSearch: (search: Record<string, unknown>): { settings?: string } =>
+    typeof search.settings === 'string' ? { settings: search.settings } : {},
   shellComponent: RootDocument,
+  component: AppShell,
+  notFoundComponent: NotFound,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // The appearance boot script sets data-theme/data-motion here before React hydrates.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

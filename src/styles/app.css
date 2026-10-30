@@ -50,6 +50,15 @@
   --color-accent-tertiary: var(--accent-tertiary);
 
   /* === PANEL SURFACES — the background's own dark bases === */
+  /* Theme previews in Settings: each theme's own colours, whichever theme is showing. */
+  --color-preview-night: #0a1020;
+  --color-preview-night-card: #141e38;
+  --color-preview-night-signal: #6cb4ff;
+  --color-preview-night-ink: #e8edf5;
+  --color-preview-day: #f3f0ec;
+  --color-preview-day-card: #e4dfd8;
+  --color-preview-day-signal: #1449c2;
+  --color-preview-day-ink: #1e293b;
   --color-panel: var(--color-room-void);
   --color-panel-raised: var(--color-room-base);
 
@@ -85,6 +94,8 @@
   --z-route-overlay: 70;
   --z-utility-surface: 80;
   --z-fullscreen-surface: 90;
+  --z-room-sheet-backdrop: 95;
+  --z-room-sheet: 100;
   --z-system-dialog: 110;
   /* Floating UI sits above system dialogs so it stays usable when triggered from inside a modal. */
   --z-floating-ui: 120;
@@ -485,4 +496,142 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
     0 0 0 2px var(--color-panel),
     inset 0 1px 0 color-mix(in srgb, var(--color-ink) 12%, transparent),
     0 2px 6px color-mix(in srgb, var(--color-panel) 20%, transparent);
+}
+
+/* Reduced motion is global (the OS, or Settings › Appearance): state changes still happen, they just don't travel. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ── Ported from Cadence with Dialog, SearchField and the sheets ── */
+@layer utilities {
+  /* Themed thin scrollbar — visible but unobtrusive */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 9999px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.24); }
+
+  .mobile-sheet-shell {
+    width: min(100%, 32rem);
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+  .mobile-sheet-header { flex-shrink: 0; }
+  .mobile-sheet-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .layer-room-sheet-backdrop { z-index: var(--z-room-sheet-backdrop); }
+  .layer-room-sheet { z-index: var(--z-room-sheet); }
+
+  /* Icon-only button: minimum 44px tap target. */
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+    @apply rounded-xl flex items-center justify-center transition-colors duration-200 cursor-pointer;
+  }
+
+  /* Daylight: bg-white/[0.0x] is invisible on cream, so the common washes map to black alpha. */
+  [data-theme="daylight"] .bg-white\/\[0\.02\] { background-color: rgba(0, 0, 0, 0.02); }
+  [data-theme="daylight"] .bg-white\/\[0\.03\] { background-color: rgba(0, 0, 0, 0.03); }
+  [data-theme="daylight"] .bg-white\/\[0\.04\] { background-color: rgba(0, 0, 0, 0.04); }
+  [data-theme="daylight"] .bg-white\/\[0\.05\] { background-color: rgba(0, 0, 0, 0.05); }
+  [data-theme="daylight"] .bg-white\/\[0\.06\] { background-color: rgba(0, 0, 0, 0.06); }
+  [data-theme="daylight"] .bg-white\/\[0\.08\] { background-color: rgba(0, 0, 0, 0.06); }
+  [data-theme="daylight"] .hover\:bg-white\/\[0\.04\]:hover { background-color: rgba(0, 0, 0, 0.04); }
+  [data-theme="daylight"] .hover\:bg-white\/\[0\.05\]:hover { background-color: rgba(0, 0, 0, 0.05); }
+  [data-theme="daylight"] .hover\:bg-white\/\[0\.06\]:hover { background-color: rgba(0, 0, 0, 0.06); }
+  [data-theme="daylight"] .active\:bg-white\/\[0\.06\]:active { background-color: rgba(0, 0, 0, 0.06); }
+  [data-theme="daylight"] .border-white\/\[0\.04\] { border-color: rgba(0, 0, 0, 0.06); }
+  [data-theme="daylight"] .divide-white\/\[0\.04\] > :not(:last-child) { border-color: rgba(0, 0, 0, 0.06); }
+  [data-theme="daylight"] .scrollbar-thin { scrollbar-color: rgba(0, 0, 0, 0.16) transparent; }
+}
+
+/* Overlay panels (ResponsiveOverlayPanel) open and close on the compositor. The sheet drag writes
+   `transform` and these write `translate`, so they add: a thrown sheet leaves from where the finger let go. */
+.sheet-up[data-state="open"] { animation: sheet-up-in var(--sheet-in) both; }
+.sheet-up[data-state="closed"] { animation: sheet-up-out var(--sheet-out) forwards; }
+.sheet-rise[data-state="open"] { animation: sheet-rise-in var(--sheet-in) both; }
+.sheet-rise[data-state="closed"] { animation: sheet-rise-out var(--sheet-out) forwards; }
+.sheet-side[data-state="open"] { animation: sheet-side-in var(--sheet-in) both; }
+.sheet-side[data-state="closed"] { animation: sheet-side-out var(--sheet-out) forwards; }
+.sheet-fade[data-state="open"] { animation: sheet-fade-in var(--sheet-in) both; }
+.sheet-fade[data-state="closed"] { animation: sheet-fade-out var(--sheet-out) forwards; }
+@keyframes sheet-up-in { from { translate: 0 100%; } }
+@keyframes sheet-up-out { to { translate: 0 100%; } }
+@keyframes sheet-rise-in { from { translate: 0 16px; opacity: 0; } }
+@keyframes sheet-rise-out { to { translate: 0 16px; opacity: 0; } }
+@keyframes sheet-side-in { from { translate: 28px 0; opacity: 0; } }
+@keyframes sheet-side-out { to { translate: 28px 0; opacity: 0; } }
+@keyframes sheet-fade-in { from { opacity: 0; } }
+@keyframes sheet-fade-out { to { opacity: 0; } }
+
+@utility surface-route-overlay {
+  background: color-mix(in srgb, var(--color-room-deep) 96%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.12);
+  backdrop-filter: blur(28px) saturate(1.12);
+  border: 1px solid var(--color-line-light);
+}
+
+/* Settings: the content area catches a faint wash of the accent from the top right. */
+.settings-content-bg { background: radial-gradient(circle at top right, var(--accent-dim), transparent 45%); }
+
+.mobile-icon-button {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+.mobile-icon-button:hover,
+.mobile-icon-button:active { background: var(--color-room-surface); }
+
+/* While typing, the keyboard covers the home indicator: a sheet drops its safe-area pad. */
+@media (pointer: coarse) {
+  .mobile-sheet-shell:has(:is(textarea, [contenteditable="true"], input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"])):focus) {
+    padding-bottom: 0;
+  }
+}
+/* A dialog's corner X never sits on its title. A phone sheet whose footer has its own Cancel drops the X. */
+[data-dialog-content="true"]:has(> [data-dialog-x]) [data-dialog-header] { padding-right: 3rem; }
+[data-dialog-sheet]:has([data-dialog-footer]) > [data-dialog-x] { display: none; }
+[data-dialog-sheet]:has([data-dialog-footer]) [data-dialog-header] { padding-right: 0; }
+
+/* A tab's own heading is the sheet's title on compact, so it isn't said twice. */
+.mobile-settings-content > div > h2:first-child { display: none; }
+.utility-sheet-header h2:focus, [data-sheet-heading]:focus { box-shadow: none; }
+.utility-sheet-content button, .utility-sheet-content a { cursor: pointer; }
+.utility-sheet-content input,
+.utility-sheet-content select,
+.utility-sheet-content textarea { font-size: max(1rem, 16px); } /* under 16px, iOS zooms on focus */
+.utility-sheet-content { -webkit-overflow-scrolling: touch; }
+.utility-sheet-content, .utility-sheet-header {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
 }

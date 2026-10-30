@@ -1,7 +1,7 @@
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair } from 'jose'
 import { expect, test } from 'vitest'
 
-import { isAllowed } from '../../src/server/access'
+import { isAllowed } from '#/server/access'
 
 const team = 'https://mixlog-test.cloudflareaccess.com'
 const aud = 'app-aud'

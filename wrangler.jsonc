@@ -12,7 +12,7 @@
 	"r2_buckets": [{ "binding": "FILES", "bucket_name": "mixlog" }],
 	// Cloudflare Access: Zero Trust → Access → Applications → your app. Not secrets.
 	"vars": {
-		"ACCESS_TEAM_DOMAIN": "", // https://<team>.cloudflareaccess.com
-		"ACCESS_AUD": "" // the application's "Application Audience (AUD) Tag"
+		"ACCESS_TEAM_DOMAIN": "https://pitoursirak.cloudflareaccess.com",
+		"ACCESS_AUD": "6544c11e79935c486b9e5503171004d821c23c791e18174796652fae5fba2c06" // the application's "Application Audience (AUD) Tag"
 	},
 }

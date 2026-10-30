@@ -10,33 +10,146 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReleasesRouteImport } from './routes/releases'
+import { Route as TrashRouteImport } from './routes/trash'
+import { Route as UpcomingRouteImport } from './routes/upcoming'
+import { Route as ReleasesIndexRouteImport } from './routes/releases/index'
+import { Route as UpcomingIndexRouteImport } from './routes/upcoming/index'
+import { Route as ReleasesReleaseIdIndexRouteImport } from './routes/releases/$releaseId/index'
+import { Route as ReleasesReleaseIdTrackIdRouteImport } from './routes/releases/$releaseId/$trackId'
+import { Route as UpcomingReleaseIdIndexRouteImport } from './routes/upcoming/$releaseId/index'
+import { Route as UpcomingReleaseIdTrackIdRouteImport } from './routes/upcoming/$releaseId/$trackId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReleasesRoute = ReleasesRouteImport.update({
+  id: '/releases',
+  path: '/releases',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrashRoute = TrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpcomingRoute = UpcomingRouteImport.update({
+  id: '/upcoming',
+  path: '/upcoming',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReleasesIndexRoute = ReleasesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ReleasesRoute,
+} as any)
+const UpcomingIndexRoute = UpcomingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => UpcomingRoute,
+} as any)
+const ReleasesReleaseIdIndexRoute = ReleasesReleaseIdIndexRouteImport.update({
+  id: '/$releaseId/',
+  path: '/$releaseId/',
+  getParentRoute: () => ReleasesRoute,
+} as any)
+const ReleasesReleaseIdTrackIdRoute =
+  ReleasesReleaseIdTrackIdRouteImport.update({
+    id: '/$releaseId/$trackId',
+    path: '/$releaseId/$trackId',
+    getParentRoute: () => ReleasesRoute,
+  } as any)
+const UpcomingReleaseIdIndexRoute = UpcomingReleaseIdIndexRouteImport.update({
+  id: '/$releaseId/',
+  path: '/$releaseId/',
+  getParentRoute: () => UpcomingRoute,
+} as any)
+const UpcomingReleaseIdTrackIdRoute =
+  UpcomingReleaseIdTrackIdRouteImport.update({
+    id: '/$releaseId/$trackId',
+    path: '/$releaseId/$trackId',
+    getParentRoute: () => UpcomingRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/releases': typeof ReleasesRouteWithChildren
+  '/trash': typeof TrashRoute
+  '/upcoming': typeof UpcomingRouteWithChildren
+  '/releases/': typeof ReleasesIndexRoute
+  '/upcoming/': typeof UpcomingIndexRoute
+  '/releases/$releaseId/$trackId': typeof ReleasesReleaseIdTrackIdRoute
+  '/upcoming/$releaseId/$trackId': typeof UpcomingReleaseIdTrackIdRoute
+  '/releases/$releaseId/': typeof ReleasesReleaseIdIndexRoute
+  '/upcoming/$releaseId/': typeof UpcomingReleaseIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/trash': typeof TrashRoute
+  '/releases': typeof ReleasesIndexRoute
+  '/upcoming': typeof UpcomingIndexRoute
+  '/releases/$releaseId/$trackId': typeof ReleasesReleaseIdTrackIdRoute
+  '/upcoming/$releaseId/$trackId': typeof UpcomingReleaseIdTrackIdRoute
+  '/releases/$releaseId': typeof ReleasesReleaseIdIndexRoute
+  '/upcoming/$releaseId': typeof UpcomingReleaseIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/releases': typeof ReleasesRouteWithChildren
+  '/trash': typeof TrashRoute
+  '/upcoming': typeof UpcomingRouteWithChildren
+  '/releases/': typeof ReleasesIndexRoute
+  '/upcoming/': typeof UpcomingIndexRoute
+  '/releases/$releaseId/$trackId': typeof ReleasesReleaseIdTrackIdRoute
+  '/upcoming/$releaseId/$trackId': typeof UpcomingReleaseIdTrackIdRoute
+  '/releases/$releaseId/': typeof ReleasesReleaseIdIndexRoute
+  '/upcoming/$releaseId/': typeof UpcomingReleaseIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/releases'
+    | '/trash'
+    | '/upcoming'
+    | '/releases/'
+    | '/upcoming/'
+    | '/releases/$releaseId/$trackId'
+    | '/upcoming/$releaseId/$trackId'
+    | '/releases/$releaseId/'
+    | '/upcoming/$releaseId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/trash'
+    | '/releases'
+    | '/upcoming'
+    | '/releases/$releaseId/$trackId'
+    | '/upcoming/$releaseId/$trackId'
+    | '/releases/$releaseId'
+    | '/upcoming/$releaseId'
+  id:
+    | '__root__'
+    | '/'
+    | '/releases'
+    | '/trash'
+    | '/upcoming'
+    | '/releases/'
+    | '/upcoming/'
+    | '/releases/$releaseId/$trackId'
+    | '/upcoming/$releaseId/$trackId'
+    | '/releases/$releaseId/'
+    | '/upcoming/$releaseId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ReleasesRoute: typeof ReleasesRouteWithChildren
+  TrashRoute: typeof TrashRoute
+  UpcomingRoute: typeof UpcomingRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +161,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/releases': {
+      id: '/releases'
+      path: '/releases'
+      fullPath: '/releases'
+      preLoaderRoute: typeof ReleasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trash': {
+      id: '/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof TrashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upcoming': {
+      id: '/upcoming'
+      path: '/upcoming'
+      fullPath: '/upcoming'
+      preLoaderRoute: typeof UpcomingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/releases/': {
+      id: '/releases/'
+      path: '/'
+      fullPath: '/releases/'
+      preLoaderRoute: typeof ReleasesIndexRouteImport
+      parentRoute: typeof ReleasesRoute
+    }
+    '/upcoming/': {
+      id: '/upcoming/'
+      path: '/'
+      fullPath: '/upcoming/'
+      preLoaderRoute: typeof UpcomingIndexRouteImport
+      parentRoute: typeof UpcomingRoute
+    }
+    '/releases/$releaseId/': {
+      id: '/releases/$releaseId/'
+      path: '/$releaseId'
+      fullPath: '/releases/$releaseId/'
+      preLoaderRoute: typeof ReleasesReleaseIdIndexRouteImport
+      parentRoute: typeof ReleasesRoute
+    }
+    '/releases/$releaseId/$trackId': {
+      id: '/releases/$releaseId/$trackId'
+      path: '/$releaseId/$trackId'
+      fullPath: '/releases/$releaseId/$trackId'
+      preLoaderRoute: typeof ReleasesReleaseIdTrackIdRouteImport
+      parentRoute: typeof ReleasesRoute
+    }
+    '/upcoming/$releaseId/': {
+      id: '/upcoming/$releaseId/'
+      path: '/$releaseId'
+      fullPath: '/upcoming/$releaseId/'
+      preLoaderRoute: typeof UpcomingReleaseIdIndexRouteImport
+      parentRoute: typeof UpcomingRoute
+    }
+    '/upcoming/$releaseId/$trackId': {
+      id: '/upcoming/$releaseId/$trackId'
+      path: '/$releaseId/$trackId'
+      fullPath: '/upcoming/$releaseId/$trackId'
+      preLoaderRoute: typeof UpcomingReleaseIdTrackIdRouteImport
+      parentRoute: typeof UpcomingRoute
+    }
   }
 }
 
+interface ReleasesRouteChildren {
+  ReleasesIndexRoute: typeof ReleasesIndexRoute
+  ReleasesReleaseIdTrackIdRoute: typeof ReleasesReleaseIdTrackIdRoute
+  ReleasesReleaseIdIndexRoute: typeof ReleasesReleaseIdIndexRoute
+}
+
+const ReleasesRouteChildren: ReleasesRouteChildren = {
+  ReleasesIndexRoute: ReleasesIndexRoute,
+  ReleasesReleaseIdTrackIdRoute: ReleasesReleaseIdTrackIdRoute,
+  ReleasesReleaseIdIndexRoute: ReleasesReleaseIdIndexRoute,
+}
+
+const ReleasesRouteWithChildren = ReleasesRoute._addFileChildren(
+  ReleasesRouteChildren,
+)
+
+interface UpcomingRouteChildren {
+  UpcomingIndexRoute: typeof UpcomingIndexRoute
+  UpcomingReleaseIdTrackIdRoute: typeof UpcomingReleaseIdTrackIdRoute
+  UpcomingReleaseIdIndexRoute: typeof UpcomingReleaseIdIndexRoute
+}
+
+const UpcomingRouteChildren: UpcomingRouteChildren = {
+  UpcomingIndexRoute: UpcomingIndexRoute,
+  UpcomingReleaseIdTrackIdRoute: UpcomingReleaseIdTrackIdRoute,
+  UpcomingReleaseIdIndexRoute: UpcomingReleaseIdIndexRoute,
+}
+
+const UpcomingRouteWithChildren = UpcomingRoute._addFileChildren(
+  UpcomingRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ReleasesRoute: ReleasesRouteWithChildren,
+  TrashRoute: TrashRoute,
+  UpcomingRoute: UpcomingRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

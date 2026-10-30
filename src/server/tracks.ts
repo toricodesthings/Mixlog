@@ -1,9 +1,21 @@
+import { notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { env } from 'cloudflare:workers'
 
-export type TrackRow = { id: string; title: string; updated_at: string }
+import { idInput } from '#/server/input'
+import type { ReleaseRow } from '#/server/releases'
 
-export const listTracks = createServerFn().handler(async () => {
-  const { results } = await env.DB.prepare('SELECT id, title, updated_at FROM tracks ORDER BY updated_at DESC').all<TrackRow>()
-  return results
-})
+export type TrackDetail = { id: string; title: string; release_id: string }
+
+/** A track with the release it belongs to. */
+export const getTrack = createServerFn()
+  .validator(idInput)
+  .handler(async ({ data: id }) => {
+    const track = await env.DB.prepare('SELECT id, title, release_id FROM tracks WHERE id = ?').bind(id).first<TrackDetail>()
+    if (!track) throw notFound()
+    const release = await env.DB.prepare('SELECT id, title, format, release_date, released_at FROM releases WHERE id = ?')
+      .bind(track.release_id)
+      .first<ReleaseRow>()
+    if (!release) throw notFound()
+    return { track, release }
+  })
