@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { useFocusScopeBranch } from "@radix-ui/react-focus-scope";
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "../../lib/utils";
@@ -12,17 +11,6 @@ import { useSheetGesture } from "../../hooks/ui/use-sheet-gesture";
 import { DIALOG_CONTENT, DIALOG_DESCRIPTION, DIALOG_FOOTER, DIALOG_HEADER, DIALOG_OVERLAY, DIALOG_SHEET, DIALOG_TITLE } from "./dialog-styles";
 
 const Dialog = DialogPrimitive.Root;
-
-/**
- * The toaster lives outside any dialog, so a trapped focus scope would pull focus back out of it.
- * Registering it as a branch keeps an Undo toast reachable by keyboard while a dialog or sheet is open.
- */
-function ToasterFocusBranch() {
-    const [toaster, setToaster] = React.useState<HTMLElement | null>(null);
-    React.useEffect(() => setToaster(document.querySelector<HTMLElement>("[data-toaster]")), []);
-    useFocusScopeBranch(toaster);
-    return null;
-}
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
@@ -68,7 +56,6 @@ const DialogContent = ({ className, children, hideCloseButton, phoneSheet = true
                 </div>
             ) : null}
             {children}
-            <ToasterFocusBranch />
             {!hideCloseButton && <DialogCloseButton data-dialog-x className={sheet ? "absolute right-4 top-7" : "absolute right-4 top-4 sm:right-6 sm:top-5"} />}
             {sheet ? <DialogPrimitive.Close ref={close} hidden tabIndex={-1} aria-hidden="true" /> : null}
         </>
@@ -139,7 +126,6 @@ const DialogDescription = ({ className, ...props }: React.ComponentProps<typeof 
 
 export {
     Dialog,
-    ToasterFocusBranch,
     DialogCloseButton,
     DialogTrigger,
     DialogContent,

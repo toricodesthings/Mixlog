@@ -7,11 +7,10 @@
  *
  *   <SearchField>      the input. `variant="field"` is a bordered box, `variant="bare"` is a
  *                      borderless title-row input (palette, phone search sheet).
- *   <SearchTrigger>    a button dressed as a search box, for surfaces that open search elsewhere.
  *
  * Not for pickers: the search inside a long `Select` is `SearchSelect`.
  */
-import { useImperativeHandle, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
+import { useImperativeHandle, useRef, type InputHTMLAttributes, type ReactNode } from "react";
 import { LoaderCircle, Search, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -103,35 +102,5 @@ export function SearchField({ value, onValueChange, variant = "field", size = "m
             ) : null}
             {trailing}
         </div>
-    );
-}
-
-export interface SearchTriggerProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
-    /** What the faux box says while empty. */
-    label?: string;
-    size?: SearchFieldSize;
-    /** A key hint on the right, e.g. "⌘K". */
-    shortcut?: string;
-}
-
-/** A button that looks like a `SearchField` and opens search elsewhere. */
-export function SearchTrigger({ label = "Search…", size = "md", shortcut, className, type = "button", ...props }: SearchTriggerProps & { ref?: React.Ref<HTMLButtonElement> }) {
-    const dims = SIZE[size];
-    return (
-        <button
-            type={type}
-            className={cn(
-                "flex w-full min-w-0 cursor-pointer items-center text-left text-ink-muted hover:border-line hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
-                dims.box,
-                dims.text,
-                FIELD_SURFACE,
-                className,
-            )}
-            {...props}
-        >
-            <Search size={dims.icon} className="shrink-0" aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate">{label}</span>
-            {shortcut ? <kbd className="shrink-0 font-sans text-[11px] text-ink-muted">{shortcut}</kbd> : null}
-        </button>
     );
 }

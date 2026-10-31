@@ -1,6 +1,6 @@
-import { AudioWaveform, ExternalLink, LogOut } from 'lucide-react'
+import { ExternalLink, LogOut } from 'lucide-react'
 
-import { Button } from '../../primitives'
+import { Button, Meter } from '../../primitives'
 import { SettingsList, SettingsRow, SettingsSection } from '../SettingsLayout'
 
 /** Cloudflare Access ends the session here; Mixlog keeps none of its own. */
@@ -11,14 +11,14 @@ export function AboutTab() {
   return (
     <div className="flex flex-col gap-10">
       <div className="flex flex-col items-center gap-4 text-center">
-        <span className="glow-accent flex h-20 w-20 items-center justify-center rounded-[1.6rem] border border-line-light bg-room-surface text-accent">
-          <AudioWaveform size={36} aria-hidden="true" />
+        <span data-meter-host className="glass-edge glow-accent relative flex h-20 w-20 items-center justify-center rounded-[1.6rem] border border-line-light bg-room-surface">
+          <Meter live peak className="h-9 gap-[3px] [&>span]:w-[5px]" />
         </span>
         <div>
           <h2 className="font-display text-2xl font-semibold text-ink">About Mixlog</h2>
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">Every version, one place, any room.</p>
         </div>
-        <span data-numeric className="rounded-full border border-line-light px-3 py-1 text-xs text-ink-soft">
+        <span className="readout rounded-full border border-line-light px-3 py-1 normal-case text-ink-soft">
           v{__APP_VERSION__}
         </span>
       </div>

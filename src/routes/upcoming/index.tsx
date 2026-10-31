@@ -1,11 +1,11 @@
-import { createFileRoute, getRouteApi } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
+import { listSearch } from '#/components/releases/browse'
 import { ReleaseList } from '#/components/releases/ReleaseList'
+import { listUpcoming } from '#/server/releases'
 
-const section = getRouteApi('/upcoming')
-
-export const Route = createFileRoute('/upcoming/')({ component: Upcoming })
+export const Route = createFileRoute('/upcoming/')({ validateSearch: listSearch, loader: () => listUpcoming(), component: Upcoming })
 
 function Upcoming() {
-  return <ReleaseList section="upcoming" releases={section.useLoaderData()} />
+  return <ReleaseList section="upcoming" releases={Route.useLoaderData()} />
 }

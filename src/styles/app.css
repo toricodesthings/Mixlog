@@ -2,7 +2,7 @@
  * BLUE HOUR — Mixlog's design source of truth (docs/MANIFESTO.md §5 is the why).
  *
  * Names: room-* (grounds and surfaces) · ink-* (text) · line-* (borders) · accent-* (the active palette;
- * Signal by default) · panel (the background's own bases). Files ported from Cadence are renamed
+ * Signal by default) · phantom (the one unexpected light, rare by rule) · panel (the background's own bases). Files ported from Cadence are renamed
  * with scripts/cadence-names.sed.
  *
  * CONTRAST FLOOR: every ink and accent token is ≥ 4.5:1 on every room in its mode.
@@ -15,6 +15,8 @@
   /* === TYPOGRAPHY === */
   --font-sans: "Sora Variable", "Sora", system-ui, -apple-system, sans-serif;
   --font-display: "Outfit Variable", "Outfit", system-ui, sans-serif;
+  /* Readouts (channel strips, timecodes, −∞ dB): the console's own lettering. */
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
 
   /* === BLUE HOUR (default dark) === */
   --color-room-void: #060a14;
@@ -41,6 +43,9 @@
   --color-signal: #6cb4ff;
   --color-tube: #e8b26a;
   --color-haze: #aaa8f2;
+
+  /* === PHANTOM — the one unexpected light (+48V lit on the desk). Rare by rule: src/AGENTS.md §6. === */
+  --color-phantom: #ff6bd6;
 
   /* === ACCENT INDIRECTION (palette-responsive; components use these, never a named accent) === */
   --color-accent: var(--accent);
@@ -94,8 +99,6 @@
   --z-route-overlay: 70;
   --z-utility-surface: 80;
   --z-fullscreen-surface: 90;
-  --z-room-sheet-backdrop: 95;
-  --z-room-sheet: 100;
   --z-system-dialog: 110;
   /* Floating UI sits above system dialogs so it stays usable when triggered from inside a modal. */
   --z-floating-ui: 120;
@@ -137,6 +140,7 @@
   --color-signal: #1449c2;
   --color-tube: #7a4a0c;
   --color-haze: #4a44a6;
+  --color-phantom: #a3127a;
 
   --accent-soft: rgba(20, 73, 194, 0.08);
   --accent-dim: rgba(20, 73, 194, 0.04);
@@ -279,11 +283,6 @@
   .layer-system-dialog { z-index: var(--z-system-dialog); }
   .layer-floating-ui { z-index: var(--z-floating-ui); }
   .layer-loading-screen { z-index: var(--z-loading-screen); }
-}
-
-/* ── Skeleton shimmer (primitives/Skeleton.tsx) ── */
-@keyframes shimmer {
-  100% { transform: translateX(100%); }
 }
 
 /* ── ScrollArea thumb ── */
@@ -535,17 +534,6 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
     overflow: hidden;
     overscroll-behavior: contain;
   }
-  .mobile-sheet-header { flex-shrink: 0; }
-  .mobile-sheet-body {
-    min-height: 0;
-    flex: 1 1 auto;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .layer-room-sheet-backdrop { z-index: var(--z-room-sheet-backdrop); }
-  .layer-room-sheet { z-index: var(--z-room-sheet); }
 
   /* Icon-only button: minimum 44px tap target. */
   .btn-icon {
@@ -574,16 +562,12 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
    `transform` and these write `translate`, so they add: a thrown sheet leaves from where the finger let go. */
 .sheet-up[data-state="open"] { animation: sheet-up-in var(--sheet-in) both; }
 .sheet-up[data-state="closed"] { animation: sheet-up-out var(--sheet-out) forwards; }
-.sheet-rise[data-state="open"] { animation: sheet-rise-in var(--sheet-in) both; }
-.sheet-rise[data-state="closed"] { animation: sheet-rise-out var(--sheet-out) forwards; }
 .sheet-side[data-state="open"] { animation: sheet-side-in var(--sheet-in) both; }
 .sheet-side[data-state="closed"] { animation: sheet-side-out var(--sheet-out) forwards; }
 .sheet-fade[data-state="open"] { animation: sheet-fade-in var(--sheet-in) both; }
 .sheet-fade[data-state="closed"] { animation: sheet-fade-out var(--sheet-out) forwards; }
 @keyframes sheet-up-in { from { translate: 0 100%; } }
 @keyframes sheet-up-out { to { translate: 0 100%; } }
-@keyframes sheet-rise-in { from { translate: 0 16px; opacity: 0; } }
-@keyframes sheet-rise-out { to { translate: 0 16px; opacity: 0; } }
 @keyframes sheet-side-in { from { translate: 28px 0; opacity: 0; } }
 @keyframes sheet-side-out { to { translate: 28px 0; opacity: 0; } }
 @keyframes sheet-fade-in { from { opacity: 0; } }
@@ -635,3 +619,141 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
 }
+
+/* ══ SIGNAL GIMMICKS — the audio-engineering cameos (docs: src/AGENTS.md §6, "Cameos").
+   Ambient motion is slow and decorative, never carries meaning, and stops under reduced motion
+   (the global rule above lands each loop on its resting frame). ══ */
+
+/* The scope graticule behind every page: a faint grid fading out from the top, like a lit oscilloscope.
+   The ground isolates so the grid sits above its own background and under everything else. */
+.bg-atmosphere { isolation: isolate; }
+.bg-atmosphere::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--graticule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--graticule) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 90% 60% at 30% 0%, #000 0%, transparent 70%);
+}
+:root { --graticule: rgb(108 180 255 / 0.035); }
+[data-theme="daylight"] { --graticule: rgb(20 73 194 / 0.04); --scope-pulse: var(--accent); }
+
+/* LED: a lit dot with its own bloom (primitives/Led). --led-tone picks the light. */
+@utility led {
+  --led-tone: var(--accent);
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--led-tone), white 45%), var(--led-tone) 60%);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--led-tone) 70%, transparent), 0 0 14px color-mix(in srgb, var(--led-tone) 35%, transparent);
+}
+.led-off { --led-tone: var(--color-line-strong); box-shadow: none; }
+.led-breathe { animation: led-breathe 3.2s ease-in-out infinite; }
+@keyframes led-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* Meter bars (primitives/Meter): each bar dances on its own period; at rest they read as a still EQ. */
+.meter-bar { transform-origin: bottom; scale: 1 var(--rest, 0.6); }
+/* A host ([data-meter-host]) wakes its meter on hover, like a channel catching signal. */
+:is(.meter-live, [data-meter-host]:hover) .meter-bar { animation: meter-dance var(--period, 900ms) ease-in-out infinite alternate; animation-delay: var(--delay, 0ms); }
+@keyframes meter-dance { 0% { scale: 1 0.18; } 100% { scale: 1 var(--rest, 0.6); } }
+
+/* Scope trace (primitives/Scope): the line draws itself in, then a pulse of signal keeps travelling it. */
+.scope-trace { stroke-dasharray: 1; stroke-dashoffset: 0; animation: scope-draw 1.4s var(--ease-out-expo) backwards; }
+@keyframes scope-draw { from { stroke-dashoffset: 1; } }
+.scope-pulse { stroke: var(--scope-pulse, var(--color-ink)); stroke-dasharray: 0.06 1; stroke-dashoffset: 0.06; opacity: 0.7; animation: scope-pulse 3.6s ease-in-out 1.4s infinite; }
+@keyframes scope-pulse { from { stroke-dashoffset: 0.06; } to { stroke-dashoffset: -1; } }
+
+/* Readout: a console's channel-strip lettering. Small caps-mono, tracked, tabular. */
+@utility readout {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A signal line: the hairline under page headers, lit from the left like a level trace. */
+@utility signal-rule {
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, color-mix(in srgb, var(--accent) 45%, transparent), var(--color-line) 30%, var(--color-line) 85%, color-mix(in srgb, var(--accent-tertiary) 30%, transparent)) 1;
+}
+
+/* Playhead sweep: hovering a row passes a faint light across it, left to right, once. */
+@utility playhead-sweep {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 12%, transparent) 70%, color-mix(in srgb, var(--accent) 35%, transparent) 99%, transparent);
+    translate: -101% 0;
+  }
+  &:hover::after, &:focus-visible::after { animation: playhead-pass 900ms var(--ease-out-quart) forwards; }
+}
+@keyframes playhead-pass { from { translate: -101% 0; } to { translate: 101% 0; } }
+
+/* Phantom spark: the rare flourish. One per view at most; it orbits and blooms, never blinks fast. */
+.phantom-spark { --led-tone: var(--color-phantom); animation: phantom-bloom 5s ease-in-out infinite; }
+@keyframes phantom-bloom {
+  0%, 70%, 100% { box-shadow: 0 0 6px color-mix(in srgb, var(--color-phantom) 70%, transparent), 0 0 14px color-mix(in srgb, var(--color-phantom) 30%, transparent); }
+  80% { box-shadow: 0 0 10px var(--color-phantom), 0 0 28px color-mix(in srgb, var(--color-phantom) 55%, transparent); }
+}
+
+/* A release without artwork: a monogram pressed from its title (ReleaseArt). --art-hue comes from the title,
+   so each release keeps its own colour; the grooves are a record's, the sheen a sleeve's. */
+.art-monogram {
+  color: oklch(0.97 0.03 var(--art-hue));
+  text-shadow: 0 2px 12px oklch(0.2 0.1 var(--art-hue) / 0.6);
+  background:
+    radial-gradient(circle at 28% 18%, oklch(0.78 0.14 var(--art-hue) / 0.55), transparent 55%),
+    repeating-radial-gradient(circle at 50% 120%, transparent 0 5px, rgb(255 255 255 / 0.035) 5px 6px),
+    linear-gradient(150deg, oklch(0.46 0.14 var(--art-hue)), oklch(0.24 0.09 calc(var(--art-hue) + 35)));
+}
+
+/* A release's own sky (releases/ReleaseSummary): its artwork's hue (--art-hue, from the title) lights the room,
+   stars at the top, a horizon trace along the bottom. Text on it stays ink, so both themes keep their contrast. */
+.release-sky {
+  isolation: isolate;
+  background:
+    radial-gradient(110% 90% at 15% 0%, oklch(0.55 0.16 var(--art-hue) / 0.5), transparent 60%),
+    radial-gradient(80% 70% at 95% 15%, oklch(0.5 0.15 calc(var(--art-hue) + 45) / 0.35), transparent 65%),
+    linear-gradient(180deg, oklch(0.22 0.07 var(--art-hue)), oklch(0.13 0.035 var(--art-hue)));
+}
+.release-sky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, oklch(0.95 0.03 var(--art-hue)), transparent),
+    radial-gradient(1px 1px at 27% 42%, oklch(0.9 0.05 var(--art-hue)), transparent),
+    radial-gradient(1.5px 1.5px at 46% 12%, oklch(0.95 0.03 var(--art-hue)), transparent),
+    radial-gradient(1px 1px at 63% 33%, oklch(0.9 0.05 var(--art-hue)), transparent),
+    radial-gradient(2px 2px at 78% 9%, oklch(0.97 0.04 var(--art-hue)), transparent),
+    radial-gradient(1px 1px at 88% 46%, oklch(0.9 0.05 var(--art-hue)), transparent),
+    radial-gradient(1px 1px at 6% 58%, oklch(0.9 0.05 var(--art-hue)), transparent);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 75%);
+}
+.sky-line { stroke: oklch(0.82 0.14 var(--art-hue)); }
+.sky-ground { fill: oklch(0.12 0.03 var(--art-hue) / 0.6); }
+[data-theme="daylight"] .release-sky {
+  background:
+    radial-gradient(110% 90% at 15% 0%, oklch(0.86 0.09 var(--art-hue) / 0.8), transparent 60%),
+    radial-gradient(80% 70% at 95% 15%, oklch(0.88 0.07 calc(var(--art-hue) + 45) / 0.7), transparent 65%),
+    linear-gradient(180deg, oklch(0.95 0.03 var(--art-hue)), oklch(0.9 0.04 var(--art-hue)));
+}
+[data-theme="daylight"] .release-sky::before { opacity: 0; }
+[data-theme="daylight"] .sky-line { stroke: oklch(0.45 0.15 var(--art-hue)); }
+[data-theme="daylight"] .sky-ground { fill: oklch(0.85 0.05 var(--art-hue) / 0.6); }
+/* Text on the sky: Blue Hour's ink in the dark, Daylight's in the light. */
+.release-sky { color: var(--color-ink); }

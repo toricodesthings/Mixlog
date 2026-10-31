@@ -40,6 +40,14 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm test
 
+      - name: Date model
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm check:time
+
+      - name: Test in four time zones
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm test:tz
+
       - name: Build
         id: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}

@@ -1,13 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi } from '@tanstack/react-router'
 
-import { ReleasePage } from '#/components/releases/ReleasePage'
-import { loadRelease } from '#/components/releases/loaders'
+import { ReleaseSummary } from '#/components/releases/ReleaseSummary'
 
-export const Route = createFileRoute('/releases/$releaseId/')({
-  loader: ({ params }) => loadRelease('released', params.releaseId),
-  component: Release,
-})
+const release = getRouteApi('/releases/$releaseId')
 
-function Release() {
-  return <ReleasePage {...Route.useLoaderData()} />
+export const Route = createFileRoute('/releases/$releaseId/')({ component: Part })
+
+function Part() {
+  return <ReleaseSummary {...release.useLoaderData()} />
 }

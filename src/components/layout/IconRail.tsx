@@ -1,10 +1,10 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { AudioWaveform, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import { DESTINATIONS, SETTINGS_ENTRY, type Destination } from '../../lib/nav'
 import { cn } from '../../lib/utils'
-import { Tip } from '../primitives'
+import { Led, Meter, Tip } from '../primitives'
 import { useSettingsParam } from '../settings/use-settings-param'
 
 const EXPANDED_KEY = 'mixlog.rail.expanded'
@@ -32,7 +32,7 @@ export function IconRail() {
   }
 
   const link = (d: Destination) => (
-    <RailItem key={d.to} icon={d.icon} label={d.label} expanded={expanded}>
+    <RailItem key={d.to} icon={d.icon} label={d.label} expanded={expanded} lit={d.owns(pathname)}>
       {(content, className) => (
         <Link
           to={d.to}
@@ -57,9 +57,10 @@ export function IconRail() {
         expanded ? 'w-56' : 'w-[60px]',
       )}
     >
-      <div className="flex h-11 items-center gap-3 px-[11px]">
-        <AudioWaveform size={22} aria-hidden="true" className="shrink-0 text-accent" />
-        <Label expanded={expanded} className="font-display text-base font-semibold text-ink">
+      <div data-meter-host className="flex h-11 items-center gap-3 px-[11px]">
+        {/* The brand mark: an EQ that dances on hover, its peak lit in Phantom (the one place it lives in the shell). */}
+        <Meter peak className="ml-[1px] h-5 shrink-0" />
+        <Label expanded={expanded} className="font-display text-base font-semibold tracking-tight text-ink">
           Mixlog
         </Label>
       </div>
@@ -67,7 +68,7 @@ export function IconRail() {
       {DESTINATIONS.primary.map(link)}
       <div className="flex-1" />
       {DESTINATIONS.secondary.map(link)}
-      <RailItem icon={SETTINGS_ENTRY.icon} label={SETTINGS_ENTRY.label} expanded={expanded}>
+      <RailItem icon={SETTINGS_ENTRY.icon} label={SETTINGS_ENTRY.label} expanded={expanded} lit={!!settings.settings}>
         {(content, className) => (
           <button
             type="button"
@@ -96,22 +97,26 @@ function RailItem({
   icon: Icon,
   label,
   expanded,
+  lit = false,
   children,
 }: {
   icon: LucideIcon
   label: string
   expanded: boolean
+  /** The channel's select LED: lit on the current destination. */
+  lit?: boolean
   children: (content: ReactNode, className: string) => ReactNode
 }) {
   const content = (
     <>
+      <Led lit={lit} className={cn('absolute left-[3px] transition-opacity duration-(--duration-normal)', lit ? 'opacity-100' : 'opacity-0')} />
       <Icon size={18} aria-hidden="true" className="shrink-0" />
       <Label expanded={expanded}>{label}</Label>
     </>
   )
   return (
     <Tip label={label} disabled={expanded}>
-      {children(content, 'flex h-11 w-full shrink-0 cursor-pointer items-center gap-3 rounded-2xl px-[13px] text-sm font-medium transition-colors')}
+      {children(content, 'press relative flex h-11 w-full shrink-0 cursor-pointer items-center gap-3 rounded-2xl px-[13px] text-sm font-medium transition-colors')}
     </Tip>
   )
 }

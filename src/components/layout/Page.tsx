@@ -12,19 +12,30 @@ export type Crumb = { label: string; link: LinkOptions }
  * Every page: a header with the trail to it, then its scrolling content.
  * Desktop shows the whole trail; compact shows only the way back up.
  */
-export function Page({ title, crumbs = [], actions, children }: { title: string; crumbs?: Crumb[]; actions?: ReactNode; children: ReactNode }) {
+export function Page({ title, crumbs = [], lead, meta, actions, children }: {
+  title: string
+  crumbs?: Crumb[]
+  /** Before the title, like a cover beside a track name (ReleaseArt). */
+  lead?: ReactNode
+  /** Under the title: its facts (MetaLine). */
+  meta?: ReactNode
+  actions?: ReactNode
+  children: ReactNode
+}) {
   const { isCompact } = useShellMode()
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <header
         className={cn(
-          'surface-shell layer-shell-header flex min-h-(--shell-header-h) shrink-0 items-center gap-3 border-b border-line',
-          isCompact ? 'safe-header-top px-4 pb-2' : 'px-6 lg:px-8',
+          'surface-shell layer-shell-header flex min-h-(--shell-header-h) shrink-0 items-center gap-3 signal-rule',
+          isCompact ? 'safe-header-top px-4 pb-2' : 'px-6 py-2 lg:px-8',
         )}
       >
+        {lead}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           {crumbs.length > 0 && <Breadcrumbs crumbs={isCompact ? crumbs.slice(-1) : crumbs} back={isCompact} />}
           <h1 className={cn('truncate font-display font-semibold leading-tight tracking-tight', isCompact ? 'text-[22px]' : 'text-lg')}>{title}</h1>
+          {meta}
         </div>
         {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
       </header>

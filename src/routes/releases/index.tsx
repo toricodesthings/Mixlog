@@ -1,11 +1,11 @@
-import { createFileRoute, getRouteApi } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
+import { listSearch } from '#/components/releases/browse'
 import { ReleaseList } from '#/components/releases/ReleaseList'
+import { listReleased } from '#/server/releases'
 
-const section = getRouteApi('/releases')
-
-export const Route = createFileRoute('/releases/')({ component: Releases })
+export const Route = createFileRoute('/releases/')({ validateSearch: listSearch, loader: () => listReleased(), component: Releases })
 
 function Releases() {
-  return <ReleaseList section="released" releases={section.useLoaderData()} />
+  return <ReleaseList section="released" releases={Route.useLoaderData()} />
 }
