@@ -130,7 +130,7 @@ export type NewRelease = { title: string; format: ReleaseFormat; tracks: string[
 
 /** A release's title and format, and its tracks' titles in order. A single is its one track, named like it.
  *  `releasedOn` adds one that's already out, straight to Releases: a day no later than today in the artist's `zone`. */
-export const newReleaseInput: (input: unknown) => NewRelease = readWith(
+const newReleaseInput: (input: unknown) => NewRelease = readWith(
   z
     .object({ title: Title, format: Format, tracks: z.array(Title).max(100, 'A release has at most 100 tracks.'), releasedOn: LocalDay.nullish(), zone: z.string().optional() })
     .refine((r) => r.releasedOn == null || (isZone(r.zone) && r.releasedOn <= todayIn(r.zone)), 'The release day is a day that has come.')

@@ -13,7 +13,7 @@ const SIZES = {
 } as const
 
 /** The first letter or digit of a title, for its monogram. */
-export const monogramOf = (title: string) => (title.match(/[\p{L}\p{N}]/u)?.[0] ?? '♪').toLocaleUpperCase()
+const monogramOf = (title: string) => (title.match(/[\p{L}\p{N}]/u)?.[0] ?? '♪').toLocaleUpperCase()
 
 /** A release's cover: its current artwork, or a monogram pressed from its title (grooves and all) until it has one. Decorative; the title sits beside it.
  *  `src` shows a picked image before it's uploaded. */

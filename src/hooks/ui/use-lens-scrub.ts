@@ -12,7 +12,7 @@ export type Span = { left: number; width: number };
 const lastRest = new Map<string, Span>();
 
 /** The item whose centre is nearest `x`, or null when `x` is over an excluded span (the dock's orb). */
-export function nearestIndex(x: number, items: Span[], exclude: Span[] = []): number | null {
+function nearestIndex(x: number, items: Span[], exclude: Span[] = []): number | null {
     if (!items.length || exclude.some((s) => x >= s.left && x <= s.left + s.width)) return null;
     let best = 0;
     for (let i = 1; i < items.length; i++) {
@@ -23,7 +23,7 @@ export function nearestIndex(x: number, items: Span[], exclude: Span[] = []): nu
 }
 
 /** The lens's left edge for a finger at `x`, kept between the first and last item. */
-export function clampLens(x: number, items: Span[], width: number): number {
+function clampLens(x: number, items: Span[], width: number): number {
     if (!items.length) return 0;
     const min = items[0].left;
     const max = items[items.length - 1].left + items[items.length - 1].width - width;

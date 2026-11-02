@@ -1,7 +1,7 @@
 /** File rules shared by the server routes and their tests: pure, no bindings. */
 
 /** Artwork is what a distributor takes: a PNG or JPG. (Never SVG: it can carry script.) */
-export const ARTWORK_TYPES = ['image/png', 'image/jpeg'] as const
+const ARTWORK_TYPES = ['image/png', 'image/jpeg'] as const
 
 /** Artwork goes up in one streamed request, well under a Worker's ~100 MB body cap; audio is chunked. */
 export const MAX_ARTWORK_BYTES = 20 * 1024 * 1024
@@ -22,7 +22,7 @@ export function contentRange(range: { offset?: number; length?: number; suffix?:
 }
 
 /** Audio stacks a dropped bounce can land in. */
-export const AUDIO_KINDS = ['master', 'mix', 'instrumental', 'acapella'] as const
+const AUDIO_KINDS = ['master', 'mix', 'instrumental', 'acapella'] as const
 export type AudioKind = (typeof AUDIO_KINDS)[number]
 
 /** By extension first: browsers disagree on (or leave out) a WAV's or AIFF's type. One stored type per format. */

@@ -3,7 +3,6 @@ import { Info, Paintbrush } from 'lucide-react'
 import { AboutTab } from './tabs/AboutTab'
 import { AppearanceTab } from './tabs/AppearanceTab'
 
-export type TabId = 'appearance' | 'about'
 
 /** `keywords` are the tab's row titles, so search finds "daylight" as well as "Appearance". Keep them in step with the tab. */
 export const SETTINGS_CATEGORIES = [

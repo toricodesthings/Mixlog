@@ -9,7 +9,7 @@ const MOTION_KEY = 'mixlog.motion'
  * Sets `data-theme` and `data-motion` on <html> from this device's choices. Self-contained (no outer
  * references) because `APPEARANCE_BOOT` inlines its source into <head>, ahead of the first paint.
  */
-export function applyAppearance() {
+function applyAppearance() {
   let theme = 'blue-hour'
   let motion = 'system'
   try {

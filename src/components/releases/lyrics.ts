@@ -6,7 +6,7 @@
 export const SECTIONS = ['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Hook', 'Bridge', 'Outro', 'Instrumental'] as const
 export type Section = (typeof SECTIONS)[number]
 
-export const tagOf = (section: Section) => `#${section.toUpperCase()}`
+const tagOf = (section: Section) => `#${section.toUpperCase()}`
 /** A line that's a section tag: `#` and a word, alone on its line (`#VERSE`, `#pre-chorus`). */
 export const isTag = (line: string) => /^#[A-Za-z][\w-]*\s*$/.test(line)
 

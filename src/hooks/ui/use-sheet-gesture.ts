@@ -9,7 +9,7 @@ const SLOP = 8;
 export type SheetDecision = "sheet" | "native";
 
 /** Who owns this touch, decided once, after SLOP px of movement. */
-export function decide({ dx, dy, blocked, scroller }: { dx: number; dy: number; blocked: boolean; scroller: { scrollTop: number } | null }): SheetDecision {
+function decide({ dx, dy, blocked, scroller }: { dx: number; dy: number; blocked: boolean; scroller: { scrollTop: number } | null }): SheetDecision {
     if (blocked || Math.abs(dx) > Math.abs(dy)) return "native";
     if (dy > 0 && (!scroller || scroller.scrollTop <= 0)) return "sheet";
     if (dy < 0 && !scroller) return "sheet";
@@ -17,10 +17,10 @@ export function decide({ dx, dy, blocked, scroller }: { dx: number; dy: number; 
 }
 
 /** Pulling a sheet up past its rest: it gives a little and resists more the further it goes. */
-export const rubber = (d: number, h: number) => -(0.55 * Math.abs(d) * h) / (h + 0.55 * Math.abs(d));
+const rubber = (d: number, h: number) => -(0.55 * Math.abs(d) * h) / (h + 0.55 * Math.abs(d));
 
 /** A pull past a quarter of the sheet (at most 120px), or a downward flick. */
-export const shouldDismiss = (offset: number, velocity: number, height: number) =>
+const shouldDismiss = (offset: number, velocity: number, height: number) =>
     offset > 0 && (offset > Math.min(120, 0.25 * height) || velocity > 600);
 
 /** The nearest ancestor, up to and including the sheet, that can scroll vertically. */

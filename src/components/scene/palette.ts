@@ -77,7 +77,7 @@ export function paletteOf(pixels: Uint8ClampedArray): Record<string, string> {
 }
 
 /** The artwork's colours (above); none until it has loaded, so the title's colours stand in. */
-export function useArtPalette(url: string | null) {
+function useArtPalette(url: string | null) {
   const [palette, setPalette] = useState<Record<string, string> | null>(null)
   useEffect(() => {
     setPalette(null)

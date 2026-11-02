@@ -18,8 +18,7 @@ const SIZES = {
 
 /** The chosen/idle look of one segment, shared with other pressed controls (formatting toggles). Needs `--segment-tone` on the element or an ancestor. */
 const SEGMENT_FILL = "border-[color-mix(in_srgb,var(--segment-tone)_25%,transparent)] bg-[color-mix(in_srgb,var(--segment-tone)_18%,transparent)]";
-export const SEGMENT_ACTIVE = `${SEGMENT_FILL} text-[var(--segment-tone)]`;
-export const SEGMENT_IDLE = "border-transparent text-ink-soft hover:bg-white/[0.04] hover:text-ink";
+const SEGMENT_IDLE = "border-transparent text-ink-soft hover:bg-white/[0.04] hover:text-ink";
 
 /**
  * One choice out of a few, shown side by side (Week/Month, Task/Event,

@@ -13,7 +13,7 @@ One TanStack Start app on Cloudflare Workers. Files live in a private R2 bucket 
 
 ## Run it locally
 
-**Requirements:** Node.js 22.22.0 or newer and pnpm (via Corepack).
+**Requirements:** Node.js 24.21.0 or newer and pnpm (via Corepack).
 
 ```bash
 corepack enable

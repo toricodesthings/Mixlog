@@ -40,7 +40,7 @@ export const Format = z.enum(['single', 'ep', 'album'], 'A release is a single, 
 const Origin = z.enum(['original', 'cover', 'remix'], 'A track is an original, a cover or a remix.').default('original')
 const LYRICS = 'Lyrics are at most 20,000 characters.'
 /** Lyrics as typed (Musixmatch's layout: `#VERSE` tags, blank lines), trailing space trimmed; blank is none. */
-export const Lyrics = z
+const Lyrics = z
   .string()
   .max(20_000, LYRICS)
   .nullish()

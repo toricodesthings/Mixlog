@@ -11,7 +11,7 @@ export function stacksOf(track: TrackRow, versions: VersionRow[]) {
 }
 
 /** How stacks line up: what you'd ship first. */
-export const KIND_ORDER = ['master', 'mix', 'instrumental', 'acapella', 'stems', 'canvas', 'video', 'other']
+const KIND_ORDER = ['master', 'mix', 'instrumental', 'acapella', 'stems', 'canvas', 'video', 'other']
 
 export const KIND_LABEL: Record<string, string> = {
   master: 'Master',

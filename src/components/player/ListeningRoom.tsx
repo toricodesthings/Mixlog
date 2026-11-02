@@ -17,7 +17,7 @@ import { Vinyl } from './Vinyl'
  * One record on the table. Today the room holds one deck: what's playing. A/B adds a second (`side` "A" and "B", the
  * same playhead under both), and the room sets them side by side; nothing else here changes.
  */
-export type Deck = { playable: Playable; side?: string }
+type Deck = { playable: Playable; side?: string }
 
 /** The sheet's own curve: it rises like a sheet and settles without a bounce. */
 const RISE = { duration: 0.5, ease: [0.32, 0.72, 0, 1] } as const

@@ -33,13 +33,13 @@ src/routes/api/      # Server routes, one line each: files.$versionId (GET), rel
 migrations/          # NNNN_what.sql, generated from schema.ts by `pnpm db:generate` (0001 and 0002 predate it); meta/ is drizzle-kit's
 ```
 
-- One file per domain (`releases.ts`, `versions.ts`, then `tracks.ts`, `notes.ts`… when they have functions), holding its server functions and the row types the UI imports. No `helpers.ts`/`utils.ts` catch-alls; shared server behaviour (`access`, `input`) gets its own named file.
+- One file per domain (`releases.ts`, `tracks.ts`, `versions.ts`; `notes.ts`… when they have functions), holding its server functions and the row types the UI imports. No `helpers.ts`/`utils.ts` catch-alls; shared server behaviour (`access`, `input`) gets its own named file.
 - A server function validates → queries → shapes its result. Logic used by two functions becomes a named function in the domain file.
 - `env` comes from `cloudflare:workers` and is imported only here; D1 is reached only through `db`.
 
 ## 3. Adding Code
 
-- **New server function:** in its domain file, `createServerFn()` (`{ method: 'POST' }` for writes), `.validator(readWith(Schema))` for every input, a Zod schema whose messages are the artist's words (`idInput` for IDs), `.handler(...)`. Throw `notFound()` for a missing row, `redirect()` only from loaders. Add a test in `tests/integration/server/`.
+- **New server function:** in its domain file, `createServerFn()` (`{ method: 'POST' }` for writes), `.validator(readWith(Schema))` for every input, a Zod schema whose messages are the artist's words (`idInput` for IDs), `.handler(...)`. Throw `notFound()` for a missing row, `redirect()` only from loaders. A query with its own logic (a subquery, a rule in SQL) gets a test in `tests/integration/server/`, run through the query builder as `releaseQuery` is; its rules in a pure function get a unit test.
 - **Schema change:** edit `schema.ts`, then `pnpm db:generate` writes `migrations/NNNN_what.sql` (never hand-write one or edit an applied one; `pnpm db:check` checks them). `pnpm db:migrate` applies it locally; `pnpm db:migrate:remote` runs before the deploy that needs it, by the user.
 - **New binding or var:** add it to `wrangler.jsonc`, then `pnpm cf-typegen`.
 - **A plain HTTP endpoint** exists only for file bytes (an `<img>` or `<audio>` needs a URL; uploads stream) and non-browser clients (the later Go sync helper): a server route under `routes/api/` that calls a handler in `server/`, which checks `isAllowed` before anything else. Server routes don't get the function middleware.

@@ -12,7 +12,7 @@ export function isTouchFirst(): boolean {
 
 /** Width picks the layout. A mouse or trackpad keeps the desktop one down to 768px, so a tall
  * narrow monitor never gets the touch shell; tablet exists only for touch-first devices. */
-export function getShellMode(width: number, touch: boolean): ShellMode {
+function getShellMode(width: number, touch: boolean): ShellMode {
     if (width >= 1440) return "wide";
     if (width >= 1120 || (!touch && width >= 768)) return "laptop";
     if (width >= 768) return "tablet";
@@ -20,7 +20,7 @@ export function getShellMode(width: number, touch: boolean): ShellMode {
 }
 
 /** For code outside React (event handlers); components use `useShellMode`. */
-export function currentShellMode(): ShellMode {
+function currentShellMode(): ShellMode {
     return getShellMode(window.innerWidth, isTouchFirst());
 }
 
