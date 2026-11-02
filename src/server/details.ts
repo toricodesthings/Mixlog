@@ -5,6 +5,9 @@ import { Id, readWith } from '#/server/input'
 import { isLocalDate, isZone, todayIn, type LocalDate } from '#/lib/time'
 
 export type ReleaseFormat = 'single' | 'ep' | 'album'
+/** Whose song a track is. A cover or a remix needs a license for someone else's song. */
+export type TrackOrigin = 'original' | 'cover' | 'remix'
+export const needsLicense = (origin: TrackOrigin) => origin !== 'original'
 
 /** An ISRC as distributors print it, `CC-XXX-YY-NNNNN`, read with or without dashes. Stored as its 12 characters. */
 export function isrcOf(value: string): string | null {
@@ -28,12 +31,20 @@ export type ReleaseDetails = {
   /** Upcoming: the planned day, or null. Releases: the day it went out, never null and never ahead of today. */
   releaseDate: LocalDate | null
   upc: string | null
-  tracks: { id: string; title: string; isrc: string | null }[]
+  tracks: { id: string; title: string; isrc: string | null; origin: TrackOrigin }[]
 }
 
 const TITLE = 'A title is 1 to 200 characters.'
 export const Title = z.string(TITLE).trim().min(1, TITLE).max(200, TITLE)
 export const Format = z.enum(['single', 'ep', 'album'], 'A release is a single, an EP or an album.')
+const Origin = z.enum(['original', 'cover', 'remix'], 'A track is an original, a cover or a remix.').default('original')
+const LYRICS = 'Lyrics are at most 20,000 characters.'
+/** Lyrics as typed (Musixmatch's layout: `#VERSE` tags, blank lines), trailing space trimmed; blank is none. */
+export const Lyrics = z
+  .string()
+  .max(20_000, LYRICS)
+  .nullish()
+  .transform((text) => (text?.trim() ? text.replace(/\s+$/, '') : null))
 /** A calendar day, read through `lib/time` like every date. */
 export const LocalDay = z.string('That isn’t a day.').refine(isLocalDate, 'That isn’t a day.')
 const Tracks = <T extends z.ZodType>(track: T) => z.array(track, 'A release has at most 100 tracks.').max(100, 'A release has at most 100 tracks.')
@@ -58,7 +69,7 @@ const Details = z
     format: Format,
     releaseDate: z.union([LocalDay, z.literal(''), z.null(), z.undefined()]).transform((day) => day || null),
     upc: optional(upcOf, () => 'That isn’t a UPC: 12 digits (13 for an EAN), as your distributor gave it.'),
-    tracks: Tracks(z.object({ id: Id('Not a track.'), title: z.string().optional(), isrc: optional(isrcOf, (v) => `“${v}” isn’t an ISRC (CC-XXX-YY-NNNNN).`) })),
+    tracks: Tracks(z.object({ id: Id('Not a track.'), title: z.string().optional(), isrc: optional(isrcOf, (v) => `“${v}” isn’t an ISRC (CC-XXX-YY-NNNNN).`), origin: Origin })),
     released: z.boolean().default(false),
     zone: z.string().optional(),
   })
@@ -71,8 +82,11 @@ const Details = z
   })
   .transform(({ zone: _, ...d }) => ({
     ...d,
-    tracks: d.tracks.map((t) => ({ id: t.id, title: d.format === 'single' ? d.title : Title.parse(t.title), isrc: t.isrc })),
+    tracks: d.tracks.map((t) => ({ id: t.id, title: d.format === 'single' ? d.title : Title.parse(t.title), isrc: t.isrc, origin: t.origin })),
   }))
 
 /** Checks a Details save. `released` says which section it's in; `zone` is the artist's, for "not ahead of today". */
 export const detailsInput: (input: unknown) => ReleaseDetails & { released: boolean } = readWith(Details)
+
+/** A track's lyrics, saved on their own as they're written (not with Details' Save). */
+export const lyricsInput = readWith(z.object({ trackId: Id('Not a track.'), lyrics: Lyrics }))

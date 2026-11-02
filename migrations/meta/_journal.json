@@ -15,6 +15,13 @@
       "when": 1767225600001,
       "tag": "0002_release_stamp",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793568099103,
+      "tag": "0003_track_origin",
+      "breakpoints": true
     }
   ]
 }

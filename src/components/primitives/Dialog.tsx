@@ -88,6 +88,16 @@ const DialogContent = ({ className, children, hideCloseButton, phoneSheet = true
     );
 };
 
+/** A full-screen surface (the listening room): Radix's focus trap, Escape and labelling, with its own look and motion.
+ *  Always mounted while its parent shows it, so a framer `exit` can play: wrap it in AnimatePresence. */
+const DialogStage = ({ children, ...props }: React.ComponentProps<typeof DialogPrimitive.Content>) => (
+    <DialogPortal forceMount>
+        <DialogPrimitive.Content forceMount asChild aria-describedby={undefined} {...props}>
+            {children}
+        </DialogPrimitive.Content>
+    </DialogPortal>
+);
+
 const DialogHeader = ({
     className,
     ...props
@@ -129,6 +139,7 @@ export {
     DialogCloseButton,
     DialogTrigger,
     DialogContent,
+    DialogStage,
     DialogHeader,
     DialogFooter,
     DialogTitle,

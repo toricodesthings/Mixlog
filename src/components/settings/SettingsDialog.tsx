@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { cn } from '../../lib/utils'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../primitives/Dialog'
+import { useHoverSlide } from '../primitives'
 import { SearchField } from '../primitives/SearchField'
 import { SETTINGS_CATEGORIES, SettingsContent } from './SettingsContent'
 import { SettingsSheet } from './SettingsSheet'
@@ -17,6 +18,7 @@ export function SettingsDialog() {
   const activeTab = settings === 'menu' ? 'appearance' : settings
 
   const [searchQuery, setSearchQuery] = React.useState('')
+  const slide = useHoverSlide('rounded-2xl bg-white/[0.05]')
   // Search matches a tab's name or any of its row titles
   const needle = searchQuery.trim().toLowerCase()
   const matches = SETTINGS_CATEGORIES.filter(
@@ -43,7 +45,8 @@ export function SettingsDialog() {
               <SearchField placeholder="Search settings" aria-label="Search settings" value={searchQuery} onValueChange={setSearchQuery} />
             </div>
 
-            <nav className="flex flex-col gap-1 pr-2">
+            <nav className="relative flex flex-col gap-1 pr-2" {...slide.group}>
+              {slide.light}
               {needle && matches.length === 0 && (
                 <p className="px-3 py-2 text-sm text-ink-soft">No settings match “{searchQuery.trim()}”.</p>
               )}
@@ -65,11 +68,12 @@ export function SettingsDialog() {
                     type="button"
                     onClick={() => void open(item.id)}
                     aria-current={isActive ? 'page' : undefined}
+                    {...slide.row}
                     className={cn(
-                      'flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                      'relative flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-[15px] transition-colors focus-visible:ring-2 focus-visible:ring-accent',
                       isActive
                         ? 'bg-white/[0.08] font-medium text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]'
-                        : 'text-ink-soft hover:bg-white/[0.05] hover:text-ink',
+                        : 'text-ink-soft hover:text-ink',
                     )}
                   >
                     <Icon aria-hidden="true" className={cn('h-4 w-4', isActive ? 'h-5 w-5 text-accent' : 'text-ink-muted')} />

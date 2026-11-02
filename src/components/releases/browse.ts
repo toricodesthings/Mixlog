@@ -11,15 +11,15 @@ export type View = 'list' | 'panels'
 export type FormatFilter = 'all' | ReleaseFormat
 export type SortMode = 'newest' | 'oldest' | 'planned' | 'title'
 
-/** `?q=&format=&sort=&view=&upload` on Upcoming and Releases. Defaults are left out, so a plain link is the plain list. */
-export type ListSearch = { q?: string; format?: ReleaseFormat; sort?: SortMode; view?: 'panels'; upload?: true }
+/** `?q=&format=&sort=&view=&upload` on Upcoming and Releases. Defaults are left out, so a plain link is the panels, newest first. */
+export type ListSearch = { q?: string; format?: ReleaseFormat; sort?: SortMode; view?: 'list'; upload?: true }
 
 // Anything unreadable is dropped back to its default rather than refused: a stale link still opens the list.
 const ListParams = z.object({
   q: z.string().min(1).optional().catch(undefined),
   format: z.enum(['single', 'ep', 'album']).optional().catch(undefined),
   sort: z.enum(['oldest', 'planned', 'title']).optional().catch(undefined),
-  view: z.literal('panels').optional().catch(undefined),
+  view: z.literal('list').optional().catch(undefined),
   upload: z.literal(true).optional().catch(undefined),
 })
 

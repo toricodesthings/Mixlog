@@ -20,9 +20,11 @@ export const Route = createRootRoute({
     // Before first paint, so a Daylight device never flashes Blue Hour.
     scripts: [{ children: APPEARANCE_BOOT }],
   }),
-  // `?settings=<tab>` opens Settings over any page.
-  validateSearch: (search: Record<string, unknown>): { settings?: string } =>
-    typeof search.settings === 'string' ? { settings: search.settings } : {},
+  // `?settings=<tab>` opens Settings over any page; `?listen` the listening room over it.
+  validateSearch: (search: Record<string, unknown>): { settings?: string; listen?: true } => ({
+    ...(typeof search.settings === 'string' ? { settings: search.settings } : {}),
+    ...(search.listen === true ? { listen: true as const } : {}),
+  }),
   shellComponent: RootDocument,
   component: AppShell,
   notFoundComponent: NotFound,

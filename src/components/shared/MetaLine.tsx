@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils'
 export function MetaLine({ facts, className }: { facts: (string | null | undefined)[]; className?: string }) {
   const shown = facts.filter(Boolean)
   return (
-    <span className={cn('flex min-w-0 items-center gap-2 truncate text-[13px] text-ink-muted', className)} data-numeric>
+    <span className={cn('flex min-w-0 items-center gap-2 truncate text-[13.5px] text-ink-muted', className)} data-numeric>
       {shown.map((fact, i) => (
         <Fragment key={i}>
           {i > 0 && (

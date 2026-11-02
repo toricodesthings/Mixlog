@@ -23,6 +23,8 @@ export const releases = sqliteTable(
   (t) => [check('releases_format', sql`${t.format} IN ('single', 'ep', 'album')`)],
 )
 
+export const TRACK_ORIGINS = ['original', 'cover', 'remix'] as const
+
 // A track is valid with only a title; everything else is optional.
 export const tracks = sqliteTable('tracks', {
   id: text('id').primaryKey(),
@@ -31,6 +33,8 @@ export const tracks = sqliteTable('tracks', {
   title: text('title').notNull(),
   isrc: text('isrc'),
   lyrics: text('lyrics'),
+  // Whose song it is: the artist's own, a cover of someone's, or a remix of one. A cover or remix carries its license.
+  origin: text('origin', { enum: TRACK_ORIGINS }).notNull().default('original'),
   credits: text('credits'), // JSON: [{ "role": "Producer", "name": "…" }]
   createdAt: createdAt(),
   updatedAt: text('updated_at').notNull().default(stampNow),

@@ -25,8 +25,9 @@ src/
     ├── db.ts        # db: Drizzle over env.DB
     ├── input.ts     # Id, isId, idInput (route params as row IDs; anything else is not found), readWith (a Zod schema in our own words)
     ├── files.ts     # Pure file rules (artwork and audio types and caps, upload keys, finals, Content-Range), shared with the browser
-    ├── details.ts   # Pure Details rules (detailsInput, ISRC and UPC), shared with the browser
+    ├── details.ts   # Pure Details rules (detailsInput, lyricsInput, ISRC and UPC, track origin and needsLicense), shared with the browser
     ├── releases.ts  # releaseQuery (cover, track count, length), listUpcoming, listReleased, getRelease (tracks, every version and which is current), createRelease (with `releasedOn`, straight to Releases), updateRelease (Details)
+    ├── tracks.ts    # saveLyrics: a track's lyrics, autosaved by the writing room
     └── versions.ts  # serveFile, addArtwork, start/putPart/complete/abortUpload: the handlers behind routes/api/
 src/routes/api/      # Server routes, one line each: files.$versionId (GET), releases.$releaseId.artwork (POST), uploads (POST/PUT/DELETE), uploads.complete (POST)
 migrations/          # NNNN_what.sql, generated from schema.ts by `pnpm db:generate` (0001 and 0002 predate it); meta/ is drizzle-kit's

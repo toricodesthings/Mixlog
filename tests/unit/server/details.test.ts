@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { detailsInput, isrcOf, upcOf } from '#/server/details'
+import { detailsInput, isrcOf, lyricsInput, upcOf } from '#/server/details'
 
 const base = { id: 'r1', title: ' Night Drive ', format: 'ep', releaseDate: '', upc: '', tracks: [{ id: 't1', title: 'One', isrc: '' }], released: false, zone: 'America/Toronto' }
 
@@ -15,8 +15,16 @@ describe('details', () => {
   })
 
   it('trims, keeps empty fields empty, and names a single’s track after it', () => {
-    expect(detailsInput(base)).toMatchObject({ title: 'Night Drive', releaseDate: null, upc: null, tracks: [{ title: 'One', isrc: null }] })
+    expect(detailsInput(base)).toMatchObject({ title: 'Night Drive', releaseDate: null, upc: null, tracks: [{ title: 'One', isrc: null, origin: 'original' }] })
     expect(detailsInput({ ...base, format: 'single' }).tracks[0].title).toBe('Night Drive')
+  })
+
+  it('keeps lyrics as typed, and whose song a track is', () => {
+    expect(lyricsInput({ trackId: 't1', lyrics: '#VERSE\n  Line one\n\nLine two  \n' }).lyrics).toBe('#VERSE\n  Line one\n\nLine two')
+    expect(lyricsInput({ trackId: 't1', lyrics: ' \n ' }).lyrics).toBeNull()
+    const track = { id: 't1', title: 'One', origin: 'cover' }
+    expect(detailsInput({ ...base, tracks: [track] }).tracks[0].origin).toBe('cover')
+    expect(() => detailsInput({ ...base, tracks: [{ ...track, origin: 'bootleg' }] })).toThrow(/original, a cover or a remix/)
   })
 
   it('refuses what a distributor would', () => {

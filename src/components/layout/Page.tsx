@@ -12,7 +12,7 @@ export type Crumb = { label: string; link: LinkOptions }
  * Every page: a header with the trail to it, then its scrolling content.
  * Desktop shows the whole trail; compact shows only the way back up.
  */
-export function Page({ title, crumbs = [], lead, meta, actions, children }: {
+export function Page({ title, crumbs = [], lead, meta, actions, bar, bleed, children }: {
   title: string
   crumbs?: Crumb[]
   /** Before the title, like a cover beside a track name (ReleaseArt). */
@@ -20,26 +20,47 @@ export function Page({ title, crumbs = [], lead, meta, actions, children }: {
   /** Under the title: its facts (MetaLine). */
   meta?: ReactNode
   actions?: ReactNode
+  /** A strip under the header, like a release's parts as tabs on compact. */
+  bar?: ReactNode
+  /** Content runs edge to edge (a release's Summary scene): it keeps its own spacing and says the title itself, as the
+   *  page's h1. The header keeps only the way back up and floats, with the bar, over the top of the content's own
+   *  sky, scrolling away with it. */
+  bleed?: boolean
   children: ReactNode
 }) {
   const { isCompact } = useShellMode()
+  const back = isCompact || Boolean(bleed)
+  const header = (
+    <header
+      className={cn(
+        'flex min-h-(--shell-header-h) shrink-0 items-center gap-3',
+        !bleed && 'surface-shell layer-shell-header signal-rule',
+        isCompact ? 'safe-header-top px-4 pb-2' : cn('py-2', bleed ? 'px-10' : 'px-6 lg:px-8'),
+      )}
+    >
+      {lead}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        {crumbs.length > 0 && <Breadcrumbs crumbs={back ? crumbs.slice(-1) : crumbs} back={back} />}
+        {!bleed && <h1 className={cn('truncate font-display font-semibold leading-tight tracking-tight', isCompact ? 'text-[22px]' : 'text-2xl')}>{title}</h1>}
+        {meta}
+      </div>
+      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+    </header>
+  )
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <header
-        className={cn(
-          'surface-shell layer-shell-header flex min-h-(--shell-header-h) shrink-0 items-center gap-3 signal-rule',
-          isCompact ? 'safe-header-top px-4 pb-2' : 'px-6 py-2 lg:px-8',
+      {!bleed && header}
+      <main className={cn('min-h-0 flex-1 overflow-y-auto', bleed ? 'relative flex flex-col' : ['px-4 py-6 sm:px-6 lg:px-8', isCompact && 'pb-[calc(7rem+var(--player-space))]'])}>
+        {bleed ? (
+          <div className="layer-shell-base absolute inset-x-0 top-0">
+            {header}
+            {bar}
+          </div>
+        ) : (
+          bar
         )}
-      >
-        {lead}
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          {crumbs.length > 0 && <Breadcrumbs crumbs={isCompact ? crumbs.slice(-1) : crumbs} back={isCompact} />}
-          <h1 className={cn('truncate font-display font-semibold leading-tight tracking-tight', isCompact ? 'text-[22px]' : 'text-lg')}>{title}</h1>
-          {meta}
-        </div>
-        {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
-      </header>
-      <main className={cn('min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8', isCompact && 'pb-28')}>{children}</main>
+        {children}
+      </main>
     </div>
   )
 }

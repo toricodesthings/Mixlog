@@ -6,6 +6,7 @@ export { Tip, type TipProps } from "./Tooltip";
 export * from "./Switch";
 export * from "./Input";
 export { Led } from "./Led";
+export { useHoverSlide } from "./HoverSlide";
 export { Meter } from "./Meter";
 export { Scope } from "./Scope";
 export { Progress } from "./Progress";

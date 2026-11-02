@@ -85,7 +85,7 @@ describe('formatting', () => {
   })
 
   it('reads the list’s URL, dropping defaults and anything unreadable', () => {
-    expect(listSearch({ q: 'night', sort: 'title', view: 'panels', upload: true, format: 'ep' })).toEqual({ q: 'night', sort: 'title', view: 'panels', upload: true, format: 'ep' })
-    expect(listSearch({ q: '', sort: 'newest', view: 'list', format: 'mixtape', settings: 'appearance' })).toEqual({})
+    expect(listSearch({ q: 'night', sort: 'title', view: 'list', upload: true, format: 'ep' })).toEqual({ q: 'night', sort: 'title', view: 'list', upload: true, format: 'ep' })
+    expect(listSearch({ q: '', sort: 'newest', view: 'panels', format: 'mixtape', settings: 'appearance' })).toEqual({})
   })
 })

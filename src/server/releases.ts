@@ -4,12 +4,12 @@ import { desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle
 import { z } from 'zod'
 
 import { isZone, todayIn, type Instant, type LocalDate } from '#/lib/time'
-import { Format, LocalDay, Title, detailsInput, type ReleaseFormat } from '#/server/details'
+import { Format, LocalDay, Title, detailsInput, type ReleaseFormat, type TrackOrigin } from '#/server/details'
 import { db } from '#/server/db'
 import { idInput, readWith } from '#/server/input'
 import { currentPins, releases, stampNow, tracks, versions } from '#/server/schema'
 
-export type { ReleaseFormat }
+export type { ReleaseFormat, TrackOrigin }
 export type ReleaseRow = {
   id: string
   title: string
@@ -27,7 +27,7 @@ export type ReleaseRow = {
   artwork_id: string | null
   upc: string | null
 }
-export type TrackRow = { id: string; title: string; isrc: string | null; duration_ms: number | null }
+export type TrackRow = { id: string; title: string; isrc: string | null; lyrics: string | null; origin: TrackOrigin; duration_ms: number | null }
 
 /** One file in a stack, for the log and the summary. Track versions carry `track_id`; the artwork carries neither. */
 export type VersionRow = {
@@ -94,7 +94,7 @@ export const getRelease = createServerFn()
     const ofRelease = db.select({ id: tracks.id }).from(tracks).where(eq(tracks.releaseId, id))
     const [trackRows, versionRows] = await db.batch([
       db
-        .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, duration_ms: sql<number | null>`${masterLength(outer('tracks', 'id'))}` })
+        .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, duration_ms: sql<number | null>`${masterLength(outer('tracks', 'id'))}` })
         .from(tracks)
         .where(eq(tracks.releaseId, id))
         .orderBy(tracks.position, tracks.createdAt),
@@ -151,7 +151,7 @@ export const createRelease = createServerFn({ method: 'POST' })
     return { id, trackIds }
   })
 
-/** Saves a release's Details in one batch: title, format, its day, UPC, and each track's title and ISRC. */
+/** Saves a release's Details in one batch: title, format, its day, UPC, and each track's title, ISRC and origin. */
 export const updateRelease = createServerFn({ method: 'POST' })
   .validator(detailsInput)
   .handler(async ({ data }) => {
@@ -163,6 +163,6 @@ export const updateRelease = createServerFn({ method: 'POST' })
     if (data.format === 'single' && own.length > 1) throw new Error('A single has one track. Make it an EP to keep them all.')
     await db.batch([
       db.update(releases).set({ title: data.title, format: data.format, releaseDate: data.releaseDate, upc: data.upc }).where(eq(releases.id, data.id)),
-      ...data.tracks.map((t) => db.update(tracks).set({ title: t.title, isrc: t.isrc, updatedAt: stampNow }).where(eq(tracks.id, t.id))),
+      ...data.tracks.map((t) => db.update(tracks).set({ title: t.title, isrc: t.isrc, origin: t.origin, updatedAt: stampNow }).where(eq(tracks.id, t.id))),
     ])
   })

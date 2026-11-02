@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { fileUrl } from '../../lib/files'
+import { titleHue } from '../scene/palette'
 import { cn } from '../../lib/utils'
 
 const SIZES = {
@@ -8,14 +9,8 @@ const SIZES = {
   header: 'size-14 rounded-2xl text-2xl',
   panel: 'aspect-square w-full rounded-[1.4rem] text-7xl',
   cover: 'size-24 rounded-[1.4rem] text-5xl',
+  stage: 'size-28 rounded-[1.4rem] text-6xl sm:size-44 sm:rounded-[1.8rem] sm:text-8xl',
 } as const
-
-/** A title's own hue, stable across visits: cyan through violet to magenta, the Blue Hour family. */
-export function titleHue(title: string) {
-  let hash = 0
-  for (const char of title) hash = (hash * 31 + char.codePointAt(0)!) | 0
-  return 180 + (Math.abs(hash) % 150)
-}
 
 /** The first letter or digit of a title, for its monogram. */
 export const monogramOf = (title: string) => (title.match(/[\p{L}\p{N}]/u)?.[0] ?? '♪').toLocaleUpperCase()

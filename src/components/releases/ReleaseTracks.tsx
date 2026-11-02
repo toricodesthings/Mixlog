@@ -26,7 +26,7 @@ export function ReleaseTracks({ release, tracks, versions }: ReleaseData) {
     )
   }
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       {tracks.map((track, i) => (
         <TrackLog
           key={track.id}
@@ -44,7 +44,7 @@ export function ReleaseTracks({ release, tracks, versions }: ReleaseData) {
 export function TrackPage({ release, track, versions, tracks }: ReleaseData & { track: TrackRow }) {
   const section = sectionOf(release)
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <Link {...releaseLink(section, release.id, 'tracks')} className="flex w-fit items-center gap-1 rounded text-[13px] font-medium text-accent hover:underline hover:underline-offset-4">
         <ChevronLeft size={14} aria-hidden="true" />
         All tracks
@@ -60,9 +60,9 @@ function TrackLog({ track, versions, number, link }: { track: TrackRow; versions
   const heading = (
     <>
       <span className="readout w-6 shrink-0 text-accent">{String(number).padStart(2, '0')}</span>
-      <h2 className="min-w-0 flex-1 truncate font-display text-lg font-semibold tracking-tight">{track.title}</h2>
+      <h2 className="min-w-0 flex-1 truncate font-display text-xl font-semibold tracking-tight">{track.title}</h2>
       {track.duration_ms ? (
-        <span data-numeric className="shrink-0 text-[13px] text-ink-soft">
+        <span data-numeric className="shrink-0 text-sm text-ink-soft">
           {formatLength(track.duration_ms)}
         </span>
       ) : null}
@@ -79,7 +79,7 @@ function TrackLog({ track, versions, number, link }: { track: TrackRow; versions
         <div className="flex min-h-12 items-center gap-3 px-3">{heading}</div>
       )}
       {stacks.length === 0 ? (
-        <p className="px-3 pt-1 pb-3 pl-12 text-sm text-ink-muted">No versions yet. Each bounce stacks on top as it lands.</p>
+        <p className="px-3 pt-1 pb-3 pl-12 text-[15px] text-ink-muted">No versions yet. Each bounce stacks on top as it lands.</p>
       ) : (
         <div className="mt-1 flex flex-col gap-3 px-1 pb-1">
           {stacks.map(({ kind, versions: stack }) => (
@@ -109,7 +109,7 @@ function VersionLine({ version }: { version: VersionRow }) {
     <li className={cn('surface-item flex items-center gap-3 rounded-2xl py-2.5 pr-3 pl-3', current && 'ring-1 ring-accent/30')}>
       <span className={cn('readout w-9 shrink-0 text-[12px]', current ? 'text-accent' : 'text-ink-muted')}>v{version.number}</span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-sm font-medium text-ink">{version.filename}</span>
+        <span className="truncate text-[15px] font-medium text-ink">{version.filename}</span>
         <MetaLine
           facts={[
             audio ? `${formatOf(version.filename)} · ${isFinal(version.content_type) ? 'final' : 'test'}` : formatOf(version.filename),
@@ -118,7 +118,7 @@ function VersionLine({ version }: { version: VersionRow }) {
             formatDay(dayOf(version.created_at, zone), todayIn(zone)),
           ]}
         />
-        {version.note && <span className="text-[13px] text-ink-soft">{version.note}</span>}
+        {version.note && <span className="text-sm text-ink-soft">{version.note}</span>}
       </span>
       {version.released_at && <span className="readout shrink-0 rounded-full border border-accent-secondary/40 px-2 py-1 text-accent-secondary">Released</span>}
       {current && (
