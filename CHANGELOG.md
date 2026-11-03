@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-03
+
 ### Changed
 
 - Covers load a small preview of the artwork, so lists and the player stay quick; the Artwork part still shows the original.
