@@ -2,11 +2,13 @@
 // what Move to Releases pruned once its grace window has passed.
 import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
 
+import { report } from '#/server/log'
 import { erasePruned } from '#/server/versions'
 
 export default {
   ...createServerEntry({ fetch: (request, opts) => handler.fetch(request, opts) }),
   scheduled(_controller: ScheduledController, _env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(erasePruned().then((erased) => console.log(`cleanup: erased ${erased} pruned versions`)))
+    // What it erased already left in place; only a failure is worth a line (tomorrow's run retries it).
+    ctx.waitUntil(erasePruned().catch((error) => report('error', 'cleanup failed', error)))
   },
 }

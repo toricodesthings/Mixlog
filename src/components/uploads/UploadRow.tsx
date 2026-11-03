@@ -1,7 +1,7 @@
 import { RotateCcw, X } from 'lucide-react'
 
 import { cn } from '../../lib/utils'
-import { Button, Led, Progress, Tip } from '../primitives'
+import { Button, Led, Progress, Tip, Transfer } from '../primitives'
 import { sentOf, timeLeft } from './progress'
 import type { Pending } from './use-lane-upload'
 
@@ -18,13 +18,16 @@ export function UploadProgress({ name, size, sent, startedAt }: { name: string; 
   )
 }
 
-/** A file on its way into a lane, where its version will land: a light, its name, its bar. A failure keeps the row
+/** A file on its way into a lane, where its version will land: the upload ring (a light while it waits its turn), its
+ *  name, its bar. A failure keeps the row
  *  with its reason and Try again; nothing half-sent is kept. */
 export function UploadRow({ pending, onRetry, onDismiss, className }: { pending: Pending; onRetry: () => void; onDismiss: () => void; className?: string }) {
   const { file, state, sent, startedAt, error } = pending
   return (
     <li className={cn('surface-item flex min-h-14 items-center gap-3 rounded-2xl py-2 pr-1 pl-4', className)}>
-      <Led lit={state !== 'failed'} breathe={state === 'sending'} />
+      <span className="flex size-5 shrink-0 items-center justify-center">
+        {state === 'sending' ? <Transfer direction="up" value={sent} className="size-5" /> : <Led lit={state !== 'failed'} />}
+      </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[15px] font-medium text-ink">{file.name}</span>
         {state === 'failed' ? (

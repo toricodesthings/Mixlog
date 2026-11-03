@@ -19,12 +19,13 @@ The Worker side of the one Mixlog app: TanStack Start server functions on Cloudf
 ```text
 src/
 ├── server.ts        # The Worker entry (`main`): Start's fetch handler, plus `scheduled` for the daily cleanup cron
-├── start.ts         # createStart: defaultSsr false + the access function middleware
+├── start.ts         # createStart: defaultSsr false, the access and failures function middleware, routeFailures for /api
 └── server/
-    ├── access.ts    # isAllowed (verifies the Access token), accessKeys (JWKS per isolate)
+    ├── access.ts    # isAllowed (verifies the Access token, JWKS once per isolate), allowed (the door: isAllowed with this deployment's vars, or `pnpm dev`)
     ├── schema.ts    # The D1 schema in Drizzle: the source of truth for tables, checks and indexes
     ├── db.ts        # db: Drizzle over env.DB
-    ├── input.ts     # Id, isId, idInput (route params as row IDs; anything else is not found), readWith (a Zod schema in our own words)
+    ├── input.ts     # Id, isId, idInput (route params as row IDs; anything else is not found), Refusal (a no in the artist's words), readWith (a Zod schema in our own words)
+    ├── log.ts       # report (the one logger: warnings and failures, the error itself plus context), isAnswer, SERVER_FAILED
     ├── files.ts     # Pure file rules (artwork, audio and license types and caps, a license's first bytes, `fileKey`, finals, Content-Range), shared with the browser
     ├── lanes.ts     # Pure lane rules (lanesOf, playOf, moveProblem, nextLane: Final, Masters, Mixes), shared with the browser
     ├── shipping.ts  # Pure Move to Releases rules (what ships, what's set aside, the keep window), shared with the browser
@@ -44,14 +45,16 @@ migrations/          # NNNN_what.sql, generated from schema.ts by `pnpm db:gener
 
 ## 3. Adding Code
 
-- **New server function:** in its domain file, `createServerFn()` (`{ method: 'POST' }` for writes), `.validator(readWith(Schema))` for every input, a Zod schema whose messages are the artist's words (`idInput` for IDs), `.handler(...)`. Throw `notFound()` for a missing row, `redirect()` only from loaders. A query with its own logic (a subquery, a rule in SQL) gets a test in `tests/integration/server/`, run through the query builder as `releaseQuery` is; its rules in a pure function get a unit test.
+- **New server function:** in its domain file, `createServerFn()` (`{ method: 'POST' }` for writes), `.validator(readWith(Schema))` for every input, a Zod schema whose messages are the artist's words (`idInput` for IDs), `.handler(...)`. Throw `notFound()` for a missing row, `Refusal` for a no in the artist's words (never a bare `Error`), `redirect()` only from loaders. A query with its own logic (a subquery, a rule in SQL) gets a test in `tests/integration/server/`, run through the query builder as `releaseQuery` is; its rules in a pure function get a unit test.
 - **Schema change:** edit `schema.ts`, then `pnpm db:generate` writes `migrations/NNNN_what.sql` (never hand-write one or edit an applied one; `pnpm db:check` checks them). A generated rebuild of a table others reference (`versions`) cascades on D1, which keeps foreign keys on through `PRAGMA foreign_keys=OFF`: set the referencing rows aside and put them back in that migration, as `0004` does (`tests/integration/migrations.test.ts` runs them D1's way). `pnpm db:migrate` applies it locally; `pnpm db:migrate:remote` runs before the deploy that needs it, by the user.
 - **New binding or var:** add it to `wrangler.jsonc`, then `pnpm cf-typegen`.
-- **A plain HTTP endpoint** exists only for file bytes (an `<img>` or `<audio>` needs a URL; uploads stream) and non-browser clients (the later Go sync helper): a server route under `routes/api/` that calls a handler in `server/`, which checks `isAllowed` before anything else. Server routes don't get the function middleware.
+- **A plain HTTP endpoint** exists only for file bytes (an `<img>` or `<audio>` needs a URL; uploads stream) and non-browser clients (the later Go sync helper): a server route under `routes/api/` that calls a handler in `server/`, which checks `allowed` before anything else. Server routes don't get the function middleware.
 
 ## 4. Request Lifecycle
 
 The Worker serves the prerendered SPA shell (no data in it). Every server function call runs the `access` function middleware (`start.ts`): `isAllowed` checks the `cf-access-jwt-assertion` header against `ACCESS_TEAM_DOMAIN`'s JWKS, issuer and `ACCESS_AUD`, and fails closed (missing config, missing token, any verification error → 403). It's skipped only under `pnpm dev` (`import.meta.env.DEV`). Function middleware, not request middleware, because the build prerenders the shell without a token; the `/api` handlers in `versions.ts` run the same check themselves, first. `defaultSsr: false` keeps loaders in the browser, so no data is fetched without a token.
+
+**Logging** (`log.ts`, Cloudflare Workers Logs, Traces and Issues; `observability` in `wrangler.jsonc`): only warnings and failures, never the happy path, and no invocation log per request. `failures` (server functions) and `routeFailures` (`/api`) log anything that isn't an answer (`isAnswer`: a `Refusal`, not-found or redirect) with `report('error', …)` and its context (the function and its input, or the method and path), then answer `SERVER_FAILED`, never the raw message. A failure caught and turned into an answer (an R2 part refused, an Access token refused) is `report('warn', …)`. Pass the error itself, never a string of it, so its stack stays source-mapped. Traces sample 1%.
 
 ## 5. Database Rules (D1)
 
@@ -106,7 +109,7 @@ Deploying and remote migrations touch production: run them only when the user as
 
 ## 11. Anti-Patterns
 
-A server function without the `access` middleware or input validation · raw `env.DB` calls or a hand-written migration · hand-written `typeof` checks where a Zod schema belongs · an S3 client or SDK for R2 · string-built SQL · `UPDATE` on a version beyond its stamps and lane, or an overwrite beyond artwork and a confirmed Releases replacement · whole-file audio or video uploads, or signed URLs · an `/api` handler that reads before `isAllowed` · `cloudflare:workers` imported outside `server/` · hand-rolled auth, sessions or cookies · tenancy code · editing an applied migration · secrets in `wrangler.jsonc` · stack traces or SQL in error responses · `helpers.ts`/`utils.ts` catch-alls.
+A server function without the `access` middleware or input validation · raw `env.DB` calls or a hand-written migration · hand-written `typeof` checks where a Zod schema belongs · an S3 client or SDK for R2 · string-built SQL · `UPDATE` on a version beyond its stamps and lane, or an overwrite beyond artwork and a confirmed Releases replacement · whole-file audio or video uploads, or signed URLs · an `/api` handler that reads before `allowed` · `cloudflare:workers` imported outside `server/` · hand-rolled auth, sessions or cookies · tenancy code · editing an applied migration · secrets in `wrangler.jsonc` · stack traces or SQL in error responses · logging a happy path, or a bare `console.*` instead of `report` · `helpers.ts`/`utils.ts` catch-alls.
 
 ## 12. Checklist
 

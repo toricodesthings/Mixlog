@@ -9,7 +9,7 @@ import type { Section } from './sections'
 /** How a section's releases show and in what order: all of it in the URL, so a refresh, Back or a link keeps it. */
 export type View = 'list' | 'panels'
 export type FormatFilter = 'all' | ReleaseFormat
-export type SortMode = 'newest' | 'oldest' | 'planned' | 'title'
+type SortMode = 'newest' | 'oldest' | 'planned' | 'title'
 
 /** `?q=&format=&sort=&view=&upload` on Upcoming and Releases. Defaults are left out, so a plain link is the panels, newest first. */
 export type ListSearch = { q?: string; format?: ReleaseFormat; sort?: SortMode; view?: 'list'; upload?: true }

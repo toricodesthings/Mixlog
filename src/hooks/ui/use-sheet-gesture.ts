@@ -6,7 +6,7 @@ import { SPRINGS } from "../../lib/constants/motion";
 const BLOCKED = 'input, textarea, select, [contenteditable="true"], [role="slider"], [data-sheet-no-drag], [data-dnd-draggable], [aria-roledescription="sortable"], [aria-roledescription="draggable"]';
 const SLOP = 8;
 
-export type SheetDecision = "sheet" | "native";
+type SheetDecision = "sheet" | "native";
 
 /** Who owns this touch, decided once, after SLOP px of movement. */
 function decide({ dx, dy, blocked, scroller }: { dx: number; dy: number; blocked: boolean; scroller: { scrollTop: number } | null }): SheetDecision {

@@ -13,7 +13,8 @@ export type Crumb = { label: string; link: LinkOptions }
  * Desktop shows the whole trail; compact shows only the way back up.
  */
 export function Page({ title, crumbs = [], lead, meta, actions, bar, bleed, children }: {
-  title: string
+  /** Its name; a skeleton while the page is on its way (`releases/Pending`). */
+  title: ReactNode
   crumbs?: Crumb[]
   /** Before the title, like a cover beside a track name (ReleaseArt). */
   lead?: ReactNode

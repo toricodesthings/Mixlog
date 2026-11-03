@@ -23,6 +23,8 @@ export type Playable = {
 type PlayerState = {
   item: Playable | null
   playing: boolean
+  /** Asked to play, still waiting for the file to arrive (starting, or a seek past what's here). */
+  loading: boolean
   volume: number
   muted: boolean
   /** Plays `item`; the one already loaded toggles instead. */
@@ -37,11 +39,16 @@ type PlayerState = {
   setMuted: (muted: boolean) => void
 }
 
-/** Where the playhead is, in seconds. Its own context: it changes every frame, and only what shows time listens. */
-type Playhead = { time: number; duration: number }
+/** Where the playhead is, in seconds, and how far past it the file has arrived (`buffered`). Its own context: it
+ *  changes every frame, and only what shows time listens. */
+type Playhead = { time: number; duration: number; buffered: number }
+
+/** How close the waiting is to over: the next few seconds arriving fill it. ponytail: browsers don't say how much they
+ *  wait for before they play, so this guesses a few seconds; it can sit full a beat before playback starts. */
+export const readiness = ({ time, buffered }: Playhead) => Math.min(1, Math.max(0, (buffered - time) / 4))
 
 const PlayerContext = createContext<PlayerState | null>(null)
-const PlayheadContext = createContext<Playhead>({ time: 0, duration: 0 })
+const PlayheadContext = createContext<Playhead>({ time: 0, duration: 0, buffered: 0 })
 
 export function usePlayer() {
   const player = use(PlayerContext)
@@ -60,18 +67,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const audio = useRef<HTMLAudioElement>(null)
   const [item, setItem] = useState<Playable | null>(null)
   const [playing, setPlaying] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [volume, setVolumeState] = useState(1)
   const [muted, setMutedState] = useState(false)
 
   const state = useMemo<PlayerState>(() => {
     const el = () => audio.current
+    const refused = () => (setPlaying(false), setLoading(false))
     const toggle = () => {
       const a = el()
-      if (a) void (a.paused ? a.play().catch(() => setPlaying(false)) : a.pause())
+      if (a) void (a.paused ? a.play().catch(refused) : a.pause())
     }
     return {
       item,
       playing,
+      loading,
       volume,
       muted,
       toggle,
@@ -97,10 +107,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setMutedState(next)
       },
     }
-  }, [item, playing, volume, muted])
+  }, [item, playing, loading, volume, muted])
 
   useEffect(() => {
-    if (item) void audio.current?.play().catch(() => setPlaying(false))
+    if (!item) return
+    setLoading(true)
+    void audio.current?.play().catch(() => (setPlaying(false), setLoading(false)))
   }, [item])
 
   // The signal (signal.ts): while playing on a desktop, the meters and the listening room read the music
@@ -133,8 +145,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         src={item ? fileUrl(item.versionId) : undefined}
         preload="metadata"
         onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
+        onWaiting={() => setLoading(true)}
+        onPlaying={() => setLoading(false)}
+        onPause={() => (setPlaying(false), setLoading(false))}
         onEnded={() => setPlaying(false)}
+        onError={() => setLoading(false)}
       />
     </PlayerContext>
   )
@@ -142,13 +157,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
 /** Reads the playhead every frame while playing (smooth on a wide bar, where `timeupdate`'s quarter-seconds step). */
 function PlayheadClock({ audio, playing, children }: { audio: RefObject<HTMLAudioElement | null>; playing: boolean; children: ReactNode }) {
-  const [playhead, setPlayhead] = useState<Playhead>({ time: 0, duration: 0 })
+  const [playhead, setPlayhead] = useState<Playhead>({ time: 0, duration: 0, buffered: 0 })
   useEffect(() => {
     const a = audio.current
     if (!a) return
-    const read = () => setPlayhead({ time: a.currentTime, duration: Number.isFinite(a.duration) ? a.duration : 0 })
-    // Seeking, loading and the end move it while paused, too.
-    const events = ['loadedmetadata', 'seeked', 'emptied', 'ended'] as const
+    const read = () => setPlayhead({ time: a.currentTime, duration: Number.isFinite(a.duration) ? a.duration : 0, buffered: bufferedAt(a) })
+    // Seeking, loading and the end move it while paused, too; `progress` is more of the file arriving.
+    const events = ['loadedmetadata', 'seeked', 'emptied', 'ended', 'progress'] as const
     events.forEach((e) => a.addEventListener(e, read))
     let frame = 0
     const tick = () => (read(), (frame = requestAnimationFrame(tick)))
@@ -157,6 +172,12 @@ function PlayheadClock({ audio, playing, children }: { audio: RefObject<HTMLAudi
     return () => (cancelAnimationFrame(frame), events.forEach((e) => a.removeEventListener(e, read)))
   }, [audio, playing])
   return <PlayheadContext value={playhead}>{children}</PlayheadContext>
+}
+
+/** Where the stretch of file around the playhead ends: what can play from here without waiting. */
+function bufferedAt(a: HTMLAudioElement) {
+  for (let i = 0; i < a.buffered.length; i++) if (a.buffered.start(i) <= a.currentTime + 0.25 && a.currentTime <= a.buffered.end(i)) return a.buffered.end(i)
+  return a.currentTime
 }
 
 type Search = { listen?: true }

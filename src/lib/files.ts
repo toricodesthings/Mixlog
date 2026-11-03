@@ -7,11 +7,20 @@ export const fileUrl = (versionId: string) => `/api/files/${versionId}`
 /** The same file, saved under its own filename instead of opened. */
 export const downloadUrl = (versionId: string) => `${fileUrl(versionId)}?download`
 
-/** A version's bytes, for a viewer that reads them itself (a license's PDF or Word document). */
-export async function readFile(versionId: string): Promise<ArrayBuffer> {
+/** A version's bytes, for a viewer that reads them itself (a license's PDF or Word document). `onProgress` gets the
+ *  share arrived (0–1), measured against the `size` it was uploaded at, which is what arrives once any compression is undone. */
+export async function readFile(versionId: string, size: number, onProgress: (arrived: number) => void = () => {}): Promise<ArrayBuffer> {
   const response = await fetch(fileUrl(versionId))
-  if (!response.ok) throw new Error('Couldn’t open this file. Try again.')
-  return response.arrayBuffer()
+  if (!response.ok || !response.body) throw new Error('Couldn’t open this file. Try again.')
+  const chunks: Uint8Array<ArrayBuffer>[] = []
+  let arrived = 0
+  for (const reader = response.body.getReader(); ; ) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    onProgress(Math.min(1, (arrived += value.length) / size))
+  }
+  return new Blob(chunks).arrayBuffer()
 }
 
 /** Sends a body with XHR, not fetch: only XHR reports bytes as they leave (`fetch` can't, in every browser), and
@@ -28,31 +37,20 @@ function sendWithProgress(method: string, url: string, body: Blob, headers: Reco
   })
 }
 
-/** Sends an image as the release's next artwork version. Resolves when it's stored; rejects with the Worker's reason.
- *  `onProgress` gets the share sent (0–1). */
-export async function uploadArtwork(releaseId: string, file: File, onProgress: (sent: number) => void = () => {}): Promise<void> {
-  const response = await sendWithProgress(
-    'POST',
-    `/api/releases/${releaseId}/artwork`,
-    file,
-    { 'content-type': file.type, 'x-filename': file.name.slice(0, 255) },
-    (bytes) => onProgress(bytes / file.size),
-  )
-  if (!response.ok) throw new Error(response.text || 'Couldn’t add the artwork.')
-}
-
-/** Sends a PDF or Word document as the track's next license. Typed by extension: browsers disagree on a .doc's. */
-export async function uploadLicense(trackId: string, file: File, onProgress: (sent: number) => void = () => {}): Promise<{ id: string; number: number }> {
-  const response = await sendWithProgress(
-    'POST',
-    `/api/tracks/${trackId}/license`,
-    file,
-    { 'content-type': licenseTypeOf(file.name) ?? file.type, 'x-filename': file.name.slice(0, 255) },
-    (bytes) => onProgress(bytes / file.size),
-  )
-  if (!response.ok) throw new Error(response.text || 'Couldn’t add the license.')
+/** Sends a file whole as one request. Resolves with the stored version; rejects with the Worker's reason. */
+async function sendOne(url: string, file: File, type: string, fallback: string, onProgress: (sent: number) => void): Promise<{ id: string; number: number }> {
+  const response = await sendWithProgress('POST', url, file, { 'content-type': type, 'x-filename': file.name.slice(0, 255) }, (bytes) => onProgress(bytes / file.size))
+  if (!response.ok) throw new Error(response.text || fallback)
   return JSON.parse(response.text)
 }
+
+/** Sends an image as the release's next artwork version. `onProgress` gets the share sent (0–1). */
+export const uploadArtwork = (releaseId: string, file: File, onProgress: (sent: number) => void = () => {}) =>
+  sendOne(`/api/releases/${releaseId}/artwork`, file, file.type, 'Couldn’t add the artwork.', onProgress)
+
+/** Sends a PDF or Word document as the track's next license. Typed by extension: browsers disagree on a .doc's. */
+export const uploadLicense = (trackId: string, file: File, onProgress: (sent: number) => void = () => {}) =>
+  sendOne(`/api/tracks/${trackId}/license`, file, licenseTypeOf(file.name) ?? file.type, 'Couldn’t add the license.', onProgress)
 
 const failed = async (response: Response, fallback: string) => new Error((await response.text().catch(() => '')) || fallback)
 

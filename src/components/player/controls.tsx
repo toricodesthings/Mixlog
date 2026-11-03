@@ -2,28 +2,35 @@ import { Pause, Play, RotateCcw, RotateCw, Volume1, Volume2, VolumeX } from 'luc
 import type { CSSProperties } from 'react'
 
 import { cn } from '../../lib/utils'
-import { Tip } from '../primitives'
+import { Tip, Transfer } from '../primitives'
 import { formatLength } from '../releases/browse'
-import { usePlayer, usePlayhead } from './Player'
+import { readiness, usePlayer, usePlayhead } from './Player'
 
 /** The transport's controls, shared by the bar and the listening room, so they look and behave the same everywhere. */
 
 const clock = (seconds: number) => formatLength(seconds * 1000)
 
-/** Play or pause what's loaded: the one solid Signal fill in the transport. */
+/** While the file is on its way: the download ring around the button's edge, filling as the next seconds arrive, the
+ *  arrow coming in. Shared by the transport and a version's own Play, so waiting looks the same everywhere. */
+export function Fetching({ className }: { className?: string }) {
+  return <Transfer direction="down" value={readiness(usePlayhead())} className={className} />
+}
+
+/** Play or pause what's loaded: the one solid Signal fill in the transport. Waiting on the file, it fetches visibly. */
 export function PlayToggle({ size = 'md', className, ...rest }: { size?: 'sm' | 'md' | 'lg'; className?: string; 'data-room-play'?: boolean }) {
-  const { playing, toggle } = usePlayer()
+  const { playing, loading, toggle } = usePlayer()
   const box = { sm: 'size-11', md: 'size-10', lg: 'size-16' }[size]
   const icon = size === 'lg' ? 26 : 18
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-label={playing ? 'Pause' : 'Play'}
+      aria-label={loading ? 'Loading. Pause' : playing ? 'Pause' : 'Play'}
+      aria-busy={loading}
       {...rest}
       className={cn('accent-fill press flex shrink-0 items-center justify-center rounded-full', box, className)}
     >
-      {playing ? <Pause size={icon} aria-hidden="true" fill="currentColor" /> : <Play size={icon} aria-hidden="true" fill="currentColor" className="translate-x-[1.5px]" />}
+      {loading ? <Fetching className="size-[88%] text-current" /> : playing ? <Pause size={icon} aria-hidden="true" fill="currentColor" /> : <Play size={icon} aria-hidden="true" fill="currentColor" className="translate-x-[1.5px]" />}
     </button>
   )
 }
@@ -56,7 +63,7 @@ export function SkipButton({ by, size = 'md' }: { by: number; size?: 'md' | 'lg'
  */
 export function Scrubber({ className }: { className?: string }) {
   const { seek } = usePlayer()
-  const { time, duration } = usePlayhead()
+  const { time, duration, buffered } = usePlayhead()
   const share = duration ? time / duration : 0
   return (
     <div className={cn('flex w-full items-center gap-3', className)}>
@@ -71,7 +78,7 @@ export function Scrubber({ className }: { className?: string }) {
         aria-label="Playhead"
         aria-valuetext={`${clock(time)} of ${clock(duration)}`}
         className="scrubber min-w-0 flex-1"
-        style={{ '--fill': `${share * 100}%` } as CSSProperties}
+        style={{ '--fill': `${share * 100}%`, '--buffered': `${duration ? (buffered / duration) * 100 : 0}%` } as CSSProperties}
       />
       <span data-numeric className="w-10 shrink-0 text-xs text-ink-muted">{duration ? clock(duration) : '–:––'}</span>
     </div>

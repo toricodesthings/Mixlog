@@ -9,6 +9,7 @@ import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { downloadUrl } from '../../lib/files'
 import { deviceZone, formatMoment, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
+import { Fetching } from '../player/controls'
 import { usePlayer } from '../player/Player'
 import { Button, Led, Meter, Tip, useHoverSlide } from '../primitives'
 import { sizeOf } from '../uploads/progress'
@@ -120,7 +121,7 @@ export function VersionRow({ t, version, slide }: { t: TrackState; version: Vers
             aria-label={live && player.playing ? `Pause ${track.title}, ${label}` : `Play ${track.title}, ${label}`}
             className="press flex size-11 shrink-0 items-center justify-center rounded-full text-accent"
           >
-            {live && player.playing ? <Meter live bars={3} /> : <Play size={18} aria-hidden="true" className="translate-x-px fill-current" />}
+            {live && player.loading ? <Fetching className="size-7" /> : live && player.playing ? <Meter live bars={3} /> : <Play size={18} aria-hidden="true" className="translate-x-px fill-current" />}
           </button>
         ) : (
           <span className="flex size-11 shrink-0 items-center justify-center text-ink-muted">

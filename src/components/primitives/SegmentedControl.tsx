@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { useLensScrub } from "../../hooks/ui/use-lens-scrub";
 
-export interface SegmentedOption<T extends string> {
+interface SegmentedOption<T extends string> {
     value: T;
     label: ReactNode;
     icon?: ReactNode;

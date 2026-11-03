@@ -26,7 +26,7 @@ export const releases = sqliteTable(
   (t) => [check('releases_format', sql`${t.format} IN ('single', 'ep', 'album')`)],
 )
 
-export const TRACK_ORIGINS = ['original', 'cover', 'remix'] as const
+const TRACK_ORIGINS = ['original', 'cover', 'remix'] as const
 
 // A track is valid with only a title; everything else is optional.
 export const tracks = sqliteTable('tracks', {

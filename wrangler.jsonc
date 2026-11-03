@@ -4,7 +4,14 @@
 	"compatibility_date": "2026-10-23",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "src/server.ts", // TanStack Start's handler, plus the cleanup cron
-	"observability": { "enabled": true },
+	// Failures only: the code logs warnings and errors (src/server/log.ts), never the happy path, so no line per request
+	// either. Issues groups errors and 5xx responses; traces sample 1% of requests, enough to see where time goes.
+	"observability": {
+		"enabled": true,
+		"logs": { "invocation_logs": false },
+		"traces": { "enabled": true, "head_sampling_rate": 0.01 },
+		"issues": { "enabled": true },
+	},
 	"upload_source_maps": true,
 
 	// `pnpm dev` simulates both locally (.wrangler/state). No database ID: the first deploy creates it and writes it back.

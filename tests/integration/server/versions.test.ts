@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { network, sent } from '../../support/browser'
 import { deletedKeys, multiparts, objects } from '../../support/cloudflare-workers'
 import { call } from '../../support/start'
-import { downloadUrl, fileUrl, uploadArtwork, uploadAudio, uploadLicense } from '#/lib/files'
+import { downloadUrl, fileUrl, readFile, uploadArtwork, uploadAudio, uploadLicense } from '#/lib/files'
 import { UPLOAD_PART_BYTES, audioTypeOf, type AudioKind } from '#/server/files'
 import { createRelease, getRelease } from '#/server/releases'
 
@@ -209,6 +209,15 @@ describe('licenses', () => {
     await expect(uploadLicense(song, new File(['x'], 'license.html'))).rejects.toThrow(/PDF or a Word/)
     expect(await licenses()).toHaveLength(2)
     expect(objects.size).toBe(keys)
+  })
+
+  it('reads back exactly as uploaded, saying how much has arrived on the way', async () => {
+    const [top] = await licenses()
+    const arrived: number[] = []
+    const bytes = await readFile(top.id, top.size, (share) => arrived.push(share))
+    expect(await sameBytes(new Uint8Array(bytes), pdf('x'))).toBe(true)
+    expect(arrived.at(-1)).toBe(1)
+    expect(arrived).toEqual([...arrived].sort((a, b) => a - b))
   })
 })
 

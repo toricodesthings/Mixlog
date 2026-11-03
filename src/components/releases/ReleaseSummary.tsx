@@ -7,6 +7,7 @@ import { playOf } from '#/server/lanes'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { deviceZone, formatDay, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
+import { Fetching } from '../player/controls'
 import { usePlayer, usePlayhead, type Playable } from '../player/Player'
 import { Led, Meter, useHoverSlide } from '../primitives'
 import { Land } from '../scene/Land'
@@ -93,7 +94,7 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
                     aria-label={ownsPlayer && player.playing ? 'Pause' : `Play ${first.title}, ${first.label}`}
                     className="accent-fill press flex size-12 shrink-0 items-center justify-center rounded-full sm:size-14"
                   >
-                    {ownsPlayer && player.playing ? <Pause size={20} aria-hidden="true" /> : <Play size={20} aria-hidden="true" className="translate-x-0.5" />}
+                    {ownsPlayer && player.loading ? <Fetching className="size-[88%] text-current" /> : ownsPlayer && player.playing ? <Pause size={20} aria-hidden="true" /> : <Play size={20} aria-hidden="true" className="translate-x-0.5" />}
                   </button>
                   <span className="min-w-0">
                     {/* A single's track is the release, already named above */}
@@ -155,7 +156,7 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
                       className="press relative flex size-11 shrink-0 items-center justify-center rounded-full text-accent disabled:cursor-default"
                     >
                       {live ? (
-                        player.playing ? <Meter live bars={3} /> : <Play size={16} aria-hidden="true" />
+                        player.loading ? <Fetching className="size-7" /> : player.playing ? <Meter live bars={3} /> : <Play size={16} aria-hidden="true" />
                       ) : (
                         <>
                           <span className={cn('readout', playable && 'group-hover:opacity-0 group-focus-within:opacity-0')}>{String(i + 1).padStart(2, '0')}</span>

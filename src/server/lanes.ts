@@ -6,7 +6,7 @@ import { isFinal } from '#/server/files'
 export const LANES = ['final', 'master', 'mix'] as const
 export type Lane = (typeof LANES)[number]
 /** Alternates ship beside the final, one row each; they never move between lanes. */
-export const ALTERNATES = ['instrumental', 'acapella', 'stems'] as const
+const ALTERNATES = ['instrumental', 'acapella', 'stems'] as const
 
 /** A version as the rules read it: `is_final` is 1 when it's its track's pinned master. */
 export type LaneRow = { id: string; track_id: string | null; kind: string; number: number; content_type: string; is_final: number; is_current: number }

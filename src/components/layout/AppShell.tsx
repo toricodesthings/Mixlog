@@ -4,6 +4,7 @@ import { MotionConfig } from 'framer-motion'
 
 import { useAppearance } from '../../hooks/ui/use-appearance'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
+import { BrandMark, Tuning } from '../primitives'
 import { ListeningRoom } from '../player/ListeningRoom'
 import { PlayerProvider } from '../player/Player'
 import { PlayerBar } from '../player/PlayerBar'
@@ -16,9 +17,22 @@ import { PhoneDock } from './PhoneDock'
  * Browser-only, as in the production SPA shell: its layout depends on the screen and this device's choices. */
 export function AppShell() {
   return (
-    <ClientOnly>
+    <ClientOnly fallback={<Boot />}>
       <Shell />
     </ClientOnly>
+  )
+}
+
+/** Before the app has arrived (it's in the shell HTML, so CSS alone runs it): the mark, and the room tuning in. */
+function Boot() {
+  return (
+    <div role="status" className="flex h-dvh flex-col items-center justify-center gap-5">
+      <BrandMark live className="size-14" />
+      <span className="readout flex items-center gap-2.5 text-ink-muted">
+        <Tuning />
+        Loading
+      </span>
+    </div>
   )
 }
 

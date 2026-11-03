@@ -29,28 +29,17 @@ const variants = {
         "bg-room-surface/80 border border-line text-ink hover:bg-room-surface-hover hover:border-line-strong",
     ghost:
         "text-ink-muted hover:text-ink hover:bg-white/5",
-    text:
-        "text-ink hover:text-accent",
-    subtle:
-        "text-ink-muted hover:text-accent hover:bg-accent/10",
     danger:
         "border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20",
-    card:
-        "border border-line-light bg-room-deep text-ink hover:bg-white/[0.04] hover:border-line",
     cardPrimary:
         "border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 shadow-[inset_0_1px_rgba(255,255,255,0.1)] glow-accent",
-    cardDanger:
-        "border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20",
 } as const;
 
 const sizes = {
-    none: "",
     sm: "min-h-11 rounded-lg px-3.5 text-xs",
     md: "min-h-11 rounded-xl px-5 text-sm",
     lg: "min-h-12 rounded-2xl px-8 text-[15px] [--press-scale:1.025]",
-    xl: "min-h-12 rounded-2xl px-8 text-[15px] [--press-scale:1.025]",
     icon: "h-11 w-11 rounded-xl",
-    card: "flex-col gap-3 p-4 rounded-2xl text-[13px] tracking-wide",
 } as const;
 
 /* ── Types ──────────────────────────────────────────────────────── */

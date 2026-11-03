@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-export type ShellMode = "wide" | "laptop" | "tablet" | "phone";
+type ShellMode = "wide" | "laptop" | "tablet" | "phone";
 
 /** Touch-first devices (phones, tablets). Hybrids with a mouse or trackpad don't match. */
 const TOUCH_QUERY = "(hover: none) and (pointer: coarse)";
@@ -19,11 +19,6 @@ function getShellMode(width: number, touch: boolean): ShellMode {
     return "phone";
 }
 
-/** For code outside React (event handlers); components use `useShellMode`. */
-function currentShellMode(): ShellMode {
-    return getShellMode(window.innerWidth, isTouchFirst());
-}
-
 function subscribe(listener: () => void) {
     const mq = window.matchMedia?.(TOUCH_QUERY);
     window.addEventListener("resize", listener);
@@ -37,14 +32,12 @@ function subscribe(listener: () => void) {
 /** The one source of device class: layout (`mode`, from width + pointer) and input (`isTouch`).
  * Branch on these, never on raw widths or media queries in components. */
 export function useShellMode() {
-    const mode = useSyncExternalStore<ShellMode>(subscribe, currentShellMode, () => "wide");
+    const mode = useSyncExternalStore<ShellMode>(subscribe, () => getShellMode(window.innerWidth, isTouchFirst()), () => "wide");
     const isTouch = useSyncExternalStore(subscribe, isTouchFirst, () => false);
 
     return {
         mode,
         isTouch,
-        isWide: mode === "wide",
-        isLaptop: mode === "laptop",
         isTablet: mode === "tablet",
         isPhone: mode === "phone",
         isDesktop: mode === "wide" || mode === "laptop",

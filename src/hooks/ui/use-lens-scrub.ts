@@ -6,7 +6,7 @@ import { SPRINGS } from "../../lib/constants/motion";
 const SCRUB_SLOP = 6;
 const HELD_SCALE = 1.12;
 
-export type Span = { left: number; width: number };
+type Span = { left: number; width: number };
 
 /** Where a remembered lens last rested, so a row that remounts (the dock, on every route) glides from there. */
 const lastRest = new Map<string, Span>();

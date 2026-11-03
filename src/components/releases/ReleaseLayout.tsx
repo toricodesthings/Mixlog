@@ -7,7 +7,7 @@ import { moveToUpcoming } from '#/server/releases'
 import { moveBackWindow } from '#/server/shipping'
 import { dayOf, deviceZone, formatDay, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
-import { Button, Led, Tip, useHoverSlide } from '../primitives'
+import { Button, Led, Tip, Tuning, useHoverSlide } from '../primitives'
 import * as ScrollArea from '../primitives/ScrollArea'
 import { Page } from '../layout/Page'
 import { UploadButton } from '../uploads/UploadDialog'
@@ -214,7 +214,7 @@ function MoveBack({ release, pruned, keepDays, compact }: ReleaseData & { compac
         onClick={() => void move()}
         className={cn('gap-2', compact ? 'size-11 px-0' : 'w-full', state.status === 'failed' && 'ring-2 ring-feedback-error/60')}
       >
-        <CalendarClock size={16} aria-hidden="true" />
+        {state.status === 'moving' ? <Tuning /> : <CalendarClock size={16} aria-hidden="true" />}
         {!compact && label}
       </Button>
     </Tip>

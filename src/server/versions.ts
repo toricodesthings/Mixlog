@@ -3,20 +3,20 @@ import { and, eq, inArray, isNotNull, isNull, lt, ne, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { z } from 'zod'
 
-import { isAllowed } from '#/server/access'
+import { allowed } from '#/server/access'
 import {
   AUDIO_KINDS, MAX_ARTWORK_BYTES, MAX_AUDIO_BYTES, MAX_LICENSE_BYTES, UPLOAD_PART_BYTES,
   artworkProblem, audioProblem, contentRange, fileKey, isFinal, licenseProblem, startsLike, type AudioKind,
 } from '#/server/files'
 import { db } from '#/server/db'
 import { Id, isId } from '#/server/input'
+import { report } from '#/server/log'
 import { hasFinal, pin, setAsideRest } from '#/server/releases'
 import { currentPins, releases, stamp, stampNow, tracks, versions } from '#/server/schema'
 import { keepDays } from '#/server/settings'
 
 // Server routes, not server functions: bytes stream through without a JSON round trip, and an <img> or
 // <audio> can point at them. They don't get `access` from start.ts, so each checks the token itself.
-const allowed = async (request: Request) => import.meta.env.DEV || (await isAllowed(request, env.ACCESS_TEAM_DOMAIN, env.ACCESS_AUD))
 const text = (status: number, body: string) => new Response(body, { status, headers: { 'content-type': 'text/plain; charset=utf-8' } })
 
 /** GET /api/files/$versionId: the file exactly as uploaded, with range requests for playback. `?download` saves it
@@ -168,7 +168,8 @@ export async function putUploadPart(request: Request): Promise<Response> {
   if (!request.body || !(size > 0 && size <= UPLOAD_PART_BYTES)) return text(400, 'A part is 10 MB at most')
   try {
     return Response.json(await env.FILES.resumeMultipartUpload(upload.key, upload.uploadId).uploadPart(part, request.body))
-  } catch {
+  } catch (error) {
+    report('warn', 'upload part refused', error, { key: upload.key, part })
     return text(404, 'This upload has gone; start it again.')
   }
 }
@@ -185,7 +186,8 @@ export async function completeUpload(request: Request): Promise<Response> {
   let object: R2Object
   try {
     object = await env.FILES.resumeMultipartUpload(key, uploadId).complete(parts)
-  } catch {
+  } catch (error) {
+    report('warn', 'upload completion refused', error, { key, parts: parts.length })
     return text(404, 'This upload has gone; start it again.')
   }
   const contentType = object.httpMetadata?.contentType ?? 'application/octet-stream'
@@ -264,7 +266,7 @@ export async function abortUpload(request: Request): Promise<Response> {
   if (!(await allowed(request))) return text(403, 'Forbidden')
   const upload = await ongoing(query(request))
   if (!upload) return text(400, 'Not an upload')
-  await env.FILES.resumeMultipartUpload(upload.key, upload.uploadId).abort().catch(() => {})
+  await env.FILES.resumeMultipartUpload(upload.key, upload.uploadId).abort().catch((error) => report('warn', 'upload abort failed', error, { key: upload.key }))
   return new Response(null, { status: 204 })
 }
 

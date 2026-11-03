@@ -8,7 +8,7 @@ import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { downloadUrl, uploadLicense } from '../../lib/files'
 import { deviceZone, formatMoment, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
-import { Button, Progress, Scope } from '../primitives'
+import { Button, Transfer, Tuning } from '../primitives'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../primitives/Dialog'
 import { SegmentedControl } from '../primitives/SegmentedControl'
 import { sizeOf } from '../uploads/progress'
@@ -100,9 +100,9 @@ export function LicenseControl({ trackId, licenses }: { trackId: string; license
 function UploadState({ state }: { state: ReturnType<typeof useLicenseUpload>['state'] }) {
   if (state.status === 'sending')
     return (
-      <span className="flex min-w-28 items-center gap-2">
-        <Progress value={state.sent} label="Sending the license" className="h-1.5 flex-1" />
-        <span data-numeric className="readout text-ink-muted">{state.sent < 1 ? `${Math.round(state.sent * 100)}%` : 'Storing'}</span>
+      <span className="flex items-center gap-2">
+        <Transfer direction="up" value={state.sent} label="Sending the license" className="text-lg" />
+        <span data-numeric className="readout w-14 text-ink-muted">{state.sent < 1 ? `${Math.round(state.sent * 100)}%` : 'Storing'}</span>
       </span>
     )
   if (state.status === 'failed') return <span role="alert" className="text-sm text-feedback-error">{state.message}</span>
@@ -159,12 +159,15 @@ function LicenseSheet({ version, track, stack, show }: { version: VersionRow; tr
   )
 }
 
-/** While the document loads: the scope tracing in, and the words. */
-export function Reading({ children = 'Reading the license' }: { children?: string }) {
+/** While the license opens: its bytes coming in (`arrived`, the share here so far), else the reader getting ready. */
+export function Reading({ arrived }: { arrived?: number }) {
   return (
-    <div className="flex h-full min-h-[50dvh] flex-col items-center justify-center gap-4 p-8 text-center">
-      <Scope />
-      <p className="readout text-ink-muted" aria-live="polite">{children}</p>
+    <div role="status" className="flex h-full min-h-[50dvh] flex-col items-center justify-center gap-4 p-8 text-center">
+      {arrived === undefined ? <Tuning className="text-3xl" /> : <Transfer direction="down" value={arrived} className="text-5xl" />}
+      <p className="readout text-ink-muted">
+        Reading the license
+        {arrived !== undefined && <span aria-hidden="true" data-numeric> · {Math.round(arrived * 100)}%</span>}
+      </p>
     </div>
   )
 }

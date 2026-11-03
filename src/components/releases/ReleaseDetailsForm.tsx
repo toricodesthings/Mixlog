@@ -6,7 +6,7 @@ import { isrcOf, needsLicense, upcOf } from '#/server/details'
 import { updateRelease, type ReleaseFormat, type TrackOrigin } from '#/server/releases'
 import { deviceZone, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
-import { Button, Input, Led } from '../primitives'
+import { Button, Input, Led, Tuning } from '../primitives'
 import { SegmentedControl } from '../primitives/SegmentedControl'
 import { LicenseControl, LicenseDialog } from './LicenseControl'
 import type { ReleaseData } from './loaders'
@@ -146,7 +146,8 @@ export function ReleaseDetailsForm({ release, tracks, versions }: ReleaseData) {
           </Button>
         )}
         <Button type="submit" disabled={!dirty || state.status === 'saving'} aria-busy={state.status === 'saving'}>
-          {state.status === 'saving' ? 'Saving…' : 'Save'}
+          {state.status === 'saving' && <Tuning className="text-current" />}
+          {state.status === 'saving' ? 'Saving' : 'Save'}
         </Button>
       </div>
     </form>

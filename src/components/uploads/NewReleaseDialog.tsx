@@ -10,7 +10,7 @@ import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { readDuration, uploadArtwork, uploadAudio } from '../../lib/files'
 import { deviceZone, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
-import { Button, Input, Led, Meter, Progress, Tip } from '../primitives'
+import { Button, Input, Led, Meter, Progress, Tip, Transfer } from '../primitives'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../primitives/Dialog'
 import { SegmentedControl } from '../primitives/SegmentedControl'
 import { MetaLine } from '../shared/MetaLine'
@@ -224,7 +224,9 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
                 <ImagePlus size={20} aria-hidden="true" />
               </span>
               {cover && progress.get(cover)?.state === 'sending' && (
-                <Progress value={progress.get(cover)!.sent} label="Sending the artwork" valueText={sentOf(progress.get(cover)!.sent, cover.size)} className="absolute inset-x-2.5 bottom-2.5" />
+                <span className="absolute inset-0 flex items-center justify-center rounded-[1.4rem] bg-room-void/60">
+                  <Transfer direction="up" value={progress.get(cover)!.sent} label="Sending the artwork" className="text-4xl" />
+                </span>
               )}
             </button>
           </Tip>
@@ -381,7 +383,7 @@ function TargetMenu({ target, test, disabled, onTarget }: { target: Target; test
   )
 }
 
-/** Remove before saving; while saving, a light and words: sending, stored, or failed. */
+/** Remove before saving; while saving, its upload ring or a light, and words: sending, stored, or failed. */
 function Status({ state, onRemove, name }: { state?: Progress; onRemove?: () => void; name: string }) {
   if (!state)
     return onRemove ? (
@@ -393,7 +395,7 @@ function Status({ state, onRemove, name }: { state?: Progress; onRemove?: () => 
     <span className="readout flex w-16 shrink-0 items-center justify-end gap-1.5 text-ink-muted">
       {state.state === 'sending' ? (
         <>
-          <Led breathe />
+          <Transfer direction="up" value={state.sent} className="text-base" />
           {Math.round(state.sent * 100)}%
         </>
       ) : state.state === 'stored' ? (

@@ -6,7 +6,7 @@ import { lanesOf } from '#/server/lanes'
 import { moveToReleases, type TrackRow } from '#/server/releases'
 import { moveBackWindow, prunedOf } from '#/server/shipping'
 import { dayOf, deviceZone, formatDay, todayIn } from '../../lib/time'
-import { Button, Input } from '../primitives'
+import { Button, Input, Tuning } from '../primitives'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../primitives/Dialog'
 import { Lane, useTrack } from './Lane'
 import type { ReleaseData } from './loaders'
@@ -92,8 +92,8 @@ export function MoveToReleasesDialog(data: ReleaseData) {
             Cancel
           </Button>
           <Button onClick={() => void move()} disabled={!ready || state.status === 'moving'} aria-busy={state.status === 'moving'} className="gap-2">
-            <Disc3 size={16} aria-hidden="true" />
-            {state.status === 'moving' ? 'Moving…' : 'Move to Releases'}
+            {state.status === 'moving' ? <Tuning className="text-current" /> : <Disc3 size={16} aria-hidden="true" />}
+            {state.status === 'moving' ? 'Moving' : 'Move to Releases'}
           </Button>
         </DialogFooter>
       </DialogContent>

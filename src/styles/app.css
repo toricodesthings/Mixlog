@@ -629,7 +629,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   [data-theme="daylight"] .scrollbar-thin { scrollbar-color: rgba(0, 0, 0, 0.16) transparent; }
 }
 
-/* Overlay panels (ResponsiveOverlayPanel) open and close on the compositor. The sheet drag writes
+/* Overlay panels (UtilitySheet) open and close on the compositor. The sheet drag writes
    `transform` and these write `translate`, so they add: a thrown sheet leaves from where the finger let go. */
 .sheet-up[data-state="open"] { animation: sheet-up-in var(--sheet-in) both; }
 .sheet-up[data-state="closed"] { animation: sheet-up-out var(--sheet-out) forwards; }
@@ -823,6 +823,42 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   80% { box-shadow: 0 0 10px var(--color-phantom), 0 0 28px color-mix(in srgb, var(--color-phantom) 55%, transparent); }
 }
 
+/* ── Waiting, in the room's own instruments: state motion, so quick and purposeful, unlike the ambient loops. Under
+   reduced motion each lands on its resting frame (a still wave, a still arrow, a plain clip) beside its words. ── */
+
+/* Tuning (primitives/Tuning): the carrier races left half its width (two cycles, seamless) while it swells and
+   settles, hunting for the lock; the scope's edges fade so it reads as a window onto a longer signal. */
+.tuning { mask-image: linear-gradient(90deg, transparent, #000 28%, #000 72%, transparent); }
+.tuning-carrier { animation: tuning-run 620ms linear infinite; }
+.tuning-wave { transform-box: fill-box; transform-origin: center; filter: drop-shadow(0 0 2px currentColor); animation: tuning-lock 1.24s ease-in-out infinite alternate; }
+@keyframes tuning-run { to { translate: -50% 0; } }
+@keyframes tuning-lock { from { scale: 1 0.3; } to { scale: 1 1; } }
+
+/* Transfer (primitives/Transfer): the ring fills as the bytes move; the arrow shoots in, holds a beat at the centre,
+   and leaves the way the file is going (up and out to the cloud, down and in to this device). */
+.transfer-fill { filter: drop-shadow(0 0 3px currentColor); transition: stroke-dashoffset var(--duration-smooth) var(--ease-out-expo), opacity var(--duration-fast) ease; }
+.transfer-arrow { animation: transfer-up 900ms var(--ease-out-quart) infinite; }
+[data-direction="down"] .transfer-arrow { animation-name: transfer-down; }
+@keyframes transfer-up { 0% { translate: 0 11px; } 35%, 55% { translate: 0 0; } 100% { translate: 0 -11px; } }
+@keyframes transfer-down { 0% { translate: 0 -11px; } 35%, 55% { translate: 0 0; } 100% { translate: 0 11px; } }
+
+/* Skeleton (primitives/Skeleton): a clip waiting on the timeline, and the playhead's light passing over it, then a
+   breath before the next pass. A sweep, never a pulse. */
+:root { --skeleton-ground: color-mix(in srgb, var(--color-ink) 6%, transparent); --skeleton-light: color-mix(in srgb, var(--color-ink) 9%, transparent); }
+[data-theme="daylight"] { --skeleton-ground: color-mix(in srgb, var(--color-ink) 7%, transparent); --skeleton-light: rgb(255 255 255 / 0.65); }
+.skeleton { position: relative; overflow: hidden; isolation: isolate; background-color: var(--skeleton-ground); }
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 15%, color-mix(in srgb, var(--accent) 10%, transparent) 40%, var(--skeleton-light) 50%, color-mix(in srgb, var(--accent) 10%, transparent) 60%, transparent 85%);
+  translate: -100% 0;
+  animation: skeleton-sweep 1.5s var(--ease-out-cubic) var(--sweep-delay, 0ms) infinite;
+}
+/* `--sweep-delay` on a group staggers its clips, so the light travels a grid in reading order */
+@keyframes skeleton-sweep { 0% { translate: -100% 0; } 70%, 100% { translate: 100% 0; } }
+
 /* A release without artwork: a monogram pressed from its title (ReleaseArt). --art-hue comes from the title,
    so each release keeps its own colour; the grooves are a record's, the sheen a sleeve's. */
 .art-monogram {
@@ -1012,6 +1048,10 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 /* A playhead or level: a slim track filled up to --fill, and a thumb that comes up under a pointer (always, on touch) */
 .scrubber {
   --track: 4px;
+  /* Played, then what's already here from the cloud (`--buffered`, the player's only), then the rest */
+  --scrubber-track: linear-gradient(90deg, var(--accent) var(--fill),
+    color-mix(in srgb, var(--accent) 30%, var(--color-line-strong)) var(--fill) var(--buffered, var(--fill)),
+    var(--color-line-strong) var(--buffered, var(--fill)));
   appearance: none;
   height: 1.25rem;
   background: transparent;
@@ -1023,12 +1063,12 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 .scrubber::-webkit-slider-runnable-track {
   height: var(--track);
   border-radius: 9999px;
-  background: linear-gradient(90deg, var(--accent) var(--fill), var(--color-line-strong) var(--fill));
+  background: var(--scrubber-track);
 }
 .scrubber::-moz-range-track {
   height: var(--track);
   border-radius: 9999px;
-  background: linear-gradient(90deg, var(--accent) var(--fill), var(--color-line-strong) var(--fill));
+  background: var(--scrubber-track);
 }
 .scrubber::-webkit-slider-thumb {
   appearance: none;

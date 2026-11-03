@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { DESTINATIONS, SETTINGS_ENTRY, type Destination } from '../../lib/nav'
 import { cn } from '../../lib/utils'
 import { seedDev, wipeDev } from '#/server/dev'
-import { BrandMark, Led, Tip } from '../primitives'
+import { BrandMark, Led, Tip, Tuning } from '../primitives'
 import * as DropdownMenu from '../primitives/DropdownMenu'
 import { useSettingsParam } from '../settings/use-settings-param'
 
@@ -114,7 +114,7 @@ function DevMenu({ expanded }: { expanded: boolean }) {
   }
   return (
     <DropdownMenu.Root>
-      <RailItem icon={FlaskConical} label={busy ? 'Working…' : 'Developer'} expanded={expanded}>
+      <RailItem icon={FlaskConical} label={busy ? 'Working…' : 'Developer'} busy={busy} expanded={expanded}>
         {(content, className) => (
           <DropdownMenu.Trigger asChild disabled={busy}>
             <button type="button" aria-busy={busy} className={cn(className, 'text-ink-muted hover:bg-accent-dim hover:text-ink')}>
@@ -148,6 +148,7 @@ function RailItem({
   label,
   expanded,
   lit = false,
+  busy = false,
   children,
 }: {
   icon: LucideIcon
@@ -155,12 +156,14 @@ function RailItem({
   expanded: boolean
   /** The channel's select LED: lit on the current destination. */
   lit?: boolean
+  /** Waiting on the studio: the icon tunes in. */
+  busy?: boolean
   children: (content: ReactNode, className: string) => ReactNode
 }) {
   const content = (
     <>
       <Led lit={lit} className={cn('absolute left-[3px] transition-opacity duration-(--duration-normal)', lit ? 'opacity-100' : 'opacity-0')} />
-      <Icon size={18} aria-hidden="true" className="shrink-0" />
+      {busy ? <Tuning className="w-[18px] text-[12px]" /> : <Icon size={18} aria-hidden="true" className="shrink-0" />}
       <Label expanded={expanded}>{label}</Label>
     </>
   )

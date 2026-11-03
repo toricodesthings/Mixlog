@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { getSettings, saveKeepDays } from '#/server/settings'
 import { DEFAULT_KEEP_DAYS, KEEP_CHOICES, type KeepDays } from '#/server/shipping'
 import { cn } from '../../../lib/utils'
-import { Led } from '../../primitives'
+import { Led, Skeleton } from '../../primitives'
 import { SettingsSection } from '../SettingsLayout'
 
 const CHOICE: Record<string, { title: string; says: string }> = {
@@ -65,7 +65,7 @@ export function ReleasesTab() {
                 )}
               >
                 <input type="radio" name="keep" checked={keep === days} onChange={() => void choose(days)} className="sr-only" />
-                <Led lit={keep === days} className="shrink-0" />
+                {keep === undefined ? <Skeleton className="size-1.5 shrink-0 rounded-full" /> : <Led lit={keep === days} className="shrink-0" />}
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="flex items-center gap-2 text-base font-medium text-ink">
                     {title}

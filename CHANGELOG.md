@@ -15,6 +15,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 - A track page has Upload in its header: choose Final, Master, Mix or an alternate, then drop or pick the files.
 - Settings → Releases says how many set-aside versions a shorter window would erase tonight.
 - Every version shows the day and time it landed, in your time zone, so a night of bounces reads in order.
+- Pages on their way show their own shape with a light sweeping across it; covers do too until their artwork arrives.
+- Play fills a ring while the file arrives, and the playhead shows how much is already here.
+- Uploads fill a ring with a rising arrow; a license being read fills one with a falling arrow.
 
 ### Changed
 

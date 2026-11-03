@@ -24,7 +24,7 @@ export function upcOf(value: string): string | null {
   return (10 - (sum % 10)) % 10 === Number(upc.at(-1)) ? upc : null
 }
 
-export type ReleaseDetails = {
+type ReleaseDetails = {
   id: string
   title: string
   format: ReleaseFormat

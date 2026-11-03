@@ -6,7 +6,7 @@ import { ARTWORK_ACCEPT, artworkProblem } from '#/server/files'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { uploadArtwork } from '../../lib/files'
 import { cn } from '../../lib/utils'
-import { Progress, Tip } from '../primitives'
+import { Tip, Transfer } from '../primitives'
 import { ReleaseArt } from './ReleaseArt'
 
 /** The release's cover (in its page header, or its Summary scene), and the only way to its artwork: click it, or drop a PNG or JPG on it.
@@ -70,10 +70,10 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
             )}
           >
             {status === 'uploading' ? (
-              // Sent, then stored: the bar fills as it leaves, and the cover changes once it's in.
-              <span className={cn('flex w-full flex-col items-center', big ? 'gap-3 px-8' : 'gap-1.5 px-2')}>
-                <span data-numeric className={cn('readout text-ink', big ? 'text-sm' : 'text-[10px]')}>{sent < 1 ? `${Math.round(sent * 100)}%` : 'Storing'}</span>
-                <Progress value={sent} label="Sending the artwork" className={big ? 'w-full max-w-64' : 'h-1.5 w-full'} />
+              // Sent, then stored: the ring fills as it leaves, and the cover changes once it's in.
+              <span className={cn('flex flex-col items-center', big ? 'gap-3' : 'gap-1')}>
+                <Transfer direction="up" value={sent} label="Sending the artwork" className={big ? 'text-6xl' : 'text-2xl'} />
+                {big && <span data-numeric className="readout text-sm text-ink">{sent < 1 ? `${Math.round(sent * 100)}%` : 'Storing'}</span>}
               </span>
             ) : (
               <ImagePlus size={big ? 28 : 20} aria-hidden="true" />

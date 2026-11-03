@@ -13,11 +13,19 @@ export function idInput(id: unknown): string {
   return id
 }
 
+/** A no in the artist's words (bad input, a rule the move breaks): their answer, not a bug. Its `status` keeps Start
+ *  from logging it, and `server/log.ts` lets it through untouched. */
+export class Refusal extends Error {
+  constructor(message: string, readonly status = 400) {
+    super(message)
+  }
+}
+
 /** A Zod schema as a validator whose error is the first problem in our own words, not Zod's JSON dump. */
 export const readWith =
   <T extends z.ZodType>(schema: T) =>
   (input: unknown): z.output<T> => {
     const result = schema.safeParse(input)
-    if (!result.success) throw new Error(result.error.issues[0].message)
+    if (!result.success) throw new Refusal(result.error.issues[0].message)
     return result.data
   }

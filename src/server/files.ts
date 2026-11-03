@@ -10,13 +10,17 @@ export const MAX_ARTWORK_BYTES = 20 * 1024 * 1024
 /** What the artwork pickers accept. */
 export const ARTWORK_ACCEPT = 'image/png,image/jpeg,.png,.jpg,.jpeg'
 
-/** Why this upload can't be artwork, or null when it can. */
-export function artworkProblem(contentType: string | null, size: number): string | null {
-  if (!ARTWORK_TYPES.includes(contentType as (typeof ARTWORK_TYPES)[number])) return 'Artwork is a PNG or JPG.'
-  if (!Number.isInteger(size) || size <= 0) return 'The image is empty or its size is unknown.'
-  if (size > MAX_ARTWORK_BYTES) return 'Artwork is 20 MB at most.'
+/** Why a file sent whole can't be taken (wrong type, empty, too big), or null when it can. */
+function oneFileProblem(types: readonly string[], max: number, contentType: string | null, size: number, wrongType: string, what: string, tooBig: string) {
+  if (!types.includes(contentType as string)) return wrongType
+  if (!Number.isInteger(size) || size <= 0) return `The ${what} is empty or its size is unknown.`
+  if (size > max) return tooBig
   return null
 }
+
+/** Why this upload can't be artwork, or null when it can. */
+export const artworkProblem = (contentType: string | null, size: number) =>
+  oneFileProblem(ARTWORK_TYPES, MAX_ARTWORK_BYTES, contentType, size, 'Artwork is a PNG or JPG.', 'image', 'Artwork is 20 MB at most.')
 
 /** The `Content-Range` for a ranged read of an object of `size` bytes. Keys may be present but undefined (local R2 does that). */
 export function contentRange(range: { offset?: number; length?: number; suffix?: number }, size: number): string {
@@ -39,7 +43,7 @@ const AUDIO_EXTENSIONS: Record<string, string> = {
   m4a: 'audio/mp4',
   ogg: 'audio/ogg',
 }
-export const AUDIO_TYPES = [...new Set(Object.values(AUDIO_EXTENSIONS))]
+const AUDIO_TYPES = [...new Set(Object.values(AUDIO_EXTENSIONS))]
 /** What a bounce picker offers: every audio format Mixlog takes. */
 export const AUDIO_ACCEPT = [...AUDIO_TYPES, ...Object.keys(AUDIO_EXTENSIONS).map((ext) => `.${ext}`)].join(',')
 /** What a final's picker offers: the lossless formats. */
@@ -79,7 +83,7 @@ const LICENSE_EXTENSIONS: Record<string, string> = {
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   doc: 'application/msword',
 }
-export const LICENSE_TYPES = Object.values(LICENSE_EXTENSIONS)
+const LICENSE_TYPES = Object.values(LICENSE_EXTENSIONS)
 /** What a file picker offers for a license. */
 export const LICENSE_ACCEPT = Object.keys(LICENSE_EXTENSIONS).map((ext) => `.${ext}`).join(',')
 /** A license goes up in one request, like artwork. */
@@ -89,12 +93,8 @@ export const MAX_LICENSE_BYTES = 20 * 1024 * 1024
 export const licenseTypeOf = (name: string): string | null => LICENSE_EXTENSIONS[name.split('.').pop()!.toLowerCase()] ?? null
 
 /** Why this can't be a license, or null when it can. */
-export function licenseProblem(contentType: string | null, size: number): string | null {
-  if (!LICENSE_TYPES.includes(contentType as string)) return 'A license is a PDF or a Word document.'
-  if (!Number.isInteger(size) || size <= 0) return 'The file is empty or its size is unknown.'
-  if (size > MAX_LICENSE_BYTES) return 'A license is 20 MB at most.'
-  return null
-}
+export const licenseProblem = (contentType: string | null, size: number) =>
+  oneFileProblem(LICENSE_TYPES, MAX_LICENSE_BYTES, contentType, size, 'A license is a PDF or a Word document.', 'file', 'A license is 20 MB at most.')
 
 /** Each license type's first bytes: a PDF's header, a .docx's ZIP, a .doc's OLE container. */
 const LICENSE_MAGIC: Record<string, number[]> = {

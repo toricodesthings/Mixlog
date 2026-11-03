@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { isZone, todayIn, type Instant, type LocalDate } from '#/lib/time'
 import { Format, LocalDay, Title, detailsInput, type ReleaseFormat, type TrackOrigin } from '#/server/details'
 import { db } from '#/server/db'
-import { Id, idInput, readWith } from '#/server/input'
+import { Id, idInput, readWith, Refusal } from '#/server/input'
 import { currentPins, releases, stampNow, tracks, versions } from '#/server/schema'
 import { keepDays } from '#/server/settings'
 import { LANES, lanesOf, moveProblem } from '#/server/lanes'
@@ -153,7 +153,7 @@ export const getRelease = createServerFn()
     }
   })
 
-export type NewRelease = { title: string; format: ReleaseFormat; tracks: string[]; releasedOn: LocalDate | null }
+type NewRelease = { title: string; format: ReleaseFormat; tracks: string[]; releasedOn: LocalDate | null }
 
 
 /** A release's title and format, and its tracks' titles in order. A single is its one track, named like it.
@@ -185,10 +185,10 @@ export const updateRelease = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const [release] = await db.select({ releasedAt: releases.releasedAt }).from(releases).where(eq(releases.id, data.id))
     if (!release) throw notFound()
-    if ((release.releasedAt !== null) !== data.released) throw new Error('This release moved; reload it.')
+    if ((release.releasedAt !== null) !== data.released) throw new Refusal('This release moved; reload it.')
     const own = await db.select({ id: tracks.id }).from(tracks).where(eq(tracks.releaseId, data.id))
-    if (data.tracks.some((t) => !own.some((o) => o.id === t.id))) throw new Error('A track here isn’t on this release.')
-    if (data.format === 'single' && own.length > 1) throw new Error('A single has one track. Make it an EP to keep them all.')
+    if (data.tracks.some((t) => !own.some((o) => o.id === t.id))) throw new Refusal('A track here isn’t on this release.')
+    if (data.format === 'single' && own.length > 1) throw new Refusal('A single has one track. Make it an EP to keep them all.')
     await db.batch([
       db.update(releases).set({ title: data.title, format: data.format, releaseDate: data.releaseDate, upc: data.upc }).where(eq(releases.id, data.id)),
       ...data.tracks.map((t) => db.update(tracks).set({ title: t.title, isrc: t.isrc, origin: t.origin, updatedAt: stampNow }).where(eq(tracks.id, t.id))),
@@ -209,11 +209,11 @@ export const fileVersion = createServerFn({ method: 'POST' })
       .where(and(eq(versions.id, versionId), isNull(versions.prunedAt)))
     if (!version) throw notFound()
     const problem = moveProblem(version, to, version.released ? 'released' : 'upcoming')
-    if (problem) throw new Error(problem)
+    if (problem) throw new Refusal(problem)
     const trackId = version.trackId!
     const kind = to === 'mix' ? 'mix' : 'master'
     if (version.released) {
-      if (await hasFinal(trackId)) throw new Error('This track has its final. Replace it instead.')
+      if (await hasFinal(trackId)) throw new Refusal('This track has its final. Replace it instead.')
       return void (await db.batch([db.update(versions).set({ kind, releasedAt: stampNow }).where(eq(versions.id, versionId)), ...pin(trackId, 'master', versionId), setAsideRest(trackId, versionId)]))
     }
     await db.batch([
@@ -256,10 +256,10 @@ const slices = (ids: string[]) => Array.from({ length: Math.ceil(ids.length / 90
 export const shipRelease = createServerOnlyFn(async (id: string, releasedOn: LocalDate) => {
   const [release] = await db.select({ releasedAt: releases.releasedAt }).from(releases).where(eq(releases.id, id))
   if (!release) throw notFound()
-  if (release.releasedAt) throw new Error('This release is already out.')
+  if (release.releasedAt) throw new Refusal('This release is already out.')
   const [trackRows, rows] = await db.batch([tracksOf(id).orderBy(tracks.position), versionsOf(id)])
   const missing = trackRows.find((t) => !lanesOf(t.id, rows as VersionRow[]).final)
-  if (missing) throw new Error('Every track needs its final, a WAV, AIFF or FLAC, before it goes out.')
+  if (missing) throw new Refusal('Every track needs its final, a WAV, AIFF or FLAC, before it goes out.')
   const shipped = rows.filter((v) => shippedOf(rows as VersionRow[]).includes(v.id))
   const pruned = prunedOf(rows as VersionRow[])
   await db.batch([
@@ -274,8 +274,8 @@ export const shipRelease = createServerOnlyFn(async (id: string, releasedOn: Loc
 export const unshipRelease = createServerOnlyFn(async (id: string, now = Date.now()) => {
   const [release] = await db.select({ releasedAt: releases.releasedAt }).from(releases).where(eq(releases.id, id))
   if (!release) throw notFound()
-  if (!release.releasedAt) throw new Error('This release is already in Upcoming.')
-  if (!moveBackWindow(release.releasedAt, await keepDays(), now)) throw new Error('Its older versions are erased now, so it stays in Releases.')
+  if (!release.releasedAt) throw new Refusal('This release is already in Upcoming.')
+  if (!moveBackWindow(release.releasedAt, await keepDays(), now)) throw new Refusal('Its older versions are erased now, so it stays in Releases.')
   await db.batch([
     db.update(releases).set({ releasedAt: null }).where(eq(releases.id, id)),
     db.update(versions).set({ releasedAt: null, prunedAt: null }).where(or(eq(versions.releaseId, id), inArray(versions.trackId, tracksOf(id)))),

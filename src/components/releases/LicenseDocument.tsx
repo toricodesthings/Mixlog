@@ -5,7 +5,7 @@ import 'react-pdf/dist/Page/TextLayer.css'
 
 import type { VersionRow } from '#/server/releases'
 import { downloadUrl, readFile } from '../../lib/files'
-import { Button } from '../primitives'
+import { Button, Skeleton } from '../primitives'
 import { Reading } from './LicenseControl'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc
@@ -26,7 +26,7 @@ const wordPage = (html: string) => `<!doctype html><html><head><meta charset="ut
 /** One license, read in place: a PDF page by page at the panel's width, a .docx as its text. A .doc (Word 97–2003)
  *  can't be read in a browser, so it says so and offers the file. Loaded lazily by LicenseControl. */
 export default function LicenseDocument({ version }: { version: VersionRow }) {
-  const [state, setState] = useState<{ status: 'reading' } | { status: 'pdf'; data: Uint8Array } | { status: 'word'; html: string } | { status: 'failed' }>({ status: 'reading' })
+  const [state, setState] = useState<{ status: 'reading'; arrived: number } | { status: 'pdf'; data: Uint8Array } | { status: 'word'; html: string } | { status: 'failed' }>({ status: 'reading', arrived: 0 })
   const word = version.content_type === 'application/msword'
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function LicenseDocument({ version }: { version: VersionRow }) {
     let live = true
     void (async () => {
       try {
-        const bytes = await readFile(version.id)
+        const bytes = await readFile(version.id, version.size, (arrived) => live && setState({ status: 'reading', arrived }))
         if (version.content_type === 'application/pdf') return live && setState({ status: 'pdf', data: new Uint8Array(bytes) })
         const mammoth = await import('mammoth')
         const { value } = await mammoth.convertToHtml({ arrayBuffer: bytes })
@@ -44,17 +44,17 @@ export default function LicenseDocument({ version }: { version: VersionRow }) {
       }
     })()
     return () => void (live = false)
-  }, [version.id, version.content_type, word])
+  }, [version.id, version.size, version.content_type, word])
 
   if (word) return <Unreadable version={version}>A Word 97–2003 document opens in Word, not here. Download it to read it.</Unreadable>
   if (state.status === 'failed') return <Unreadable version={version}>Couldn’t read this license here. It’s stored as uploaded: download it to open it.</Unreadable>
-  if (state.status === 'reading') return <Reading />
+  if (state.status === 'reading') return <Reading arrived={state.arrived} />
   if (state.status === 'word') return <iframe title={`License: ${version.filename}`} sandbox="" srcDoc={wordPage(state.html)} className="block h-full min-h-[60dvh] w-full rounded-2xl" />
-  return <PdfPages data={state.data} />
+  return <PdfPages data={state.data} version={version} />
 }
 
-/** Every page, fitted to the panel's width as it resizes. */
-function PdfPages({ data }: { data: Uint8Array }) {
+/** Every page, fitted to the panel's width as it resizes; each a page-shaped clip until pdf.js has drawn it. */
+function PdfPages({ data, version }: { data: Uint8Array; version: VersionRow }) {
   const frame = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [pages, setPages] = useState(0)
@@ -69,10 +69,10 @@ function PdfPages({ data }: { data: Uint8Array }) {
 
   return (
     <div ref={frame} className="flex flex-col items-center gap-3 p-3 sm:p-4">
-      <Document file={file} options={PDF_OPTIONS} onLoadSuccess={({ numPages }) => setPages(numPages)} loading={<Reading />} error={<Reading>Couldn’t read this PDF here. Download it to open it.</Reading>}>
+      <Document file={file} options={PDF_OPTIONS} onLoadSuccess={({ numPages }) => setPages(numPages)} loading={<Reading />} error={<Unreadable version={version}>Couldn’t read this PDF here. Download it to open it.</Unreadable>}>
         {width > 0 &&
           Array.from({ length: pages }, (_, i) => (
-            <Page key={i} pageNumber={i + 1} width={width} renderAnnotationLayer={false} className="mb-3 overflow-hidden rounded-xl shadow-lg last:mb-0" loading={null} />
+            <Page key={i} pageNumber={i + 1} width={width} renderAnnotationLayer={false} className="mb-3 overflow-hidden rounded-xl shadow-lg last:mb-0" loading={<Skeleton className="rounded-xl" style={{ width, height: Math.round(width * Math.SQRT2) }} />} />
           ))}
       </Document>
     </div>
