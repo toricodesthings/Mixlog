@@ -1,10 +1,12 @@
-import { Link, useLocation } from '@tanstack/react-router'
-import { PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react'
+import { Link, useLocation, useNavigate, useRouter } from '@tanstack/react-router'
+import { Eraser, FlaskConical, PanelLeftClose, PanelLeftOpen, Sprout, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import { DESTINATIONS, SETTINGS_ENTRY, type Destination } from '../../lib/nav'
 import { cn } from '../../lib/utils'
+import { seedDev, wipeDev } from '#/server/dev'
 import { Led, Meter, Tip } from '../primitives'
+import * as DropdownMenu from '../primitives/DropdownMenu'
 import { useSettingsParam } from '../settings/use-settings-param'
 
 const EXPANDED_KEY = 'mixlog.rail.expanded'
@@ -67,6 +69,7 @@ export function IconRail() {
       <Divider />
       {DESTINATIONS.primary.map(link)}
       <div className="flex-1" />
+      {import.meta.env.DEV && <DevMenu expanded={expanded} />}
       {DESTINATIONS.secondary.map(link)}
       <RailItem icon={SETTINGS_ENTRY.icon} label={SETTINGS_ENTRY.label} expanded={expanded} lit={!!settings.settings}>
         {(content, className) => (
@@ -89,6 +92,53 @@ export function IconRail() {
         )}
       </RailItem>
     </nav>
+  )
+}
+
+/** `pnpm dev` only (a build drops it, and the server refuses): start the local studio over, with samples or empty. */
+function DevMenu({ expanded }: { expanded: boolean }) {
+  const router = useRouter()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true)
+    try {
+      await action()
+      await navigate({ to: '/upcoming' })
+      await router.invalidate()
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'That didn’t work.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <DropdownMenu.Root>
+      <RailItem icon={FlaskConical} label={busy ? 'Working…' : 'Developer'} expanded={expanded}>
+        {(content, className) => (
+          <DropdownMenu.Trigger asChild disabled={busy}>
+            <button type="button" aria-busy={busy} className={cn(className, 'text-ink-muted hover:bg-accent-dim hover:text-ink')}>
+              {content}
+            </button>
+          </DropdownMenu.Trigger>
+        )}
+      </RailItem>
+      <DropdownMenu.Content side="right" align="end" className="min-w-[15rem]">
+        <p className="readout px-3 pt-2 pb-1 text-ink-muted">Dev only · this machine</p>
+        <DropdownMenu.Item className="gap-2.5" onSelect={() => void run(() => seedDev())}>
+          <Sprout size={16} aria-hidden="true" />
+          Fresh samples
+        </DropdownMenu.Item>
+        <DropdownMenu.Item
+          variant="danger"
+          className="gap-2.5"
+          onSelect={() => window.confirm('Wipe every release, track and file on this dev machine? This can’t be undone.') && void run(() => wipeDev())}
+        >
+          <Eraser size={16} aria-hidden="true" />
+          Wipe everything
+        </DropdownMenu.Item>
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
   )
 }
 

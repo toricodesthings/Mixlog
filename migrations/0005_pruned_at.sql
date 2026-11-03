@@ -1,0 +1,1 @@
+ALTER TABLE `versions` ADD `pruned_at` text;

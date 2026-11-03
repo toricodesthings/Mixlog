@@ -1,12 +1,12 @@
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { ChevronDown, Disc3, FilePlus2, ImagePlus, MicVocal, Piano, SlidersHorizontal, X, type LucideIcon } from 'lucide-react'
+import { ChevronDown, FilePlus2, ImagePlus, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { AUDIO_TYPES, MAX_AUDIO_BYTES, artworkProblem, audioTypeOf, type AudioKind } from '#/server/files'
 import { createRelease, type ReleaseFormat } from '#/server/releases'
 import { useFileDrop } from '../../hooks/ui/use-file-drop'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
-import { uploadArtwork, uploadAudio } from '../../lib/files'
+import { readDuration, uploadArtwork, uploadAudio } from '../../lib/files'
 import { deviceZone, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { Button, Input, Led, Meter, Progress, Tip } from '../primitives'
@@ -18,13 +18,14 @@ import { formatLength } from '../releases/browse'
 import { ReleaseArt } from '../releases/ReleaseArt'
 import { ARTWORK_ACCEPT, useCoverDrop } from '../releases/use-cover-drop'
 import { FORMAT_LABEL, releaseLink, type Section } from '../releases/sections'
+import { KIND_ICON } from '../releases/stacks'
 import { readFilename, suggestFormat } from './suggest'
 
 const KINDS: Record<AudioKind, { label: string; icon: LucideIcon }> = {
-  master: { label: 'Master', icon: Disc3 },
-  mix: { label: 'Mix', icon: SlidersHorizontal },
-  instrumental: { label: 'Instrumental', icon: Piano },
-  acapella: { label: 'Acapella', icon: MicVocal },
+  master: { label: 'Master', icon: KIND_ICON.master },
+  mix: { label: 'Mix', icon: KIND_ICON.mix },
+  instrumental: { label: 'Instrumental', icon: KIND_ICON.instrumental },
+  acapella: { label: 'Acapella', icon: KIND_ICON.acapella },
 }
 const FORMATS = (['single', 'ep', 'album'] as const).map((value) => ({ value, label: FORMAT_LABEL[value] }))
 const ACCEPT = [...AUDIO_TYPES, '.wav', '.aif', '.aiff', '.flac', '.mp3', '.m4a', '.ogg'].join(',')
@@ -46,19 +47,6 @@ function timeLeft(sent: number, total: number, seconds: number): string | null {
   return left < 60 ? `${Math.max(5, Math.round(left / 5) * 5)} s left` : `${Math.round(left / 60)} min left`
 }
 const errorOf = (error: unknown, fallback: string) => (error instanceof Error && error.message) || fallback
-
-/** How long a file plays, read by the browser; null when it can't play it (AIFF in most). */
-function readDuration(file: File): Promise<number | null> {
-  return new Promise((resolve) => {
-    const audio = new Audio()
-    const url = URL.createObjectURL(file)
-    const done = (ms: number | null) => (URL.revokeObjectURL(url), resolve(ms))
-    audio.preload = 'metadata'
-    audio.onloadedmetadata = () => done(Number.isFinite(audio.duration) ? Math.round(audio.duration * 1000) : null)
-    audio.onerror = () => done(null)
-    audio.src = url
-  })
-}
 
 /**
  * Start a release from files: dropped on Upcoming or Releases, or picked. On Releases it's one already out, so it asks the day. Nothing is saved until Save. The filenames

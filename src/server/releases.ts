@@ -1,13 +1,15 @@
 import { notFound } from '@tanstack/react-router'
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { isZone, todayIn, type Instant, type LocalDate } from '#/lib/time'
 import { Format, LocalDay, Title, detailsInput, type ReleaseFormat, type TrackOrigin } from '#/server/details'
 import { db } from '#/server/db'
-import { idInput, readWith } from '#/server/input'
+import { Id, idInput, readWith } from '#/server/input'
 import { currentPins, releases, stampNow, tracks, versions } from '#/server/schema'
+import { keepDays } from '#/server/settings'
+import { finalMasterOf, moveBackWindow, prunedOf, shippedOf } from '#/server/shipping'
 
 export type { ReleaseFormat, TrackOrigin }
 export type ReleaseRow = {
@@ -46,11 +48,11 @@ export type VersionRow = {
   is_current: number
 }
 
-/** A stack's current version: the pin if there is one, else the newest. `column` is the stack's owner column
- *  (`track_id` or `release_id`), `owner` the outer row's ID it must equal. */
+/** A stack's current version: the pin if there is one, else the newest not pruned. `column` is the stack's owner
+ *  column (`track_id` or `release_id`), `owner` the outer row's ID it must equal. */
 const current = (column: 'track_id' | 'release_id', owner: SQL, kind: string) => sql`COALESCE(
   (SELECT p.version_id FROM ${currentPins} p WHERE p.${sql.raw(column)} = ${owner} AND p.kind = ${kind}),
-  (SELECT n.id FROM ${versions} n WHERE n.${sql.raw(column)} = ${owner} AND n.kind = ${kind} ORDER BY n.number DESC LIMIT 1))`
+  (SELECT n.id FROM ${versions} n WHERE n.${sql.raw(column)} = ${owner} AND n.kind = ${kind} AND n.pruned_at IS NULL ORDER BY n.number DESC LIMIT 1))`
 
 const masterLength = (trackId: SQL) => sql`(SELECT v.duration_ms FROM ${versions} v WHERE v.id = ${current('track_id', trackId, 'master')})`
 
@@ -86,43 +88,61 @@ export const listReleased = createServerFn().handler(
   (): Promise<ReleaseRow[]> => releaseQuery().where(isNotNull(releases.releasedAt)).orderBy(desc(releases.releasedAt)),
 )
 
+const tracksOf = (releaseId: string) => db.select({ id: tracks.id }).from(tracks).where(eq(tracks.releaseId, releaseId))
+
+/** Every file a release holds that isn't pruned, newest first in each stack: its tracks' versions and its artwork,
+ *  each with whether it's its stack's current one. */
+const versionsOf = createServerOnlyFn((id: string) =>
+  db
+    .select({
+      id: versions.id,
+      track_id: versions.trackId,
+      kind: versions.kind,
+      number: versions.number,
+      filename: versions.filename,
+      content_type: versions.contentType,
+      size: versions.size,
+      duration_ms: versions.durationMs,
+      note: versions.note,
+      released_at: versions.releasedAt,
+      created_at: versions.createdAt,
+      is_current: sql<number>`${outer('versions', 'id')} = COALESCE(
+        (SELECT p.version_id FROM ${currentPins} p WHERE p.kind = ${outer('versions', 'kind')}
+          AND (p.track_id = ${outer('versions', 'track_id')} OR p.release_id = ${outer('versions', 'release_id')})),
+        (SELECT n.id FROM ${versions} n WHERE n.kind = ${outer('versions', 'kind')} AND n.pruned_at IS NULL
+          AND (n.track_id = ${outer('versions', 'track_id')} OR n.release_id = ${outer('versions', 'release_id')}) ORDER BY n.number DESC LIMIT 1))`,
+    })
+    .from(versions)
+    .where(and(or(eq(versions.releaseId, id), inArray(versions.trackId, tracksOf(id))), isNull(versions.prunedAt)))
+    .orderBy(versions.kind, desc(versions.number)),
+)
+
 export const getRelease = createServerFn()
   .validator(idInput)
   .handler(async ({ data: id }) => {
     const [release] = await releaseQuery().where(eq(releases.id, id))
     if (!release) throw notFound()
-    const ofRelease = db.select({ id: tracks.id }).from(tracks).where(eq(tracks.releaseId, id))
-    const [trackRows, versionRows] = await db.batch([
-      db
-        .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, duration_ms: sql<number | null>`${masterLength(outer('tracks', 'id'))}` })
-        .from(tracks)
-        .where(eq(tracks.releaseId, id))
-        .orderBy(tracks.position, tracks.createdAt),
-      // Every file the release holds, newest first in each stack: its tracks' versions and its artwork.
-      db
-        .select({
-          id: versions.id,
-          track_id: versions.trackId,
-          kind: versions.kind,
-          number: versions.number,
-          filename: versions.filename,
-          content_type: versions.contentType,
-          size: versions.size,
-          duration_ms: versions.durationMs,
-          note: versions.note,
-          released_at: versions.releasedAt,
-          created_at: versions.createdAt,
-          is_current: sql<number>`${outer('versions', 'id')} = COALESCE(
-            (SELECT p.version_id FROM ${currentPins} p WHERE p.kind = ${outer('versions', 'kind')}
-              AND (p.track_id = ${outer('versions', 'track_id')} OR p.release_id = ${outer('versions', 'release_id')})),
-            (SELECT n.id FROM ${versions} n WHERE n.kind = ${outer('versions', 'kind')}
-              AND (n.track_id = ${outer('versions', 'track_id')} OR n.release_id = ${outer('versions', 'release_id')}) ORDER BY n.number DESC LIMIT 1))`,
-        })
-        .from(versions)
-        .where(or(eq(versions.releaseId, id), inArray(versions.trackId, ofRelease)))
-        .orderBy(versions.kind, desc(versions.number)),
+    const [[trackRows, versionRows, [{ pruned }]], keep] = await Promise.all([
+      db.batch([
+        db
+          .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, duration_ms: sql<number | null>`${masterLength(outer('tracks', 'id'))}` })
+          .from(tracks)
+          .where(eq(tracks.releaseId, id))
+          .orderBy(tracks.position, tracks.createdAt),
+        versionsOf(id),
+        db.select({ pruned: sql<number>`COUNT(*)` }).from(versions).where(and(inArray(versions.trackId, tracksOf(id)), isNotNull(versions.prunedAt))),
+      ]),
+      keepDays(),
     ])
-    return { release: release as ReleaseRow, tracks: trackRows as TrackRow[], versions: versionRows as VersionRow[] }
+    return {
+      release: release as ReleaseRow,
+      tracks: trackRows as TrackRow[],
+      versions: versionRows as VersionRow[],
+      /** Versions pruned when it moved to Releases, still waiting out the keep window. */
+      pruned,
+      /** How long what didn't ship is kept after release (Settings → Releases); null keeps everything. */
+      keepDays: keep,
+    }
   })
 
 export type NewRelease = { title: string; format: ReleaseFormat; tracks: string[]; releasedOn: LocalDate | null }
@@ -166,3 +186,74 @@ export const updateRelease = createServerFn({ method: 'POST' })
       ...data.tracks.map((t) => db.update(tracks).set({ title: t.title, isrc: t.isrc, origin: t.origin, updatedAt: stampNow }).where(eq(tracks.id, t.id))),
     ])
   })
+
+/** Picks a stack's current version (Make current): a pin, so it stays current whatever lands on top. Never on a
+ *  release that's out: what shipped stays as shipped. */
+export const makeCurrent = createServerFn({ method: 'POST' })
+  .validator(readWith(z.object({ versionId: Id() })))
+  .handler(async ({ data }) => {
+    const [version] = await db
+      .select({ trackId: versions.trackId, releaseId: versions.releaseId, kind: versions.kind, released: releases.releasedAt })
+      .from(versions)
+      .leftJoin(tracks, eq(tracks.id, versions.trackId))
+      .innerJoin(releases, or(eq(releases.id, versions.releaseId), eq(releases.id, tracks.releaseId)))
+      .where(and(eq(versions.id, data.versionId), isNull(versions.prunedAt)))
+    if (!version) throw notFound()
+    if (version.released) throw new Error('This release is out: what shipped stays as shipped.')
+    await db.batch([unpin(version), db.insert(currentPins).values({ versionId: data.versionId, trackId: version.trackId, releaseId: version.releaseId, kind: version.kind })])
+  })
+
+const unpin = (stack: { trackId: string | null; releaseId: string | null; kind: string }) =>
+  db.delete(currentPins).where(and(stack.trackId ? eq(currentPins.trackId, stack.trackId) : eq(currentPins.releaseId, stack.releaseId!), eq(currentPins.kind, stack.kind)))
+
+/** D1 binds at most 100 values a statement: long ID lists go in slices. */
+const slices = (ids: string[]) => Array.from({ length: Math.ceil(ids.length / 90) }, (_, i) => ids.slice(i * 90, i * 90 + 90))
+
+/** Stamps a release out: its day, and the Released stamp on the release and on what shipped (each track's final
+ *  master and the current version of its other stacks, each pinned so it stays current). Everything else on its tracks
+ *  (older versions, every mix) is pruned: hidden now, erased by the cleanup cron after the keep window. One batch.
+ *  When Settings keeps everything, nothing is pruned: the release keeps every version it had. */
+export const shipRelease = createServerOnlyFn(async (id: string, releasedOn: LocalDate) => {
+  const [release] = await db.select({ releasedAt: releases.releasedAt }).from(releases).where(eq(releases.id, id))
+  if (!release) throw notFound()
+  if (release.releasedAt) throw new Error('This release is already out.')
+  const [trackRows, rows] = await db.batch([tracksOf(id).orderBy(tracks.position), versionsOf(id)])
+  const missing = trackRows.find((t) => !finalMasterOf(t.id, rows as VersionRow[]))
+  if (missing) throw new Error('Every track needs its final master, a WAV, AIFF or FLAC, before it goes out.')
+  const shipped = rows.filter((v) => shippedOf(rows as VersionRow[]).includes(v.id))
+  const pruned = (await keepDays()) === null ? [] : prunedOf(rows as VersionRow[])
+  await db.batch([
+    db.update(releases).set({ releasedAt: stampNow, releaseDate: releasedOn }).where(eq(releases.id, id)),
+    ...slices(shipped.map((v) => v.id)).map((ids) => db.update(versions).set({ releasedAt: stampNow }).where(inArray(versions.id, ids))),
+    ...slices(pruned).map((ids) => db.update(versions).set({ prunedAt: stampNow }).where(inArray(versions.id, ids))),
+    ...shipped.flatMap((v) => [unpin({ trackId: v.track_id, releaseId: null, kind: v.kind }), db.insert(currentPins).values({ versionId: v.id, trackId: v.track_id, kind: v.kind })]),
+  ])
+})
+
+/** Back to Upcoming, inside the keep window only: the stamps come off and every pruned version is back. */
+export const unshipRelease = createServerOnlyFn(async (id: string, now = Date.now()) => {
+  const [release] = await db.select({ releasedAt: releases.releasedAt }).from(releases).where(eq(releases.id, id))
+  if (!release) throw notFound()
+  if (!release.releasedAt) throw new Error('This release is already in Upcoming.')
+  if (!moveBackWindow(release.releasedAt, await keepDays(), now)) throw new Error('Its older versions are erased now, so it stays in Releases.')
+  await db.batch([
+    db.update(releases).set({ releasedAt: null }).where(eq(releases.id, id)),
+    db.update(versions).set({ releasedAt: null, prunedAt: null }).where(or(eq(versions.releaseId, id), inArray(versions.trackId, tracksOf(id)))),
+  ])
+})
+
+/** Move to Releases, from the release's Move dialog: the day it went out, no later than today in the artist's `zone`. */
+export const moveToReleases = createServerFn({ method: 'POST' })
+  .validator(
+    readWith(
+      z
+        .object({ id: Id(), releasedOn: LocalDay, zone: z.string() })
+        .refine((r) => isZone(r.zone) && r.releasedOn <= todayIn(r.zone), 'The release day is a day that has come.'),
+    ),
+  )
+  .handler(({ data }) => shipRelease(data.id, data.releasedOn))
+
+/** Move back to Upcoming, while the keep window is open. */
+export const moveToUpcoming = createServerFn({ method: 'POST' })
+  .validator(idInput)
+  .handler(({ data: id }) => unshipRelease(id))

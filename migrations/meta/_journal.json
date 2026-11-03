@@ -22,6 +22,27 @@
       "when": 1793568099103,
       "tag": "0003_track_origin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793660352910,
+      "tag": "0004_license_kind",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793662784043,
+      "tag": "0005_pruned_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793663653833,
+      "tag": "0006_settings",
+      "breakpoints": true
     }
   ]
 }

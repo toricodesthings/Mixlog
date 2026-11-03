@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { MAX_ARTWORK_BYTES, MAX_AUDIO_BYTES, artworkProblem, audioProblem, audioTypeOf, contentRange, parseUploadKey, uploadKey } from '#/server/files'
+import { MAX_ARTWORK_BYTES, MAX_AUDIO_BYTES, MAX_LICENSE_BYTES, artworkProblem, audioProblem, audioTypeOf, contentRange, fileKey, licenseProblem, licenseTypeOf, startsLike } from '#/server/files'
 
 describe('artworkProblem', () => {
   it('takes a picture within the cap', () => {
@@ -43,9 +43,40 @@ describe('audio uploads', () => {
     expect(audioProblem('mix', 'audio/mpeg', MAX_AUDIO_BYTES + 1)).toMatch('4 GB')
   })
 
-  it('round-trips an upload key and refuses anything else', () => {
-    expect(parseUploadKey(uploadKey('t1', 'mix', 'v-1'))).toEqual({ trackId: 't1', kind: 'mix', versionId: 'v-1' })
-    expect(parseUploadKey('tracks/t1/artwork/v1')).toBeNull()
-    expect(parseUploadKey('tracks/../x/mix/v1')).toBeNull()
+})
+
+describe('fileKey', () => {
+  it('folders a file under its release, then its track, then its stack', () => {
+    expect(fileKey({ releaseId: 'r1', trackId: 't1' }, 'master', 'v1')).toBe('releases/r1/tracks/t1/master/v1')
+    expect(fileKey({ releaseId: 'r1' }, 'artwork', 'v2')).toBe('releases/r1/artwork/v2')
+  })
+})
+
+describe('licenses', () => {
+  const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  const bytes = (...b: number[]) => new Uint8Array([...b, 0, 0, 0, 0, 0, 0, 0, 0])
+
+  it('takes a PDF or a Word document, by extension', () => {
+    expect(licenseTypeOf('Sample clearance.PDF')).toBe('application/pdf')
+    expect(licenseTypeOf('license.docx')).toBe(DOCX)
+    expect(licenseTypeOf('license.doc')).toBe('application/msword')
+    expect(licenseTypeOf('license.docm')).toBeNull()
+    expect(licenseTypeOf('license.html')).toBeNull()
+  })
+
+  it('checks the type and size', () => {
+    expect(licenseProblem('application/pdf', 1)).toBeNull()
+    expect(licenseProblem('text/html', 1)).toMatch(/PDF or a Word/)
+    expect(licenseProblem(DOCX, 0)).toMatch(/empty/)
+    expect(licenseProblem(DOCX, MAX_LICENSE_BYTES + 1)).toMatch(/20 MB/)
+  })
+
+  it('refuses a file whose bytes aren’t the type it claims', () => {
+    expect(startsLike('application/pdf', new TextEncoder().encode('%PDF-1.7\n'))).toBe(true)
+    expect(startsLike(DOCX, bytes(0x50, 0x4b, 0x03, 0x04))).toBe(true)
+    expect(startsLike('application/msword', bytes(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1))).toBe(true)
+    expect(startsLike('application/pdf', new TextEncoder().encode('<html><script>'))).toBe(false)
+    expect(startsLike(DOCX, new TextEncoder().encode('%PDF-1.7'))).toBe(false)
+    expect(startsLike('text/html', new TextEncoder().encode('<html>'))).toBe(false)
   })
 })

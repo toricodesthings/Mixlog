@@ -40,10 +40,10 @@ export const tracks = sqliteTable('tracks', {
   updatedAt: text('updated_at').notNull().default(stampNow),
 })
 
-export const VERSION_KINDS = ['mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'other'] as const
+export const VERSION_KINDS = ['mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'license', 'other'] as const
 
-// One immutable file. Belongs to a track, or to a release (artwork, release video).
-// Rows are never updated except released_at; files are never overwritten.
+// One immutable file. Belongs to a track (bounces, its license), or to a release (artwork, release video).
+// Rows are never updated except released_at and pruned_at; files are never overwritten.
 export const versions = sqliteTable(
   'versions',
   {
@@ -59,10 +59,13 @@ export const versions = sqliteTable(
     durationMs: integer('duration_ms'),
     note: text('note'), // one line: what changed
     releasedAt: text('released_at'), // the Released stamp
+    // Moving a release to Releases prunes what didn't ship: hidden at once, erased by the cleanup cron after the grace
+    // window (shipping.ts), and unstamped if the release moves back to Upcoming before then.
+    prunedAt: text('pruned_at'),
     createdAt: createdAt(),
   },
   (t) => [
-    check('versions_kind', sql`${t.kind} IN ('mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'other')`),
+    check('versions_kind', sql`${t.kind} IN ('mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'license', 'other')`),
     check('versions_owner', sql`(${t.trackId} IS NULL) <> (${t.releaseId} IS NULL)`),
     uniqueIndex('versions_track_stack').on(t.trackId, t.kind, t.number).where(sql`${t.trackId} IS NOT NULL`),
     uniqueIndex('versions_release_stack').on(t.releaseId, t.kind, t.number).where(sql`${t.releaseId} IS NOT NULL`),
@@ -97,3 +100,10 @@ export const notes = sqliteTable(
   },
   (t) => [index('notes_version').on(t.versionId, t.atMs)],
 )
+
+// The artist's choices the Worker itself must know (the cleanup cron reads them), one row each. Per-device ones
+// (theme, motion) stay in the browser. A missing row is the default.
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+})

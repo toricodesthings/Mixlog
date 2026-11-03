@@ -8,6 +8,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ### Added
 
+- Move to Releases: pick each track's final master (or send the WAV of a test), and only what shipped stays.
+- After a move, Move back to Upcoming brings back every older version and mix until they're erased.
+- Settings → Releases: keep what didn't ship for a week, two weeks, a month, or keep everything.
+- A cover or remix keeps its license: add a PDF or Word document, read it in place, and stack new versions.
 - Upcoming and Releases, as panels or a list, with search, format filters and sorting.
 - Search, filters, sort, view and open dialogs live in the address bar: a refresh or a link keeps them.
 - Drop bounces on Upcoming or Releases, or press Upload: name it, check it, then Save to add a release.
@@ -22,6 +26,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 - Mark a track as an original, a cover or a remix; a cover or remix gets a License button (upload comes later).
 - Save and exit, at the foot of a release's panel: saves Details and takes you back to the list.
 - Play from a release's Summary or tracklist; it keeps playing as you move around, from a player bar along the bottom.
+- Play any version straight from Tracks; each row reads play, version, what changed, then format, day and download.
 - Skip back or ahead 10 seconds from the player bar, 10 or 30 in the listening room, which also shows the version's day.
 - The listening room: open the player full screen, a record spinning in the release's own night sky.
 - On a computer, meters read the music, and the listening room's stars pulse with the kick and its glow with the bass.

@@ -1,9 +1,11 @@
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
-import { Disc3, Images, ListMusic, LogOut, ScrollText, Sparkles, type LucideIcon } from 'lucide-react'
+import { CalendarClock, Disc3, Images, ListMusic, LogOut, ScrollText, Sparkles, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
-import { deviceZone } from '../../lib/time'
+import { moveToUpcoming } from '#/server/releases'
+import { moveBackWindow } from '#/server/shipping'
+import { dayOf, deviceZone, formatDay, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { Button, Led, Tip, useHoverSlide } from '../primitives'
 import * as ScrollArea from '../primitives/ScrollArea'
@@ -13,6 +15,7 @@ import { MetaLine } from '../shared/MetaLine'
 import { ArtworkButton } from './ArtworkButton'
 import { dateLabel, releaseFacts } from './browse'
 import type { ReleaseData } from './loaders'
+import { MoveToReleasesDialog, useMoveParam } from './MoveToReleasesDialog'
 import { DETAILS_FORM } from './ReleaseDetailsForm'
 import { FORMAT_LABEL, releaseLink, SECTIONS, sectionCrumb, sectionOf, type Part, type Section } from './sections'
 
@@ -29,7 +32,8 @@ const PARTS: { part: Part; label: string; icon: LucideIcon }[] = [
  * The release is its own room: its artwork's colours (`useRoomStyle`, `.art-room` in app.css) retint the
  * grounds and the accent of everything here, while the rail and dock outside keep the studio's Signal blue.
  */
-export function ReleaseLayout({ release, tracks }: ReleaseData) {
+export function ReleaseLayout(data: ReleaseData) {
+  const { release, tracks } = data
   const section = sectionOf(release)
   const { isDesktop } = useShellMode()
   const [artFailure, setArtFailure] = useState<string | null>(null)
@@ -75,7 +79,7 @@ export function ReleaseLayout({ release, tracks }: ReleaseData) {
           </ScrollArea.Root>
           <div className="flex flex-col gap-2 border-t border-line p-3">
             <SaveAndExit section={section} />
-            {section === 'upcoming' && <MoveToReleases />}
+            {section === 'upcoming' ? <MoveToReleases /> : <MoveBack {...data} />}
           </div>
         </aside>
       )}
@@ -96,7 +100,7 @@ export function ReleaseLayout({ release, tracks }: ReleaseData) {
           isDesktop ? undefined : (
             <>
               <SaveAndExit section={section} compact />
-              {section === 'upcoming' && <MoveToReleases compact />}
+              {section === 'upcoming' ? <MoveToReleases compact /> : <MoveBack {...data} compact />}
             </>
           )
         }
@@ -121,6 +125,7 @@ export function ReleaseLayout({ release, tracks }: ReleaseData) {
       >
         <Outlet />
       </Page>
+      {section === 'upcoming' && <MoveToReleasesDialog {...data} />}
     </div>
   )
 }
@@ -154,13 +159,55 @@ function SaveAndExit({ section, compact }: { section: Section; compact?: boolean
   )
 }
 
-/** Stamping a release out of Upcoming. Not built yet: the button holds its place and says so. */
+/** Stamps a release out of Upcoming: opens Move to Releases (`?move`), which picks each final master first. */
 function MoveToReleases({ compact }: { compact?: boolean }) {
+  const { show } = useMoveParam()
   const label = 'Move to Releases'
   return (
-    <Tip label="Coming next: stamps it released, with exactly what shipped">
-      <Button variant="cardPrimary" aria-disabled="true" aria-label={compact ? label : undefined} onClick={() => {}} className={cn('cursor-default', compact ? 'size-11 px-0' : 'w-full')}>
+    <Tip label="Stamp it released, with exactly what shipped">
+      <Button variant="cardPrimary" aria-label={compact ? label : undefined} onClick={() => void show()} className={compact ? 'size-11 px-0' : 'w-full'}>
         <Disc3 size={16} aria-hidden="true" />
+        {!compact && label}
+      </Button>
+    </Tip>
+  )
+}
+
+/** Back to Upcoming, only while the keep window is open (always, when Settings keeps everything): the stamps come off
+ *  and every pruned version comes back. */
+function MoveBack({ release, pruned, keepDays, compact }: ReleaseData & { compact?: boolean }) {
+  const navigate = useNavigate()
+  const [state, setState] = useState<{ status: 'idle' | 'moving' } | { status: 'failed'; message: string }>({ status: 'idle' })
+  const back = release.released_at ? moveBackWindow(release.released_at, keepDays) : null
+  if (!back) return null
+  const zone = deviceZone()
+  const label = 'Move back to Upcoming'
+  const tip =
+    state.status === 'failed'
+      ? state.message
+      : back.until
+        ? `Until ${formatDay(dayOf(back.until, zone), todayIn(zone))}${pruned ? `, with the ${pruned} older ${pruned === 1 ? 'version' : 'versions'} waiting to be erased` : ''}`
+        : `Back to Upcoming as it was${pruned ? `, with the ${pruned} older ${pruned === 1 ? 'version' : 'versions'} set aside` : ''}`
+  const move = async () => {
+    setState({ status: 'moving' })
+    try {
+      await moveToUpcoming({ data: release.id })
+      await navigate({ ...releaseLink('upcoming', release.id, 'tracks'), replace: true })
+    } catch (error) {
+      setState({ status: 'failed', message: (error instanceof Error && error.message) || 'Couldn’t move it back. Try again.' })
+    }
+  }
+  return (
+    <Tip label={tip}>
+      <Button
+        variant="secondary"
+        aria-label={compact ? label : undefined}
+        aria-busy={state.status === 'moving'}
+        disabled={state.status === 'moving'}
+        onClick={() => void move()}
+        className={cn('gap-2', compact ? 'size-11 px-0' : 'w-full', state.status === 'failed' && 'ring-2 ring-feedback-error/60')}
+      >
+        <CalendarClock size={16} aria-hidden="true" />
         {!compact && label}
       </Button>
     </Tip>

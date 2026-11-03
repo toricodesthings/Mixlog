@@ -2,7 +2,7 @@
 
 ## Build for certainty
 
-Mixlog is one place for one artist's music in progress: every bounce, master, artwork, Canvas and video, versioned and playable anywhere. Every change must make finding and hearing the right version **easier**: fewer decisions, less to scan, nothing said twice, nothing that needs setup before it helps. Never lose a bounce; never overwrite one.
+Mixlog is one place for one artist's music in progress: every bounce, master, artwork, Canvas and video, versioned and playable anywhere. Every change must make finding and hearing the right version **easier**: fewer decisions, less to scan, nothing said twice, nothing that needs setup before it helps. Never lose a bounce before it ships; never overwrite one. Once a release moves to Releases, only what shipped stays: the rest is pruned and erased after the window set in Settings → Releases (two weeks by default, up to a month, or never), in which it can move back.
 
 Ease must never come from removing capability. Keep the feature and move its weight off the artist: useful defaults, optional detail behind a labelled control, direct manipulation with a button alternative. Before calling anything done, ask: *on the bus, one hand, bad signal, could someone hear the right version without thinking?* If not, it isn't done. And it should never feel corporate or flat: Mixlog looks like a studio at blue hour, full of instruments (meters, scopes, LEDs, readouts) and one rare magenta light, Phantom. The tone and its rules are in `src/AGENTS.md` §1 and §6.
 
@@ -32,7 +32,7 @@ Hand-written code stays where it's Mixlog's own rule (stacks, versions, filename
 `tests/` mirrors `src/` under two roots, chosen by what the test touches:
 
 - `tests/unit/`: pure logic, no Worker bindings, no D1 or R2 (`src/server/access.ts` → `tests/unit/server/access.test.ts`).
-- `tests/integration/`: server functions and routes against local D1 and R2, faking only outside services.
+- `tests/integration/`: server functions and routes chained together over `tests/support/`: D1 as in-memory SQLite from `migrations/`, R2 in memory, `call(serverFn, data)` (validator, then handler, as the Worker runs it) and `browser.ts` (`lib/files.ts`'s fetch and XHR routed into the `/api` route files).
 
 Vitest runs in plain Node (`vitest.config.ts`, not the Vite app config). Import source through the `#/` alias (`#/server/access`), never `../../src`. A test that fails if the logic breaks is part of the change; trivial one-liners need none.
 

@@ -3,13 +3,15 @@
 	"name": "mixlog",
 	"compatibility_date": "2026-10-23",
 	"compatibility_flags": ["nodejs_compat"],
-	"main": "@tanstack/react-start/server-entry",
+	"main": "src/server.ts", // TanStack Start's handler, plus the cleanup cron
 	"observability": { "enabled": true },
 	"upload_source_maps": true,
 
 	// `pnpm dev` simulates both locally (.wrangler/state). No database ID: the first deploy creates it and writes it back.
 	"d1_databases": [{ "binding": "DB", "database_name": "mixlog", "migrations_dir": "migrations" }],
 	"r2_buckets": [{ "binding": "FILES", "bucket_name": "mixlog" }],
+	// Daily cleanup (src/server.ts): erases versions pruned by Move to Releases once their 14-day grace window has passed.
+	"triggers": { "crons": ["0 4 * * *"] },
 	// Cloudflare Access: Zero Trust → Access → Applications → your app. Not secrets.
 	"vars": {
 		"ACCESS_TEAM_DOMAIN": "https://pitoursirak.cloudflareaccess.com",

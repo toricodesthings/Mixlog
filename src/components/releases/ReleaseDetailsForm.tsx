@@ -1,16 +1,18 @@
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { Album, Check, Disc3, FileBadge, Music, type LucideIcon } from 'lucide-react'
+import { Album, Check, Disc3, Music, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import { isrcOf, needsLicense, upcOf } from '#/server/details'
 import { updateRelease, type ReleaseFormat, type TrackOrigin } from '#/server/releases'
 import { deviceZone, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
-import { Button, Input, Led, Tip } from '../primitives'
+import { Button, Input, Led } from '../primitives'
 import { SegmentedControl } from '../primitives/SegmentedControl'
+import { LicenseControl, LicenseDialog } from './LicenseControl'
 import type { ReleaseData } from './loaders'
 import { LyricsPanel } from './LyricsPanel'
 import { FORMAT_LABEL, SECTIONS, sectionOf } from './sections'
+import { licensesOf } from './stacks'
 
 /** The form's id, so Save and exit (in the release's panel) can submit it from outside. */
 export const DETAILS_FORM = 'release-details'
@@ -31,7 +33,7 @@ const ORIGINS = [
  * a release in progress has (title, format, the day it's planned for); Releases adds the release day, UPC and ISRCs.
  * Every field is optional but the title (and a release's day); nothing waits on them. Saved together, on Save; lyrics save themselves as they're written.
  */
-export function ReleaseDetailsForm({ release, tracks }: ReleaseData) {
+export function ReleaseDetailsForm({ release, tracks, versions }: ReleaseData) {
   const router = useRouter()
   const navigate = useNavigate()
   const released = sectionOf(release) === 'released'
@@ -69,6 +71,7 @@ export function ReleaseDetailsForm({ release, tracks }: ReleaseData) {
   }
 
   return (
+    <>
     <form
       id={DETAILS_FORM}
       className="flex flex-col gap-4"
@@ -92,7 +95,7 @@ export function ReleaseDetailsForm({ release, tracks }: ReleaseData) {
         )}
         {sole && (
           <Field label="Origin" as="div" hint={needsLicense(sole.origin) ? undefined : 'Your own song. A cover or a remix carries its license.'}>
-            <OriginControl origin={sole.origin} onChange={(origin) => changeTrack(sole.id, { origin })} label="Origin" />
+            <OriginControl origin={sole.origin} onChange={(origin) => changeTrack(sole.id, { origin })} label="Origin" licenses={licensesOf(sole.id, versions)} trackId={sole.id} />
           </Field>
         )}
       </Sheet>
@@ -120,7 +123,7 @@ export function ReleaseDetailsForm({ release, tracks }: ReleaseData) {
                       className={cn('h-10 w-56 font-mono text-[13px] tracking-wider uppercase', track.isrc && !isrcOf(track.isrc) && 'border-feedback-error/60')}
                     />
                   )}
-                  {!sole && <OriginControl origin={track.origin} onChange={(origin) => changeTrack(track.id, { origin })} label={`Track ${i + 1} origin`} />}
+                  {!sole && <OriginControl origin={track.origin} onChange={(origin) => changeTrack(track.id, { origin })} label={`Track ${i + 1} origin`} licenses={licensesOf(track.id, versions)} trackId={track.id} />}
                 </div>
                 <LyricsPanel trackId={track.id} title={single ? form.title : track.title} initial={tracks[i].lyrics ?? ''} />
               </li>
@@ -147,6 +150,8 @@ export function ReleaseDetailsForm({ release, tracks }: ReleaseData) {
         </Button>
       </div>
     </form>
+    <LicenseDialog tracks={tracks} versions={versions} />
+    </>
   )
 }
 
@@ -209,22 +214,13 @@ function FormatPicker({ value, onChange, tracks }: { value: ReleaseFormat; onCha
   )
 }
 
-/** Original, cover or remix; a cover or a remix gets its License beside it. */
-function OriginControl({ origin, onChange, label }: { origin: TrackOrigin; onChange: (origin: TrackOrigin) => void; label: string }) {
+/** Original, cover or remix; a cover or a remix gets its License beside it. One already there stays in reach
+ *  whatever the origin says: a license is never hidden by a change of mind. */
+function OriginControl({ origin, onChange, label, trackId, licenses }: { origin: TrackOrigin; onChange: (origin: TrackOrigin) => void; label: string; trackId: string; licenses: ReturnType<typeof licensesOf> }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <SegmentedControl ariaLabel={label} value={origin} onChange={onChange} options={ORIGINS} size="sm" />
-      {needsLicense(origin) && (
-        // ponytail: placeholder until license files land (upload, then download from here)
-        <Tip label="Uploading a license comes next">
-          <span>
-            <Button type="button" variant="secondary" size="sm" disabled className="gap-1.5">
-              <FileBadge size={14} aria-hidden="true" />
-              License
-            </Button>
-          </span>
-        </Tip>
-      )}
+      {(needsLicense(origin) || licenses.length > 0) && <LicenseControl trackId={trackId} licenses={licenses} />}
     </div>
   )
 }

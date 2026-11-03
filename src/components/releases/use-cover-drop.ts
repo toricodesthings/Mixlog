@@ -3,8 +3,9 @@ import { useState, type DragEvent } from 'react'
 import { artworkProblem } from '#/server/files'
 
 /** A cover is the only place artwork goes in: a PNG or JPG dropped on it, or a click (the caller's picker).
- *  Spread `props` on the cover; `over` is true while an image hovers it. A wrong file goes to `onProblem`. */
-export function useCoverDrop(onFile: (file: File) => void, onProblem: (message: string) => void, enabled = true) {
+ *  Spread `props` on the cover; `over` is true while an image hovers it. A wrong file goes to `onProblem`.
+ *  `problemOf` makes it any one-file target (a track's license). */
+export function useCoverDrop(onFile: (file: File) => void, onProblem: (message: string) => void, enabled = true, problemOf = artworkDropProblem) {
   const [over, setOver] = useState(false)
   const files = (e: DragEvent) => enabled && e.dataTransfer.types.includes('Files')
   const props = {
@@ -17,12 +18,16 @@ export function useCoverDrop(onFile: (file: File) => void, onProblem: (message: 
       e.preventDefault()
       setOver(false)
       const file = e.dataTransfer.files[0]
-      const problem = e.dataTransfer.files.length > 1 ? 'One artwork per release: drop a single PNG or JPG.' : artworkProblem(file?.type ?? null, file?.size ?? 0)
+      const problem = problemOf(e.dataTransfer.files)
       if (problem) onProblem(problem)
       else onFile(file)
     },
   }
   return { over, props }
+}
+
+function artworkDropProblem(files: FileList) {
+  return files.length > 1 ? 'One artwork per release: drop a single PNG or JPG.' : artworkProblem(files[0]?.type ?? null, files[0]?.size ?? 0)
 }
 
 /** What the artwork pickers accept. */

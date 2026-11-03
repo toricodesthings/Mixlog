@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 import { isFinal } from '#/server/files'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
-import { dayOf, deviceZone, formatDay, todayIn } from '../../lib/time'
+import { deviceZone, formatDay, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { usePlayer, usePlayhead, type Playable } from '../player/Player'
 import { Led, Meter, useHoverSlide } from '../primitives'
@@ -15,7 +15,7 @@ import { ArtworkButton } from './ArtworkButton'
 import { dateLabel, formatLength, releaseFacts } from './browse'
 import type { ReleaseData } from './loaders'
 import { FORMAT_LABEL, releaseLink, sectionOf, trackLink, type Part } from './sections'
-import { KIND_LABEL, formatOf, stacksOf } from './stacks'
+import { playableOf, stacksOf } from './stacks'
 
 /**
  * A release at a glance, as its own place rather than a dashboard: a whole night in its artwork's colours (the room is
@@ -38,21 +38,10 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
     const master = stacks.find((s) => s.kind === 'master')?.current
     // What Play plays: the current master, else the current version of the next audio stack.
     const version = master ?? stacks.find((s) => s.current.content_type.startsWith('audio/'))?.current
-    const playable: Playable | null = version
-      ? {
-          versionId: version.id,
-          title: track.title,
-          label: `${KIND_LABEL[version.kind]} v${version.number} · ${formatOf(version.filename)}`,
-          day: section === 'released' ? dateLabel(section, release, zone) : `Uploaded ${formatDay(dayOf(version.created_at, zone), today)}`,
-          released: section === 'released',
-          release: release.title,
-          artworkId: release.artwork_id,
-          link: releaseLink(section, release.id),
-        }
-      : null
+    const playable: Playable | null = version ? playableOf(release, track, version, zone) : null
     return { track, master, playable }
   })
-  const bounces = versions.filter((v) => v.track_id).length
+  const bounces = versions.filter((v) => v.track_id && v.kind !== 'license').length
   const mastered = rows.filter((r) => r.master).length
   const finals = rows.filter((r) => r.master && isFinal(r.master.content_type)).length
   const n = tracks.length

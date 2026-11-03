@@ -28,3 +28,10 @@ npm-debug.log*
 .DS_Store
 *:Zone.Identifier
 *Zone.Identifier
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md
+
+# Playwright plugin output
+.playwright-mcp/

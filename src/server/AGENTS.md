@@ -1,12 +1,12 @@
 # Mixlog Backend — Agent Instructions
 
-The Worker side of the one Mixlog app: TanStack Start server functions on Cloudflare Workers, with D1 for metadata, a private R2 bucket for files, and Cloudflare Access as the only door. It serves one person, so there are no users, roles or tenancy code. It must stay edge-safe (no Node-only APIs, no long-lived connections) and never lose or overwrite a file. Code here is `src/server/`, `src/start.ts`, `migrations/` and `wrangler.jsonc`.
+The Worker side of the one Mixlog app: TanStack Start server functions on Cloudflare Workers, with D1 for metadata, a private R2 bucket for files, and Cloudflare Access as the only door. It serves one person, so there are no users, roles or tenancy code. It must stay edge-safe (no Node-only APIs, no long-lived connections) and never lose or overwrite a file. Code here is `src/server/`, `src/server.ts`, `src/start.ts`, `migrations/` and `wrangler.jsonc`.
 
 ## 1. Tech Stack
 
 | Concern | Technology |
 |---|---|
-| Runtime | Cloudflare Workers (`nodejs_compat`), entry `@tanstack/react-start/server-entry` |
+| Runtime | Cloudflare Workers (`nodejs_compat`), entry `src/server.ts` (Start's handler + a daily cron) |
 | RPC | TanStack Start server functions (`createServerFn`) |
 | Metadata | Cloudflare D1 through Drizzle (`db.ts`, schema in `schema.ts`, migrations by `drizzle-kit`) |
 | Files | Cloudflare R2 through its Worker binding (`env.FILES`), private bucket `mixlog`; never the S3 API |
@@ -18,18 +18,22 @@ The Worker side of the one Mixlog app: TanStack Start server functions on Cloudf
 
 ```text
 src/
+├── server.ts        # The Worker entry (`main`): Start's fetch handler, plus `scheduled` for the daily cleanup cron
 ├── start.ts         # createStart: defaultSsr false + the access function middleware
 └── server/
     ├── access.ts    # isAllowed (verifies the Access token), accessKeys (JWKS per isolate)
     ├── schema.ts    # The D1 schema in Drizzle: the source of truth for tables, checks and indexes
     ├── db.ts        # db: Drizzle over env.DB
     ├── input.ts     # Id, isId, idInput (route params as row IDs; anything else is not found), readWith (a Zod schema in our own words)
-    ├── files.ts     # Pure file rules (artwork and audio types and caps, upload keys, finals, Content-Range), shared with the browser
+    ├── files.ts     # Pure file rules (artwork, audio and license types and caps, a license's first bytes, `fileKey`, finals, Content-Range), shared with the browser
+    ├── shipping.ts  # Pure Move to Releases rules (final master, what ships, what's pruned, the keep window), shared with the browser
+    ├── settings.ts  # keepDays (the artist's keep window, from the `settings` table), getSettings, saveKeepDays
     ├── details.ts   # Pure Details rules (detailsInput, lyricsInput, ISRC and UPC, track origin and needsLicense), shared with the browser
-    ├── releases.ts  # releaseQuery (cover, track count, length), listUpcoming, listReleased, getRelease (tracks, every version and which is current), createRelease (with `releasedOn`, straight to Releases), updateRelease (Details)
+    ├── releases.ts  # releaseQuery (cover, track count, length), listUpcoming, listReleased, getRelease (tracks, every version and which is current), createRelease (with `releasedOn`, straight to Releases), updateRelease (Details), makeCurrent, moveToReleases/moveToUpcoming (over shipRelease/unshipRelease)
     ├── tracks.ts    # saveLyrics: a track's lyrics, autosaved by the writing room
-    └── versions.ts  # serveFile, addArtwork, start/putPart/complete/abortUpload: the handlers behind routes/api/
-src/routes/api/      # Server routes, one line each: files.$versionId (GET), releases.$releaseId.artwork (POST), uploads (POST/PUT/DELETE), uploads.complete (POST)
+    ├── versions.ts  # serveFile, addArtwork, addLicense, start/putPart/complete/abortUpload: the handlers behind routes/api/; erasePruned, the cron's job
+    └── dev.ts       # wipeDev, seedDev: `pnpm dev` only (each refuses unless `import.meta.env.DEV`), for the rail's Developer menu
+src/routes/api/      # Server routes, one line each: files.$versionId (GET), releases.$releaseId.artwork (POST), tracks.$trackId.license (POST), uploads (POST/PUT/DELETE), uploads.complete (POST)
 migrations/          # NNNN_what.sql, generated from schema.ts by `pnpm db:generate` (0001 and 0002 predate it); meta/ is drizzle-kit's
 ```
 
@@ -40,7 +44,7 @@ migrations/          # NNNN_what.sql, generated from schema.ts by `pnpm db:gener
 ## 3. Adding Code
 
 - **New server function:** in its domain file, `createServerFn()` (`{ method: 'POST' }` for writes), `.validator(readWith(Schema))` for every input, a Zod schema whose messages are the artist's words (`idInput` for IDs), `.handler(...)`. Throw `notFound()` for a missing row, `redirect()` only from loaders. A query with its own logic (a subquery, a rule in SQL) gets a test in `tests/integration/server/`, run through the query builder as `releaseQuery` is; its rules in a pure function get a unit test.
-- **Schema change:** edit `schema.ts`, then `pnpm db:generate` writes `migrations/NNNN_what.sql` (never hand-write one or edit an applied one; `pnpm db:check` checks them). `pnpm db:migrate` applies it locally; `pnpm db:migrate:remote` runs before the deploy that needs it, by the user.
+- **Schema change:** edit `schema.ts`, then `pnpm db:generate` writes `migrations/NNNN_what.sql` (never hand-write one or edit an applied one; `pnpm db:check` checks them). A generated rebuild of a table others reference (`versions`) cascades on D1, which keeps foreign keys on through `PRAGMA foreign_keys=OFF`: set the referencing rows aside and put them back in that migration, as `0004` does (`tests/integration/migrations.test.ts` runs them D1's way). `pnpm db:migrate` applies it locally; `pnpm db:migrate:remote` runs before the deploy that needs it, by the user.
 - **New binding or var:** add it to `wrangler.jsonc`, then `pnpm cf-typegen`.
 - **A plain HTTP endpoint** exists only for file bytes (an `<img>` or `<audio>` needs a URL; uploads stream) and non-browser clients (the later Go sync helper): a server route under `routes/api/` that calls a handler in `server/`, which checks `isAllowed` before anything else. Server routes don't get the function middleware.
 
@@ -55,15 +59,19 @@ The Worker serves the prerendered SPA shell (no data in it). Every server functi
 - IDs are text; a route param reaches a query only through `idInput`.
 - Dates follow the root guide's model: a day is `YYYY-MM-DD` (`release_date`, the day it goes or went out); `created_at`/`released_at` are `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')` bookkeeping, never a day by themselves. SQL never computes a day (`date('now')` is UTC's day, not the artist's): a day to judge arrives from the client with its zone and is checked with `lib/time.ts` (`createRelease`'s `releasedOn` ≤ `todayIn(zone)`).
 - **Every track belongs to a release.** A release is Upcoming while `released_at` is null and Released once it's stamped.
-- **Versions are immutable.** A version is never updated or overwritten, only followed by a new number in its stack (per track or per release, by kind). The one exception is artwork: a release has one, so a new one replaces it (below). Current is a pin (`current_pins`), not a flag on the version. What was released stays exactly what was released.
-- D1 is never the only record of a file: each R2 object's key and custom metadata carry its track, kind and version.
+- **Versions are immutable.** A version is never updated or overwritten, only followed by a new number in its stack (per track or per release, by kind). The one exception is artwork: a release has one, so a new one replaces it (below). A track's license is a stack like any other (`kind = 'license'`): kept, never replaced. Current is a pin (`current_pins`, set by `makeCurrent`), not a flag on the version; pruned versions are never current or newest. What was released stays exactly what was released.
+- **Moving to Releases** (`shipRelease`, rules in `shipping.ts`) needs every track's current master lossless. In one batch it stamps the release and what ships (each track's current version of every stack but the mixes, each pinned), and stamps everything else on its tracks `pruned_at` (older versions, every mix; licenses and the release's artwork stay). Pruned versions leave every query at once. `unshipRelease` (Move back to Upcoming) clears the stamps while `moveBackWindow` allows; after that the daily cron (`erasePruned`) deletes each pruned file, then its row. The window is `keepDays()` (Settings → Releases: 7, 14 by default, or 30 days; null keeps everything, so nothing is pruned and it can always move back), read when used, so a change applies to releases already waiting.
+- **Settings the Worker must know** (the cron reads them) are rows in `settings` (`key`, `value`; a missing row is the default). Per-device ones stay in the browser.
+- D1 is never the only record of a file: each R2 object's key and custom metadata carry its release, track, kind and version.
 
 ## 6. Files (R2)
 
 - The bucket is private, never public or listable, reached only through the Worker.
-- Audio and video go through the Worker in chunks, never whole (a Worker request body caps near 100 MB). Audio today: `POST /api/uploads` starts an R2 multipart upload for a track's stack (`master`, `mix`, `instrumental`, `acapella`; MP3, WAV, AIFF, FLAC, M4A or OGG, typed by extension; 4 GB at most), `PUT /api/uploads?key&uploadId&part` sends each 10 MB part (the browser retries a part three times), `POST /api/uploads/complete` joins them and inserts the version, `DELETE` drops the parts of one that won't finish. Nothing is in D1 until it's whole: the key (`tracks/<track>/<kind>/<versionId>`) and the object's metadata carry the track, stack and filename. The number is taken at completion inside the INSERT, so an abandoned upload never leaves a gap and two finishing at once can't share one. A failed insert deletes the object: never a half-version.
+- **Keys are foldered like the song** (`fileKey` in `files.ts`): `releases/<release>/tracks/<track>/<kind>/<version>` for a track's files, `releases/<release>/<kind>/<version>` for the release's own (artwork, a release video). A new kind needs no new scheme. The IDs are the rows' own random UUIDs, never a second set: the key with its metadata is what recovers the files without D1. A key is fixed at upload (R2 can't rename) and `versions.r2_key` is what's served, so a file from the older `tracks/…` layout still plays. Keys never reach the browser.
+- Audio and video go through the Worker in chunks, never whole (a Worker request body caps near 100 MB). Audio today: `POST /api/uploads` starts an R2 multipart upload for a track's stack (`master`, `mix`, `instrumental`, `acapella`; MP3, WAV, AIFF, FLAC, M4A or OGG, typed by extension; 4 GB at most), the browser holds it as `{ trackId, kind, id, uploadId }` and the Worker rebuilds the key from the track's release; `PUT /api/uploads?trackId&kind&id&uploadId&part` sends each 10 MB part (the browser retries a part three times), `POST /api/uploads/complete` joins them and inserts the version, `DELETE` drops the parts of one that won't finish. Nothing is in D1 until it's whole: the key and the object's metadata carry the release, track, stack and filename. The number is taken at completion inside the INSERT, so an abandoned upload never leaves a gap and two finishing at once can't share one. A failed insert deletes the object: never a half-version.
 - **Artwork** is the one single-request upload: `POST /api/releases/$releaseId/artwork`, the body is the image, streamed straight into R2. PNG or JPG only (what distributors take; never SVG), 20 MB at most (`files.ts`). **One per release:** the new one is stored and recorded first (if the D1 row fails, its object is deleted), then the old row and file are deleted.
-- `GET /api/files/$versionId` serves any version exactly as uploaded: range requests for playback, `private, immutable` caching (a version never changes), `nosniff` and a sandboxing CSP. No transcodes, no hidden copies.
+- **Licenses**: `POST /api/tracks/$trackId/license`, the body is a PDF, .docx or .doc (typed by extension), 20 MB at most, read whole so its first bytes must match its type (a page or program renamed `.pdf` is refused), then stored and stacked like a bounce. The browser reads it with pdf.js (no annotation layer) or, for a .docx, as text in a sandboxed frame with no scripts (`LicenseDocument`).
+- `GET /api/files/$versionId` serves any version exactly as uploaded (`?download` saves it under its filename): range requests for playback, `private, immutable` caching (a version never changes), `nosniff` and a sandboxing CSP. No transcodes, no hidden copies.
 - One path in dev and production. No R2 API tokens, CORS, or signed URLs ever reach the browser.
 
 ## 7. Auth
@@ -72,7 +80,7 @@ Delegated to Cloudflare Access, never built. No passwords, sessions, cookies or 
 
 ## 8. Tests
 
-`tests/unit/server/` (pure logic: `access.test.ts` signs tokens with a local key set; `files.test.ts`; `details.test.ts`; the filename reading is `tests/unit/components/uploads/suggest.test.ts`) · `tests/integration/server/` (queries run for real: `vitest.config.ts` maps `cloudflare:workers` to `tests/support/cloudflare-workers.ts`, D1's API over an in-memory SQLite built from `migrations/`; R2 isn't there yet). Commands: `pnpm test` (everything), `test:unit`, `test:integration`.
+`tests/unit/server/` (pure logic: `access.test.ts` signs tokens with a local key set; `files.test.ts` (keys, types, a license's first bytes); `details.test.ts`; the filename reading is `tests/unit/components/uploads/suggest.test.ts`) · `tests/integration/server/` (queries run for real: `vitest.config.ts` maps `cloudflare:workers` to `tests/support/cloudflare-workers.ts`, D1's API over an in-memory SQLite built from `migrations/`; R2 isn't there yet) · `tests/integration/migrations.test.ts` (the migrations as D1 runs them). Commands: `pnpm test` (everything), `test:unit`, `test:integration`.
 
 ## 9. Environment & Bindings
 
@@ -83,7 +91,7 @@ Delegated to Cloudflare Access, never built. No passwords, sessions, cookies or 
 | `ACCESS_TEAM_DOMAIN` | `https://<team>.cloudflareaccess.com`, issuer and JWKS host |
 | `ACCESS_AUD` | The Access application's audience tag |
 
-`pnpm dev` simulates D1 and R2 locally in `.wrangler/state` (delete it to start over). Secrets, if any arrive, go in `.dev.vars` locally and `wrangler secret` in production, never in `wrangler.jsonc`.
+`pnpm dev` simulates D1 and R2 locally in `.wrangler/state`; the rail's Developer menu wipes it, or wipes it and seeds sample releases with real files. Secrets, if any arrive, go in `.dev.vars` locally and `wrangler secret` in production, never in `wrangler.jsonc`.
 
 ## 10. Commands
 

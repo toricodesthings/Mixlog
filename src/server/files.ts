@@ -1,4 +1,5 @@
 /** File rules shared by the server routes and their tests: pure, no bindings. */
+import type { VERSION_KINDS } from '#/server/schema'
 
 /** Artwork is what a distributor takes: a PNG or JPG. (Never SVG: it can carry script.) */
 const ARTWORK_TYPES = ['image/png', 'image/jpeg'] as const
@@ -22,7 +23,7 @@ export function contentRange(range: { offset?: number; length?: number; suffix?:
 }
 
 /** Audio stacks a dropped bounce can land in. */
-const AUDIO_KINDS = ['master', 'mix', 'instrumental', 'acapella'] as const
+export const AUDIO_KINDS = ['master', 'mix', 'instrumental', 'acapella'] as const
 export type AudioKind = (typeof AUDIO_KINDS)[number]
 
 /** By extension first: browsers disagree on (or leave out) a WAV's or AIFF's type. One stored type per format. */
@@ -58,13 +59,45 @@ export function audioProblem(kind: unknown, contentType: unknown, size: unknown)
   return null
 }
 
-/** An upload's R2 key carries its track, stack and version, so the file can be matched up without D1. */
-export const uploadKey = (trackId: string, kind: AudioKind, versionId: string) => `tracks/${trackId}/${kind}/${versionId}`
+/** Where a version's file lives in R2, foldered like the song: its release, then its track when it has one, then its stack.
+ *  `releases/<release>/tracks/<track>/<kind>/<version>`, or `releases/<release>/<kind>/<version>` for the release's own
+ *  (artwork, a release video). Every ID is a random UUID, the key never leaves the Worker, and with the object's metadata
+ *  it's how the files could be matched back up without D1. R2 can't rename, so a version keeps the key it was born with. */
+export const fileKey = (owner: { releaseId: string; trackId?: string }, kind: (typeof VERSION_KINDS)[number], versionId: string) =>
+  `releases/${owner.releaseId}/${owner.trackId ? `tracks/${owner.trackId}/` : ''}${kind}/${versionId}`
 
-export function parseUploadKey(key: unknown): { trackId: string; kind: AudioKind; versionId: string } | null {
-  const match = typeof key === 'string' && /^tracks\/([\w-]{1,64})\/(master|mix|instrumental|acapella)\/([\w-]{1,64})$/.exec(key)
-  return match ? { trackId: match[1], kind: match[2] as AudioKind, versionId: match[3] } : null
+/** A license is the paper behind a cover or a remix: a PDF or a Word document, typed by extension like audio. */
+const LICENSE_EXTENSIONS: Record<string, string> = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  doc: 'application/msword',
 }
+export const LICENSE_TYPES = Object.values(LICENSE_EXTENSIONS)
+/** What a file picker offers for a license. */
+export const LICENSE_ACCEPT = Object.keys(LICENSE_EXTENSIONS).map((ext) => `.${ext}`).join(',')
+/** A license goes up in one request, like artwork. */
+export const MAX_LICENSE_BYTES = 20 * 1024 * 1024
+
+/** The type Mixlog stores a license as, or null when it isn't a PDF or Word document. */
+export const licenseTypeOf = (name: string): string | null => LICENSE_EXTENSIONS[name.split('.').pop()!.toLowerCase()] ?? null
+
+/** Why this can't be a license, or null when it can. */
+export function licenseProblem(contentType: string | null, size: number): string | null {
+  if (!LICENSE_TYPES.includes(contentType as string)) return 'A license is a PDF or a Word document.'
+  if (!Number.isInteger(size) || size <= 0) return 'The file is empty or its size is unknown.'
+  if (size > MAX_LICENSE_BYTES) return 'A license is 20 MB at most.'
+  return null
+}
+
+/** Each license type's first bytes: a PDF's header, a .docx's ZIP, a .doc's OLE container. */
+const LICENSE_MAGIC: Record<string, number[]> = {
+  'application/pdf': [0x25, 0x50, 0x44, 0x46, 0x2d],
+  [LICENSE_EXTENSIONS.docx]: [0x50, 0x4b, 0x03, 0x04],
+  'application/msword': [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1],
+}
+
+/** Whether a file's bytes are what its type says, so a page or a program renamed `.pdf` is refused. */
+export const startsLike = (contentType: string, bytes: Uint8Array) => LICENSE_MAGIC[contentType]?.every((b, i) => bytes[i] === b) ?? false
 
 /** A final is lossless (WAV, AIFF, FLAC); anything else is a test bounce. The format says it, so Mixlog never asks. */
 export const isFinal = (contentType: string) => ['audio/wav', 'audio/aiff', 'audio/flac'].includes(contentType)
