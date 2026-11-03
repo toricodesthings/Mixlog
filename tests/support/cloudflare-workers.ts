@@ -1,6 +1,7 @@
 // `cloudflare:workers` for tests in plain Node: `env.DB` is D1's API over an in-memory SQLite (node:sqlite) built
 // from `migrations/`, so server queries run for real. Only the calls Drizzle's D1 driver makes are here. `env.FILES`
-// is R2 in memory: whole objects, one-page listing, ranged reads, and multipart uploads that fail like R2's when the upload is gone.
+// is R2 in memory: whole objects, one-page listing, ranged reads, and multipart uploads that fail like R2's when the upload is gone
+// and, like deployed R2, complete without echoing the object's metadata (`head` has it).
 // `env.IMAGES` "encodes" by prefixing the bytes with what it was asked for, and refuses anything that isn't a PNG.
 import { readFileSync, readdirSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
@@ -81,6 +82,10 @@ export const env = {
       const stored = objects.get(key)
       return stored ? objectOf(key, stored, rangeOf(options?.range?.get('range'))) : null
     },
+    head: async (key: string) => {
+      const stored = objects.get(key)
+      return stored ? objectOf(key, stored) : null
+    },
     list: async () => ({ objects: [...objects.keys()].map((key) => ({ key })), truncated: false, cursor: undefined }),
     delete: async (keys: string | string[]) => {
       for (const key of [keys].flat()) objects.delete(key), deletedKeys.push(key)
@@ -107,7 +112,7 @@ export const env = {
           const stored = { bytes: new Uint8Array(await new Blob(parts.map((p) => sent.get(p.partNumber)!)).arrayBuffer()), ...options }
           multiparts.delete(uploadId)
           objects.set(key, stored)
-          return objectOf(key, stored)
+          return objectOf(key, { bytes: stored.bytes })
         },
         abort: async () => void (upload(), multiparts.delete(uploadId)),
       }

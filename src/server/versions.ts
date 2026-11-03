@@ -211,13 +211,16 @@ export async function completeUpload(request: Request): Promise<Response> {
   if (!upload) return text(400, 'Not an upload')
   const { trackId, kind, id, key, uploadId, parts, durationMs: duration, note, final, replaces } = upload
 
-  let object: R2Object
+  let object: R2Object | null
   try {
-    object = await env.FILES.resumeMultipartUpload(key, uploadId).complete(parts)
+    await env.FILES.resumeMultipartUpload(key, uploadId).complete(parts)
+    // What complete() returns may not carry the type and filename set at start (deployed R2's doesn't); the stored object does.
+    object = await env.FILES.head(key)
   } catch (error) {
     report('warn', 'upload completion refused', error, { key, parts: parts.length })
     return text(404, 'This upload has gone; start it again.')
   }
+  if (!object) return text(404, 'This upload has gone; start it again.')
   const contentType = object.httpMetadata?.contentType ?? 'application/octet-stream'
   const filing = await filingOf(trackId, kind, contentType, final, replaces)
   if ('problem' in filing) {

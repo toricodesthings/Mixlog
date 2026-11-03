@@ -12,6 +12,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 - Covers load a small preview of the artwork, so lists and the player stay quick; the Artwork part still shows the original.
 
+### Fixed
+
+- A WAV sent as a final no longer fails once it's stored with “A final is a WAV, AIFF or FLAC master.”
+
 ## [1.1.0] - 2026-11-03
 
 ### Added
