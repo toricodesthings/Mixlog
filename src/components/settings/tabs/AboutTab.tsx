@@ -1,6 +1,6 @@
 import { ExternalLink, LogOut } from 'lucide-react'
 
-import { Button, Meter } from '../../primitives'
+import { BrandMark, Button } from '../../primitives'
 import { SettingsList, SettingsRow, SettingsSection } from '../SettingsLayout'
 
 /** Cloudflare Access ends the session here; Mixlog keeps none of its own. */
@@ -12,7 +12,7 @@ export function AboutTab() {
     <div className="flex flex-col gap-10">
       <div className="flex flex-col items-center gap-4 text-center">
         <span data-meter-host className="glass-edge glow-accent relative flex h-20 w-20 items-center justify-center rounded-[1.6rem] border border-line-light bg-room-surface">
-          <Meter live peak className="h-9 gap-[3px] [&>span]:w-[5px]" />
+          <BrandMark live className="h-12 w-12" />
         </span>
         <div>
           <h2 className="font-display text-2xl font-semibold text-ink">About Mixlog</h2>

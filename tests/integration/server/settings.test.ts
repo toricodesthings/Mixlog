@@ -10,7 +10,8 @@ import { erasePruned } from '#/server/versions'
 async function releaseWithTwoMasters() {
   const { id, trackIds: [t] } = await call(createRelease, { title: crypto.randomUUID(), format: 'single', tracks: [] })
   sqlite.exec(`INSERT INTO versions (id, track_id, kind, number, r2_key, filename, content_type, size) VALUES
-    ('${t}-1', '${t}', 'master', 1, 'k-${t}-1', 'a.mp3', 'audio/mpeg', 1), ('${t}-2', '${t}', 'master', 2, 'k-${t}-2', 'a.wav', 'audio/wav', 1)`)
+    ('${t}-1', '${t}', 'master', 1, 'k-${t}-1', 'a.mp3', 'audio/mpeg', 1), ('${t}-2', '${t}', 'master', 2, 'k-${t}-2', 'a.wav', 'audio/wav', 1);
+    INSERT INTO current_pins (version_id, track_id, kind) VALUES ('${t}-2', '${t}', 'master')`)
   return { id, old: `${t}-1` }
 }
 const pruned = (id: string) => sqlite.prepare('SELECT pruned_at FROM versions WHERE id = ?').get(id) as { pruned_at: string | null } | undefined
@@ -19,10 +20,10 @@ const DAY = 86_400_000
 
 describe('keep after release', () => {
   it('is two weeks until chosen, and takes only the offered choices', async () => {
-    expect(await call(getSettings)).toEqual({ keepDays: 14 })
+    expect(await call(getSettings)).toMatchObject({ keepDays: 14 })
     await expect(call(saveKeepDays, 3)).rejects.toThrow(/a week, two weeks, a month, or always/)
     await call(saveKeepDays, 30)
-    expect(await call(getSettings)).toEqual({ keepDays: 30 })
+    expect(await call(getSettings)).toMatchObject({ keepDays: 30 })
   })
 
   it('a week: pruned versions are erased after it, and the release can’t move back', async () => {
@@ -37,11 +38,12 @@ describe('keep after release', () => {
     await expect(unshipRelease(id, Date.now() + 8 * DAY)).rejects.toThrow(/erased/)
   })
 
-  it('always: nothing is pruned or erased, and it can move back any time', async () => {
+  it('always: what didn’t ship is set aside but never erased, and it can move back any time', async () => {
     await call(saveKeepDays, null)
     const { id, old } = await releaseWithTwoMasters()
     await shipRelease(id, '2026-10-01')
-    expect(pruned(old)).toEqual({ pruned_at: null })
+    age(old, 400)
+    expect((await call(getSettings)).setAside).toHaveLength(1)
     expect(await erasePruned()).toBe(0)
     await unshipRelease(id, Date.now() + 365 * DAY)
     await expect(call(moveToUpcoming, id)).rejects.toThrow(/already in Upcoming/)

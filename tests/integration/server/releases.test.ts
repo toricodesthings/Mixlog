@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { sqlite } from '../../support/cloudflare-workers'
 import { call } from '../../support/start'
-import { createRelease, getRelease, listReleased, listUpcoming, makeCurrent, moveToReleases, releaseQuery, updateRelease } from '#/server/releases'
+import { createRelease, fileVersion, getRelease, listReleased, listUpcoming, moveToReleases, releaseQuery, updateRelease } from '#/server/releases'
 import { releases } from '#/server/schema'
 
 sqlite.exec(`
@@ -87,28 +87,51 @@ describe('saving Details', () => {
   })
 })
 
-const { id: pins, trackIds: [t] } = await call(createRelease, { title: 'Pins', format: 'single', tracks: [] })
-describe('Make current', () => {
-  const id = pins
-  const add = (vid: string, n: number) =>
-    sqlite.exec(`INSERT INTO versions (id, track_id, kind, number, r2_key, filename, content_type, size) VALUES ('${vid}', '${t}', 'master', ${n}, 'k-${vid}', '${vid}.wav', 'audio/wav', 1)`)
-  const current = async () => (await call(getRelease, id)).versions.filter((v) => v.is_current).map((v) => v.id)
-  add('p1', 1)
-  add('p2', 2)
+const { id: lanes, trackIds: [t] } = await call(createRelease, { title: 'Lanes', format: 'single', tracks: [] })
+describe('moving a version between lanes', () => {
+  const add = (vid: string, kind: string, n: number, type = 'audio/wav') =>
+    sqlite.exec(`INSERT INTO versions (id, track_id, kind, number, r2_key, filename, content_type, size) VALUES ('${vid}', '${t}', '${kind}', ${n}, 'k-${vid}', '${vid}', '${type}', 1)`)
+  add('x1', 'mix', 1, 'audio/mpeg')
+  add('x2', 'mix', 2)
+  add('m3', 'master', 3, 'audio/mpeg')
+  add('m4', 'master', 4)
+  const filed = async () =>
+    (await call(getRelease, lanes)).versions.map((v) => `${v.is_final ? 'final' : v.kind} v${v.number}`).sort()
+  const move = (versionId: string, to: string) => call(fileVersion, { versionId, to })
 
-  it('pins an older version, and it stays current when a newer one lands on top', async () => {
-    expect(await current()).toEqual(['p2'])
-    await call(makeCurrent, { versionId: 'p1' })
-    add('p3', 3)
-    expect(await current()).toEqual(['p1'])
-    await call(makeCurrent, { versionId: 'p3' })
-    expect(await current()).toEqual(['p3'])
+  it('moves every way, keeping each number: mix → master → final → master → mix, and final → mix', async () => {
+    await move('x2', 'master')
+    expect(await filed()).toEqual(['master v2', 'master v3', 'master v4', 'mix v1'])
+    await move('x2', 'final')
+    expect(await filed()).toEqual(['final v2', 'master v3', 'master v4', 'mix v1'])
+    await move('m4', 'final') // the old final drops back into Masters
+    expect(await filed()).toEqual(['final v4', 'master v2', 'master v3', 'mix v1'])
+    await move('m4', 'master')
+    expect(await filed()).toEqual(['master v2', 'master v3', 'master v4', 'mix v1'])
+    await move('x2', 'final')
+    await move('x2', 'mix')
+    expect(await filed()).toEqual(['master v3', 'master v4', 'mix v1', 'mix v2'])
+    expect(sqlite.prepare(`SELECT COUNT(*) AS n FROM current_pins WHERE track_id = ?`).get(t)).toEqual({ n: 0 })
   })
 
-  it('never moves what shipped, and finds nothing for an unknown version', async () => {
-    await call(moveToReleases, { id, releasedOn: '2026-10-01', zone: 'UTC' })
-    await expect(call(makeCurrent, { versionId: 'p3' })).rejects.toThrow(/what shipped stays/)
-    await expect(call(makeCurrent, { versionId: crypto.randomUUID() })).rejects.toMatchObject({ isNotFound: true })
-    await expect(call(moveToReleases, { id, releasedOn: '2999-01-01', zone: 'UTC' })).rejects.toThrow(/come/)
+  it('refuses a test as the final, and finds nothing for an unknown version or lane', async () => {
+    await expect(move('x1', 'final')).rejects.toThrow(/test can’t be the final/)
+    await expect(move('m3', 'final')).rejects.toThrow(/test can’t be the final/)
+    await expect(move(crypto.randomUUID(), 'final')).rejects.toMatchObject({ isNotFound: true })
+    await expect(move('x1', 'stems')).rejects.toThrow(/lane/)
+  })
+
+  it('in Releases, only gives a track without a final its final, which ships it and sets the rest aside', async () => {
+    await move('m4', 'final')
+    await call(moveToReleases, { id: lanes, releasedOn: '2026-10-01', zone: 'UTC' })
+    expect(await filed()).toEqual(['final v4'])
+    await expect(move('m4', 'master')).rejects.toThrow(/one file per slot/)
+    // A track left without one (1.0.0 data): its final ships the track.
+    sqlite.exec(`DELETE FROM current_pins WHERE track_id = '${t}'; UPDATE versions SET pruned_at = NULL, released_at = NULL WHERE id = 'x2'`)
+    await expect(move('x2', 'mix')).rejects.toThrow(/one file per slot/)
+    await move('x2', 'final')
+    expect(await filed()).toEqual(['final v2', 'master v4'])
+    await expect(move('m4', 'final')).rejects.toThrow(/has its final/)
+    expect(sqlite.prepare(`SELECT released_at IS NOT NULL AS stamped FROM versions WHERE id = 'x2'`).get()).toEqual({ stamped: 1 })
   })
 })

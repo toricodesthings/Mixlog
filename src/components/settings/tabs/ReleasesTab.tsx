@@ -8,10 +8,10 @@ import { Led } from '../../primitives'
 import { SettingsSection } from '../SettingsLayout'
 
 const CHOICE: Record<string, { title: string; says: string }> = {
-  7: { title: 'A week', says: 'Older versions and mixes are erased a week after it goes out.' },
-  14: { title: 'Two weeks', says: 'Older versions and mixes are erased two weeks after it goes out.' },
-  30: { title: 'A month', says: 'Older versions and mixes are erased a month after it goes out.' },
-  forever: { title: 'Keep everything', says: 'Nothing is erased: every bounce stays with the release, and it can always move back.' },
+  7: { title: 'A week', says: 'Other masters and mixes are erased a week after it goes out.' },
+  14: { title: 'Two weeks', says: 'Other masters and mixes are erased two weeks after it goes out.' },
+  30: { title: 'A month', says: 'Other masters and mixes are erased a month after it goes out.' },
+  forever: { title: 'Keep everything', says: 'Nothing is erased: every bounce stays set aside with its release, and it can always move back.' },
 }
 const keyOf = (days: KeepDays) => (days === null ? 'forever' : String(days))
 
@@ -20,11 +20,14 @@ const keyOf = (days: KeepDays) => (days === null ? 'forever' : String(days))
 export function ReleasesTab() {
   const router = useRouter()
   const [keep, setKeep] = useState<KeepDays | undefined>(undefined)
+  const [setAside, setSetAside] = useState<string[]>([])
+  // What a window would erase tonight: the set-aside versions already older than it.
+  const erases = (days: KeepDays) => (days === null ? 0 : setAside.filter((at) => Date.now() - Date.parse(at) > days * 86_400_000).length)
   const [problem, setProblem] = useState<string | null>(null)
 
   useEffect(() => {
     getSettings()
-      .then((s) => setKeep(s.keepDays))
+      .then((s) => (setKeep(s.keepDays), setSetAside(s.setAside)))
       .catch(() => setProblem('Couldn’t read this setting. Close Settings and try again.'))
   }, [])
 
@@ -46,12 +49,13 @@ export function ReleasesTab() {
       <h2 className="mb-10 font-display text-2xl font-semibold text-ink">Releases</h2>
       <SettingsSection title="After a release goes out">
         <p className="text-[13px] leading-relaxed text-ink-muted">
-          Each track keeps what shipped. Until the older versions and mixes are erased, the release can move back to Upcoming with all of them. Kept for every device.
+          Each track keeps what shipped; the rest is set aside. Until it's erased, the release can move back to Upcoming with all of them. Kept for every device.
         </p>
         <fieldset disabled={keep === undefined} className="flex flex-col gap-2" aria-busy={keep === undefined}>
           <legend className="sr-only">Keep older versions after release</legend>
           {KEEP_CHOICES.map((days) => {
             const { title, says } = CHOICE[keyOf(days)]
+            const erased = keep === days ? 0 : erases(days)
             return (
               <label
                 key={keyOf(days)}
@@ -68,6 +72,11 @@ export function ReleasesTab() {
                     {days === DEFAULT_KEEP_DAYS && <span className="readout text-ink-muted">Default</span>}
                   </span>
                   <span className="text-sm text-ink-soft">{says}</span>
+                  {erased > 0 && (
+                    <span data-numeric className="text-sm text-accent-secondary">
+                      {erased} set-aside {erased === 1 ? 'version is' : 'versions are'} already older and would be erased tonight.
+                    </span>
+                  )}
                 </span>
               </label>
             )

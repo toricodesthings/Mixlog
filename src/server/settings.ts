@@ -1,10 +1,11 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { eq } from 'drizzle-orm'
+import { eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/server/db'
 import { readWith } from '#/server/input'
-import { settings } from '#/server/schema'
+import type { Instant } from '#/lib/time'
+import { settings, versions } from '#/server/schema'
 import { DEFAULT_KEEP_DAYS, type KeepDays } from '#/server/shipping'
 
 const KEEP = 'keep_after_release'
@@ -18,8 +19,12 @@ export const keepDays = createServerOnlyFn(async (): Promise<KeepDays> => {
   return row && parsed.success ? parsed.data : DEFAULT_KEEP_DAYS
 })
 
-/** The settings the Worker keeps, for the Settings dialog. */
-export const getSettings = createServerFn().handler(async () => ({ keepDays: await keepDays() }))
+/** The settings the Worker keeps, for the Settings dialog, and when each version waiting to be erased was set aside
+ *  (Instants), so the Releases tab can say what a shorter window would erase. */
+export const getSettings = createServerFn().handler(async () => ({
+  keepDays: await keepDays(),
+  setAside: (await db.select({ at: versions.prunedAt }).from(versions).where(isNotNull(versions.prunedAt))).map((v) => v.at as Instant),
+}))
 
 export const saveKeepDays = createServerFn({ method: 'POST' })
   .validator(readWith(KeepInput))

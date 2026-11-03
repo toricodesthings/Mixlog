@@ -4,14 +4,15 @@ import { Suspense, lazy, useRef, useState } from 'react'
 
 import { LICENSE_ACCEPT, licenseProblem, licenseTypeOf } from '#/server/files'
 import type { TrackRow, VersionRow } from '#/server/releases'
+import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { downloadUrl, uploadLicense } from '../../lib/files'
-import { dayOf, deviceZone, formatDay, todayIn } from '../../lib/time'
+import { deviceZone, formatMoment, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { Button, Progress, Scope } from '../primitives'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../primitives/Dialog'
 import { SegmentedControl } from '../primitives/SegmentedControl'
-import { formatOf, licensesOf, sizeOf } from './stacks'
-import { useCoverDrop } from './use-cover-drop'
+import { sizeOf } from '../uploads/progress'
+import { formatOf, licensesOf } from './stacks'
 
 // pdf.js and the Word reader are big: they load the first time a license opens, never with the page.
 const LicenseDocument = lazy(() => import('./LicenseDocument'))
@@ -29,9 +30,6 @@ function useLicenseParam() {
     close: () => navigate({ to: '.', search: ({ license: _, ...rest }: Search) => rest, resetScroll: false }),
   }
 }
-
-const dropProblem = (files: FileList) =>
-  files.length > 1 ? 'One license at a time: drop a single PDF or Word document.' : licenseProblem(licenseTypeOf(files[0]?.name ?? ''), files[0]?.size ?? 0)
 
 /** Sends a picked or dropped file as the track's next license. `onStored` gets the new version's ID. */
 function useLicenseUpload(trackId: string, onStored: (id: string) => void) {
@@ -54,7 +52,10 @@ function useLicenseUpload(trackId: string, onStored: (id: string) => void) {
       setState({ status: 'failed', message: error instanceof Error ? error.message : 'Couldn’t add the license.' })
     }
   }
-  const { over, props: drop } = useCoverDrop((file) => void send(file), (message) => setState({ status: 'failed', message }), !sending, dropProblem)
+  const { over, props: drop } = useDropTarget({
+    onFiles: (files) => (files.length > 1 ? setState({ status: 'failed', message: 'One license at a time: drop a single PDF or Word document.' }) : void send(files[0])),
+    enabled: !sending,
+  })
   const picker = (
     <input ref={input} type="file" accept={LICENSE_ACCEPT} hidden onChange={(e) => (void send(e.target.files?.[0]), (e.target.value = ''))} />
   )
@@ -128,7 +129,7 @@ function LicenseSheet({ version, track, stack, show }: { version: VersionRow; tr
       <DialogHeader className="gap-1 pr-10">
         <DialogTitle>License{track ? ` · ${track.title}` : ''}</DialogTitle>
         <p className="readout text-ink-muted">
-          v{version.number} · {formatOf(version.filename)} · {sizeOf(version.size)} · Added {formatDay(dayOf(version.created_at, zone), todayIn(zone))}
+          v{version.number} · {formatOf(version.filename)} · {sizeOf(version.size)} · Added {formatMoment(version.created_at, zone, todayIn(zone))}
         </p>
       </DialogHeader>
       {stack.length > 1 && (

@@ -24,3 +24,11 @@ describe('suggestFormat', () => {
     expect(suggestFormat(['1', '2', '3', '4', '5'])).toBe('album')
   })
 })
+
+describe('suggestFinals', () => {
+  it('suggests each song’s newest lossless master as its final, and nothing else', async () => {
+    const { suggestFinals } = await import('#/components/uploads/suggest')
+    const f = (song: number, kind: 'master' | 'mix', lossless: boolean, modified: number) => ({ song, kind, lossless, modified })
+    expect([...suggestFinals([f(0, 'master', true, 1), f(0, 'master', true, 3), f(0, 'mix', true, 9), f(0, 'master', false, 5), f(1, 'master', false, 1)])]).toEqual([1])
+  })
+})

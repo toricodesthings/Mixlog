@@ -4,8 +4,11 @@
 import { sql } from 'drizzle-orm'
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
-/** Now, as the bookkeeping Instant D1 writes (ISO 8601 UTC): for defaults, and for a stamp set in a write. */
-export const stampNow = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`
+/** The one way an Instant is written (ISO 8601 UTC with milliseconds, `2026-11-03T02:14:09.512Z`): now, or `days`
+ *  before it. Every stamp, default and cutoff goes through here, so `lib/time.ts` reads one format everywhere. */
+export const stamp = (days = 0) => (days ? sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ${`-${days} days`}))` : sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
+/** Now, as an Instant: for defaults, and for a stamp set in a write. */
+export const stampNow = stamp()
 const createdAt = () => text('created_at').notNull().default(stampNow)
 
 export const releases = sqliteTable(
@@ -43,7 +46,8 @@ export const tracks = sqliteTable('tracks', {
 export const VERSION_KINDS = ['mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'license', 'other'] as const
 
 // One immutable file. Belongs to a track (bounces, its license), or to a release (artwork, release video).
-// Rows are never updated except released_at and pruned_at; files are never overwritten.
+// Rows are never updated except released_at, pruned_at, and kind between mix and master (moving a bounce between
+// lanes); files are never overwritten. A track's mixes and masters share one number sequence, so a move keeps it.
 export const versions = sqliteTable(
   'versions',
   {
@@ -51,7 +55,7 @@ export const versions = sqliteTable(
     trackId: text('track_id').references(() => tracks.id, { onDelete: 'cascade' }),
     releaseId: text('release_id').references(() => releases.id, { onDelete: 'cascade' }),
     kind: text('kind', { enum: VERSION_KINDS }).notNull(),
-    number: integer('number').notNull(), // per stack: Master v4
+    number: integer('number').notNull(), // per song for mixes and masters (Mix v2, Master v3), else per stack
     r2Key: text('r2_key').notNull().unique(),
     filename: text('filename').notNull(),
     contentType: text('content_type').notNull(),
@@ -67,12 +71,14 @@ export const versions = sqliteTable(
   (t) => [
     check('versions_kind', sql`${t.kind} IN ('mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'license', 'other')`),
     check('versions_owner', sql`(${t.trackId} IS NULL) <> (${t.releaseId} IS NULL)`),
-    uniqueIndex('versions_track_stack').on(t.trackId, t.kind, t.number).where(sql`${t.trackId} IS NOT NULL`),
+    uniqueIndex('versions_track_bounce').on(t.trackId, t.number).where(sql`${t.trackId} IS NOT NULL AND ${t.kind} IN ('mix', 'master')`),
+    uniqueIndex('versions_track_stack').on(t.trackId, t.kind, t.number).where(sql`${t.trackId} IS NOT NULL AND ${t.kind} NOT IN ('mix', 'master')`),
     uniqueIndex('versions_release_stack').on(t.releaseId, t.kind, t.number).where(sql`${t.releaseId} IS NOT NULL`),
   ],
 )
 
-// Newest ≠ Current. Current follows newest unless a row here points it elsewhere.
+// Newest ≠ Current. Current follows newest unless a row here points it elsewhere. A track's master pin is its final:
+// lossless, and set only by the artist (filing a version in the Final lane).
 export const currentPins = sqliteTable(
   'current_pins',
   {

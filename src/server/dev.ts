@@ -6,7 +6,7 @@ import { env } from 'cloudflare:workers'
 
 import { db } from '#/server/db'
 import { fileKey } from '#/server/files'
-import { currentPins, notes, releases, stampNow, tracks, versions } from '#/server/schema'
+import { currentPins, notes, releases, stamp, stampNow, tracks, versions } from '#/server/schema'
 
 const devOnly = () => {
   if (!import.meta.env.DEV) throw notFound()
@@ -23,42 +23,100 @@ const wipe = createServerOnlyFn(async () => {
   }
 })
 
-type SampleTrack = { title: string; notes: number[]; origin?: 'cover' | 'remix'; mix?: boolean; earlier?: boolean }
+/** A sample file: its lane or stack, what it's made of (a WAV arpeggio, one of the two MP3 test bounces, a PDF), its
+ *  note, and how many days ago it landed. `final` pins it as the track's final; `aside` is set aside by the release's move. */
+type SampleFile = { kind: 'mix' | 'master' | 'instrumental' | 'acapella' | 'license'; as: 'wav' | 'mix' | 'master' | 'pdf'; note?: string; days: number; final?: true; aside?: true }
+type SampleTrack = { title: string; notes: number[]; origin?: 'cover' | 'remix'; files: SampleFile[] }
 const SAMPLES: { title: string; format: 'single' | 'ep'; releasedOn?: string; tracks: SampleTrack[] }[] = [
   {
     title: 'Blue Hour',
     format: 'ep',
     tracks: [
-      { title: 'Glass City', notes: [57, 60, 64, 67], mix: true, earlier: true },
-      { title: 'Night Bus', notes: [55, 59, 62, 66] },
-      { title: 'Lantern', notes: [53, 57, 60, 64] },
+      {
+        title: 'Glass City',
+        notes: [57, 60, 64, 67],
+        files: [
+          { kind: 'mix', as: 'mix', days: 6 },
+          { kind: 'mix', as: 'mix', note: 'hats down', days: 5 },
+          { kind: 'master', as: 'master', note: 'louder vocal', days: 3 },
+          { kind: 'master', as: 'wav', days: 1, final: true },
+          { kind: 'instrumental', as: 'wav', days: 1 },
+        ],
+      },
+      { title: 'Night Bus', notes: [55, 59, 62, 66], files: [{ kind: 'mix', as: 'mix', days: 4 }, { kind: 'master', as: 'master', note: 'first master', days: 2 }] },
+      { title: 'Lantern', notes: [53, 57, 60, 64], files: [{ kind: 'mix', as: 'mix', days: 2 }] },
     ],
   },
-  { title: 'Midnight Train', format: 'single', tracks: [{ title: 'Midnight Train', notes: [50, 54, 57, 61], origin: 'cover' }] },
-  { title: 'First Light', format: 'single', releasedOn: '2026-06-12', tracks: [{ title: 'First Light', notes: [52, 56, 59, 64] }] },
+  {
+    title: 'Midnight Train',
+    format: 'single',
+    tracks: [
+      {
+        title: 'Midnight Train',
+        notes: [50, 54, 57, 61],
+        origin: 'cover',
+        files: [{ kind: 'mix', as: 'mix', days: 3 }, { kind: 'master', as: 'wav', days: 1 }, { kind: 'license', as: 'pdf', days: 3 }],
+      },
+    ],
+  },
+  { title: 'First Light', format: 'single', releasedOn: '2026-06-12', tracks: [{ title: 'First Light', notes: [52, 56, 59, 64], files: [{ kind: 'master', as: 'wav', days: 150, final: true }] }] },
+  {
+    title: 'Harbour Lights',
+    format: 'ep',
+    releasedOn: '2026-10-24',
+    tracks: [
+      {
+        title: 'Tide',
+        notes: [48, 52, 55, 59],
+        files: [
+          { kind: 'mix', as: 'mix', days: 16, aside: true },
+          { kind: 'master', as: 'wav', days: 12, final: true },
+          { kind: 'instrumental', as: 'wav', days: 12 },
+          { kind: 'acapella', as: 'wav', days: 12 },
+        ],
+      },
+      { title: 'Lamplight', notes: [46, 50, 53, 57], files: [{ kind: 'master', as: 'master', days: 14, aside: true }, { kind: 'master', as: 'wav', days: 12, final: true }] },
+    ],
+  },
 ]
 
-/** Sample releases with real files: a master WAV on every track (an arpeggio, so playback has something to play),
- *  a mix and an earlier master on one (what Move to Releases prunes), and a PDF license on the cover. Written as uploads write them: the same keys and metadata. */
+/** The two MP3 test bounces (`fixtures/`, encoded once from `arpeggio`), loaded only when seeding. */
+async function testBounce(as: 'mix' | 'master'): Promise<Uint8Array<ArrayBuffer>> {
+  const { default: url } = as === 'mix' ? await import('./fixtures/test-mix.mp3?inline') : await import('./fixtures/test-master.mp3?inline')
+  return Uint8Array.from(atob(url.slice(url.indexOf(',') + 1)), (c) => c.charCodeAt(0))
+}
+
+const bounce = (kind: string) => kind === 'mix' || kind === 'master'
+const EXTENSION = { wav: 'wav', mix: 'mp3', master: 'mp3', pdf: 'pdf' }
+const TYPE = { wav: 'audio/wav', mix: 'audio/mpeg', master: 'audio/mpeg', pdf: 'application/pdf' }
+
+/** Sample releases with real files, written as uploads write them: the same keys, metadata and numbering (mixes and
+ *  masters count together), each final pinned, and a released release's shipped files stamped and pinned. Every lane
+ *  has something: tests waiting for their WAV, a lossless master waiting to be picked, alternates, a license, and
+ *  versions set aside in Releases. */
 const seed = createServerOnlyFn(async () => {
   for (const sample of SAMPLES) {
     const releaseId = crypto.randomUUID()
-    await db.insert(releases).values({ id: releaseId, title: sample.title, format: sample.format, releaseDate: sample.releasedOn ?? null, releasedAt: sample.releasedOn ? stampNow : null })
+    const out = Boolean(sample.releasedOn)
+    await db.insert(releases).values({ id: releaseId, title: sample.title, format: sample.format, releaseDate: sample.releasedOn ?? null, releasedAt: out ? stampNow : null, createdAt: stamp(20) })
     for (const [i, t] of sample.tracks.entries()) {
       const trackId = crypto.randomUUID()
       await db.insert(tracks).values({ id: trackId, releaseId, position: i + 1, title: t.title, origin: t.origin ?? 'original' })
-      const files = [
-        ...(t.mix ? [{ kind: 'mix' as const, filename: `${t.title} mix.wav`, contentType: 'audio/wav', bytes: arpeggio(t.notes, 0.6) }] : []),
-        ...(t.earlier ? [{ kind: 'master' as const, filename: `${t.title} master early.wav`, contentType: 'audio/wav', bytes: arpeggio(t.notes, 0.75) }] : []),
-        { kind: 'master' as const, filename: `${t.title} master.wav`, contentType: 'audio/wav', bytes: arpeggio(t.notes, 0.9) },
-        ...(t.origin ? [{ kind: 'license' as const, filename: `${t.title} license.pdf`, contentType: 'application/pdf', bytes: licensePdf(t.title) }] : []),
-      ]
-      for (const [n, f] of files.entries()) {
+      for (const [n, f] of t.files.entries()) {
         const id = crypto.randomUUID()
         const key = fileKey({ releaseId, trackId }, f.kind, id)
-        await env.FILES.put(key, f.bytes, { httpMetadata: { contentType: f.contentType }, customMetadata: { release: releaseId, track: trackId, kind: f.kind, filename: f.filename } })
-        const durationMs = f.contentType === 'audio/wav' ? Math.round(((f.bytes.byteLength - 44) / 2 / RATE) * 1000) : null
-        await db.insert(versions).values({ id, trackId, kind: f.kind, number: files.slice(0, n).filter((o) => o.kind === f.kind).length + 1, r2Key: key, filename: f.filename, contentType: f.contentType, size: f.bytes.byteLength, durationMs })
+        const bytes = f.as === 'wav' ? arpeggio(t.notes, 0.9) : f.as === 'pdf' ? licensePdf(t.title) : await testBounce(f.as)
+        const number = t.files.slice(0, n).filter((o) => (bounce(f.kind) ? bounce(o.kind) : o.kind === f.kind)).length + 1
+        const filename = `${t.title} ${f.kind}${number > 1 && !f.final ? ` ${number}` : ''}.${EXTENSION[f.as]}`
+        const durationMs = f.as === 'wav' ? Math.round(((bytes.byteLength - 44) / 2 / RATE) * 1000) : f.as === 'pdf' ? null : 8_000
+        await env.FILES.put(key, bytes, { httpMetadata: { contentType: TYPE[f.as] }, customMetadata: { release: releaseId, track: trackId, kind: f.kind, filename } })
+        const ships = out && !f.aside && f.kind !== 'license'
+        await db.insert(versions).values({
+          id, trackId, kind: f.kind, number, r2Key: key, filename, contentType: TYPE[f.as], size: bytes.byteLength, durationMs, note: f.note ?? null,
+          createdAt: stamp(f.days), releasedAt: ships ? stampNow : null, prunedAt: f.aside ? stampNow : null,
+        })
+        // The final, and in Releases each shipped alternate, as Move to Releases pins them.
+        if (f.final || (ships && f.kind !== 'master')) await db.insert(currentPins).values({ versionId: id, trackId, kind: f.kind })
       }
     }
   }

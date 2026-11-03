@@ -6,6 +6,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- Each track in Upcoming has Final, Masters and Mixes lanes: drag a version between them, use Move, or press Alt+↑/↓.
+- Add a mix, a master or the final straight into its lane: drop files on it or press its Add button.
+- Filing a test as the final asks for its WAV, which lands as the final noted “Final of v3”.
+- In Releases, replace a wrong final or alternate: drop the file on its row or press Replace, then confirm.
+- A track page has Upload in its header: choose Final, Master, Mix or an alternate, then drop or pick the files.
+- Settings → Releases says how many set-aside versions a shorter window would erase tonight.
+- Every version shows the day and time it landed, in your time zone, so a night of bounces reads in order.
+
+### Changed
+
+- A new Mixlog mark: a waveform saying the name, lit blue to a warm ember; it’s the tab and home-screen icon too.
+- On a phone, the dock is a floating glass pill: the current tab sits in a glass lens you can slide your thumb along.
+- On a phone, the player rides on the dock; scroll down and the dock tucks into your tab with the player beside it.
+- A track’s mixes and masters share one number, so a move keeps it; existing tracks are renumbered once.
+- Releases show only what shipped: the rest is set aside on the move, even when Settings keeps everything.
+- Releases already out set aside what didn’t ship, with the full keep window counted from the update.
+- The signal path reads Mixes, Masters, Final, Artwork, Details; in Releases, Final, Artwork, Details.
+- Play and a track’s length follow its final, else its newest master, else its newest mix.
+- Move to Releases uses the same Final lane as Tracks; new releases suggest each song’s WAV master as its final.
+
 ## [1.0.0] - 2026-11-02
 
 ### Added

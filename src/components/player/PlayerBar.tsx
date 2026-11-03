@@ -1,7 +1,10 @@
 import { Link } from '@tanstack/react-router'
+import { motion } from 'framer-motion'
 import { Maximize2, X } from 'lucide-react'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
+import { SPRINGS } from '../../lib/constants/motion'
+import { cn } from '../../lib/utils'
 import { Meter, Tip } from '../primitives'
 import { ReleaseArt } from '../releases/ReleaseArt'
 import { PlayToggle, Scrubber, SkipButton, VolumeControl } from './controls'
@@ -10,15 +13,14 @@ import { useListenParam, usePlayer, usePlayhead } from './Player'
 /**
  * The player's everyday face, while something is loaded. With a mouse it docks along the bottom of the app like a
  * streaming app's (what's playing; the transport and playhead in the middle; level, the listening room and stop on
- * the right), in the layout, so it never covers a page. On touch it's a mini player above the dock: tap it for the
- * listening room. Either way it outlives every page.
+ * the right), in the layout, so it never covers a page. On touch the dock carries it instead (MiniPlayer, below).
+ * Either way it outlives every page.
  */
 export function PlayerBar() {
   const { item, playing, stop } = usePlayer()
   const listen = useListenParam()
   const { isDesktop } = useShellMode()
-  if (!item) return null
-  if (!isDesktop) return <MiniPlayer />
+  if (!item || !isDesktop) return null
   return (
     <section aria-label="Player" className="player-bar relative grid h-[5.5rem] shrink-0 grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] items-center gap-6 px-4">
       <div className="flex min-w-0 items-center gap-3">
@@ -65,28 +67,33 @@ export function PlayerBar() {
   )
 }
 
-/** On touch: what's playing and play or pause, in thumb's reach above the dock; the rest is a tap away. */
-function MiniPlayer() {
+/** On touch, part of the dock: what's playing and play or pause in thumb's reach, the playhead along its edge. A tap or
+ *  a swipe up opens the listening room. With the dock tucked it sits beside the current tab, title and play only. */
+export function MiniPlayer({ tucked }: { tucked: boolean }) {
   const { item, playing } = usePlayer()
   const { time, duration } = usePlayhead()
   const listen = useListenParam()
   if (!item) return null
   return (
-    <section
+    <motion.section
+      layout
+      layoutId="mini-player"
+      transition={SPRINGS.SNAP}
+      style={{ borderRadius: 24 }}
+      onPanEnd={(_, info) => void (info.offset.y < -24 && listen.show())}
       aria-label="Player"
-      data-mini-player
-      className="glass-surface glass-edge layer-floating-bar fixed inset-x-2 bottom-[calc(4.4rem+env(safe-area-inset-bottom))] flex items-center gap-3 overflow-hidden rounded-2xl border border-line p-2 shadow-2xl shadow-black/40"
+      className={cn('mobile-dock glass glass-edge relative flex min-w-0 touch-none items-center gap-3 overflow-hidden p-1.5 pr-2', tucked && 'flex-1')}
     >
       <button type="button" onClick={listen.show} aria-label={`Open the listening room: ${item.title}, ${item.label}`} className="press flex min-w-0 flex-1 items-center gap-3 text-left">
-        <ReleaseArt title={item.release} artworkId={item.artworkId} size="row" className="size-11 rounded-lg" />
+        <ReleaseArt title={item.release} artworkId={item.artworkId} size="row" className={cn('rounded-[18px]', tucked ? 'size-9' : 'size-11')} />
         <span className="min-w-0">
           <span className="block truncate font-display text-[15px] font-semibold text-ink">{item.title}</span>
-          <span className="readout mt-0.5 block truncate text-ink-muted">{item.label}</span>
+          {!tucked && <span className="readout mt-0.5 block truncate text-ink-muted">{item.label}</span>}
         </span>
       </button>
-      <Meter live={playing} bars={4} className="shrink-0" />
+      {!tucked && <Meter live={playing} bars={4} className="shrink-0" />}
       <PlayToggle size="sm" />
-      <span aria-hidden="true" className="absolute inset-x-3 bottom-0 h-0.5 origin-left rounded-full bg-accent" style={{ scale: `${duration ? time / duration : 0} 1` }} />
-    </section>
+      <span aria-hidden="true" className="absolute inset-x-5 bottom-0 h-0.5 origin-left rounded-full bg-accent" style={{ scale: `${duration ? time / duration : 0} 1` }} />
+    </motion.section>
   )
 }

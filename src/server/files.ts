@@ -7,6 +7,9 @@ const ARTWORK_TYPES = ['image/png', 'image/jpeg'] as const
 /** Artwork goes up in one streamed request, well under a Worker's ~100 MB body cap; audio is chunked. */
 export const MAX_ARTWORK_BYTES = 20 * 1024 * 1024
 
+/** What the artwork pickers accept. */
+export const ARTWORK_ACCEPT = 'image/png,image/jpeg,.png,.jpg,.jpeg'
+
 /** Why this upload can't be artwork, or null when it can. */
 export function artworkProblem(contentType: string | null, size: number): string | null {
   if (!ARTWORK_TYPES.includes(contentType as (typeof ARTWORK_TYPES)[number])) return 'Artwork is a PNG or JPG.'
@@ -37,6 +40,10 @@ const AUDIO_EXTENSIONS: Record<string, string> = {
   ogg: 'audio/ogg',
 }
 export const AUDIO_TYPES = [...new Set(Object.values(AUDIO_EXTENSIONS))]
+/** What a bounce picker offers: every audio format Mixlog takes. */
+export const AUDIO_ACCEPT = [...AUDIO_TYPES, ...Object.keys(AUDIO_EXTENSIONS).map((ext) => `.${ext}`)].join(',')
+/** What a final's picker offers: the lossless formats. */
+export const FINAL_ACCEPT = '.wav,.aif,.aiff,.flac'
 
 /** The type Mixlog stores an audio file as, or null when it isn't audio Mixlog takes. */
 export function audioTypeOf(name: string, type: string): string | null {

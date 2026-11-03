@@ -1,24 +1,11 @@
-import { Clapperboard, File, Film, Gauge, Layers, MicVocal, Piano, SlidersHorizontal, type LucideIcon } from 'lucide-react'
+import { AudioWaveform, Clapperboard, File, Film, Gauge, Image, Layers, MicVocal, Piano, ScrollText, SlidersHorizontal, type LucideIcon } from 'lucide-react'
 
+import { lanesOf } from '#/server/lanes'
 import type { ReleaseRow, TrackRow, VersionRow } from '#/server/releases'
-import { dayOf, formatDay, todayIn, type Zone } from '../../lib/time'
+import { formatMoment, todayIn, type Zone } from '../../lib/time'
 import type { Playable } from '../player/Player'
 import { dateLabel } from './browse'
-import { releaseLink, sectionOf } from './sections'
-
-/** One track's stacks, read from the release's versions: each kind's versions newest first, and its current one.
- *  Its license is paperwork, not something to hear: it lives in Details (`licensesOf`). */
-export function stacksOf(track: TrackRow, versions: VersionRow[]) {
-  const own = versions.filter((v) => v.track_id === track.id && v.kind !== 'license')
-  const kinds = [...new Set(own.map((v) => v.kind))].sort((a, b) => KIND_ORDER.indexOf(a) - KIND_ORDER.indexOf(b))
-  return kinds.map((kind) => {
-    const stack = own.filter((v) => v.kind === kind).sort((a, b) => b.number - a.number)
-    return { kind, versions: stack, current: stack.find((v) => v.is_current) ?? stack[0] }
-  })
-}
-
-/** How stacks line up: what you'd ship first. */
-const KIND_ORDER = ['master', 'mix', 'instrumental', 'acapella', 'stems', 'canvas', 'video', 'other']
+import { releaseLink, sectionOf, type Part, type Section } from './sections'
 
 export const KIND_LABEL: Record<string, string> = {
   master: 'Master',
@@ -30,6 +17,9 @@ export const KIND_LABEL: Record<string, string> = {
   video: 'Video',
   other: 'Other',
 }
+
+/** The final's one icon, everywhere it shows: its lane, its station, the menus. */
+export const FINAL_ICON = AudioWaveform
 
 /** Each kind's one icon, everywhere it shows. */
 export const KIND_ICON: Record<string, LucideIcon> = {
@@ -50,21 +40,64 @@ export const licensesOf = (trackId: string, versions: VersionRow[]) =>
 /** "WAV", "MP3": the format as a musician says it. */
 export const formatOf = (filename: string) => (filename.includes('.') ? filename.split('.').pop()!.toUpperCase() : 'FILE')
 
-/** "84 KB", "48.2 MB", "1.24 GB". */
-export const sizeOf = (bytes: number) =>
-  bytes < 1024 ** 2 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : bytes < 1024 ** 3 ? `${(bytes / 1024 ** 2).toFixed(1)} MB` : `${(bytes / 1024 ** 3).toFixed(2)} GB`
+/** A version's name: "Final v4", "Master v3", "Instrumental v1". Releases keep one file per slot, so there it has no
+ *  number: "Final", "Instrumental". */
+export function versionLabel(version: Pick<VersionRow, 'kind' | 'number' | 'is_final'>, section: Section) {
+  const name = version.is_final ? 'Final' : (KIND_LABEL[version.kind] ?? version.kind)
+  return section === 'released' ? name : `${name} v${version.number}`
+}
 
-/** A version as the player names it: "Night Drive", "Master v4 · WAV", and the day it was bounced or went out. */
+/** A version as the player names it: "Night Drive", "Final v4 · WAV", and the day it was bounced or went out. */
 export function playableOf(release: ReleaseRow, track: TrackRow, version: VersionRow, zone: Zone): Playable {
   const section = sectionOf(release)
   return {
     versionId: version.id,
     title: track.title,
-    label: `${KIND_LABEL[version.kind] ?? version.kind} v${version.number} · ${formatOf(version.filename)}`,
-    day: section === 'released' ? dateLabel(section, release, zone) : `Uploaded ${formatDay(dayOf(version.created_at, zone), todayIn(zone))}`,
+    label: `${versionLabel(version, section)} · ${formatOf(version.filename)}`,
+    day: section === 'released' ? dateLabel(section, release, zone) : `Uploaded ${formatMoment(version.created_at, zone, todayIn(zone))}`,
     released: section === 'released',
     release: release.title,
     artworkId: release.artwork_id,
     link: releaseLink(section, release.id),
   }
+}
+
+/** One station on a release's signal path: the part it links to, and whether the signal has reached it. */
+export type Station = { part: Part; icon: LucideIcon; label: string; fact: string; lit: boolean }
+
+/** A release's signal path, from its source to the details: Mixes → Masters → Final → Artwork → Details in Upcoming;
+ *  Final → Artwork → Details in Releases, where a track holds only its final. A single's Final names its file. */
+export function stationsOf(section: Section, release: ReleaseRow, tracks: TrackRow[], versions: VersionRow[]): Station[] {
+  const n = tracks.length
+  const all = (count: number) => n > 0 && count === n
+  const lanes = tracks.map((t) => lanesOf(t.id, versions))
+  const finals = lanes.filter((l) => l.final).length
+  const single = release.format === 'single' && n === 1 ? lanes[0].final : undefined
+  const final: Station = {
+    part: 'tracks',
+    icon: FINAL_ICON,
+    label: 'Final',
+    fact: single ? `${section === 'released' ? '' : `v${single.number} · `}${formatOf(single.filename)}` : single === null ? 'Not yet' : n ? `${finals} of ${n}` : 'No tracks yet',
+    lit: all(finals),
+  }
+  const detailsDone = section === 'released' ? Boolean(release.upc) && tracks.every((t) => t.isrc) : Boolean(release.release_date)
+  const rest: Station[] = [
+    { part: 'artwork', icon: Image, label: 'Artwork', fact: release.artwork_id ? 'Cover set' : 'No artwork yet', lit: Boolean(release.artwork_id) },
+    {
+      part: 'details',
+      icon: ScrollText,
+      label: 'Details',
+      fact: section === 'released' ? (detailsDone ? 'All codes in' : 'Codes to add') : release.release_date ? 'Date set' : 'No date yet',
+      lit: detailsDone,
+    },
+  ]
+  if (section === 'released') return [final, ...rest]
+  const mixes = lanes.reduce((sum, l) => sum + l.mix.length, 0)
+  const mastered = lanes.filter((l) => l.final || l.master.length).length
+  return [
+    { part: 'tracks', icon: KIND_ICON.mix, label: 'Mixes', fact: mixes ? `${mixes} ${mixes === 1 ? 'mix' : 'mixes'}` : 'None yet', lit: mixes > 0 },
+    { part: 'tracks', icon: KIND_ICON.master, label: 'Masters', fact: n ? `${mastered} of ${n}` : 'No tracks yet', lit: all(mastered) },
+    final,
+    ...rest,
+  ]
 }

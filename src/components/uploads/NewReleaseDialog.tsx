@@ -1,9 +1,10 @@
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { ChevronDown, FilePlus2, ImagePlus, X, type LucideIcon } from 'lucide-react'
+import { ChevronDown, FilePlus2, ImagePlus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { AUDIO_TYPES, MAX_AUDIO_BYTES, artworkProblem, audioTypeOf, type AudioKind } from '#/server/files'
+import { ARTWORK_ACCEPT, AUDIO_ACCEPT, FINAL_ACCEPT, MAX_AUDIO_BYTES, artworkProblem, audioTypeOf, isFinal, type AudioKind } from '#/server/files'
 import { createRelease, type ReleaseFormat } from '#/server/releases'
+import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { useFileDrop } from '../../hooks/ui/use-file-drop'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { readDuration, uploadArtwork, uploadAudio } from '../../lib/files'
@@ -11,41 +12,22 @@ import { deviceZone, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { Button, Input, Led, Meter, Progress, Tip } from '../primitives'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../primitives/Dialog'
-import * as DropdownMenu from '../primitives/DropdownMenu'
 import { SegmentedControl } from '../primitives/SegmentedControl'
 import { MetaLine } from '../shared/MetaLine'
 import { formatLength } from '../releases/browse'
 import { ReleaseArt } from '../releases/ReleaseArt'
-import { ARTWORK_ACCEPT, useCoverDrop } from '../releases/use-cover-drop'
+import { LaneMenu, TARGET_ICON, TARGET_LABEL } from '../releases/LaneMenu'
 import { FORMAT_LABEL, releaseLink, type Section } from '../releases/sections'
-import { KIND_ICON } from '../releases/stacks'
-import { readFilename, suggestFormat } from './suggest'
+import { sentOf, sizeOf, timeLeft } from './progress'
+import { readFilename, suggestFinals, suggestFormat } from './suggest'
+import { UploadProgress } from './UploadRow'
+import type { Target } from './use-lane-upload'
 
-const KINDS: Record<AudioKind, { label: string; icon: LucideIcon }> = {
-  master: { label: 'Master', icon: KIND_ICON.master },
-  mix: { label: 'Mix', icon: KIND_ICON.mix },
-  instrumental: { label: 'Instrumental', icon: KIND_ICON.instrumental },
-  acapella: { label: 'Acapella', icon: KIND_ICON.acapella },
-}
 const FORMATS = (['single', 'ep', 'album'] as const).map((value) => ({ value, label: FORMAT_LABEL[value] }))
-const ACCEPT = [...AUDIO_TYPES, '.wav', '.aif', '.aiff', '.flac', '.mp3', '.m4a', '.ogg'].join(',')
+/** Where a new file can land: the lanes, then the alternates. */
+const TARGETS = ['final', 'master', 'mix', 'instrumental', 'acapella'] as const satisfies Target[]
 
 type Progress = { state: 'sending' | 'stored' | 'failed'; sent: number; error?: string }
-
-const sizeOf = (bytes: number) => (bytes < 1024 ** 3 ? `${(bytes / 1024 ** 2).toFixed(1)} MB` : `${(bytes / 1024 ** 3).toFixed(2)} GB`)
-/** "12.4 of 48.0 MB": what a bar says out loud. */
-function sentOf(share: number, bytes: number) {
-  const [unit, size] = bytes < 1024 ** 3 ? (['MB', 1024 ** 2] as const) : (['GB', 1024 ** 3] as const)
-  const digits = unit === 'MB' ? 1 : 2
-  return `${((share * bytes) / size).toFixed(digits)} of ${(bytes / size).toFixed(digits)} ${unit}`
-}
-
-/** Time left at the pace so far, once there's enough of it to judge (a few seconds in). Never a clock time. */
-function timeLeft(sent: number, total: number, seconds: number): string | null {
-  if (seconds < 3 || sent <= 0 || sent >= total) return null
-  const left = ((total - sent) / sent) * seconds
-  return left < 60 ? `${Math.max(5, Math.round(left / 5) * 5)} s left` : `${Math.round(left / 60)} min left`
-}
 const errorOf = (error: unknown, fallback: string) => (error instanceof Error && error.message) || fallback
 
 /**
@@ -71,7 +53,7 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
   const released = section === 'released'
   const today = todayIn(deviceZone())
   const [releasedOn, setReleasedOn] = useState(today)
-  const [edits, setEdits] = useState(() => new Map<File, { title?: string; kind?: AudioKind }>())
+  const [edits, setEdits] = useState(() => new Map<File, { title?: string; target?: Target }>())
   const [durations, setDurations] = useState(() => new Map<File, number | null>())
   const [progress, setProgress] = useState(() => new Map<File, Progress>())
   const [created, setCreated] = useState<{ id: string; trackIds: string[] } | null>(null)
@@ -112,20 +94,30 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
     }
   }, [bounces])
 
-  const rows = bounces.map(({ file, type }) => {
+  const titled = bounces.map(({ file, type }) => {
     const read = readFilename(file.name)
     const edit = edits.get(file)
-    return { file, type, title: edit?.title ?? read.title, kind: edit?.kind ?? read.kind }
+    return { file, type, title: edit?.title ?? read.title, read: read.kind, chosen: edit?.target }
   })
-  const shownFormat = format ?? suggestFormat(rows.map((r) => r.title))
+  const shownFormat = format ?? suggestFormat(titled.map((r) => r.title))
   const single = shownFormat === 'single'
-  const shownTitle = title ?? (single ? (rows[0]?.title ?? '') : '')
+  const shownTitle = title ?? (single ? (titled[0]?.title ?? '') : '')
+  const songKey = (row: { title: string }) => (single ? '' : row.title.trim().toLowerCase())
+  // On Releases every file is its track's final: a test, or a second final for one track, is left out.
+  const kept = released ? titled.filter((r, i) => isFinal(r.type) && titled.findIndex((o) => isFinal(o.type) && songKey(o) === songKey(r)) === i) : titled
+  const finalsLeftOut = titled.filter((r) => !kept.includes(r)).map((r) => `${r.file.name} (${isFinal(r.type) ? 'one final per track' : 'a test'})`)
   // On an EP or album, a title is a track: files that share one are its versions.
-  const songs = single ? [shownTitle.trim()] : [...new Map(rows.map((r) => [r.title.trim().toLowerCase(), r.title.trim()])).values()]
-  const songOf = (row: (typeof rows)[number]) => (single ? 0 : songs.findIndex((s) => s.toLowerCase() === row.title.trim().toLowerCase()))
+  const songs = single ? [shownTitle.trim()] : [...new Map(kept.map((r) => [songKey(r), r.title.trim()])).values()]
+  const songOf = (row: { title: string }) => (single ? 0 : songs.findIndex((s) => s.toLowerCase() === songKey(row)))
+  // Each song's newest lossless master is suggested as its final; shown, and corrected in a tap.
+  const finals = suggestFinals(kept.map((r) => ({ song: songOf(r), kind: r.read, lossless: isFinal(r.type), modified: r.file.lastModified })))
+  const rows = kept.map((r, i) => ({ ...r, target: (released ? 'final' : (r.chosen ?? (finals.has(i) ? 'final' : r.read))) as Target }))
 
   const locked = busy || created !== null
-  const { over: coverOver, props: coverDrop } = useCoverDrop(pickCover, setCoverProblem, !locked)
+  const { over: coverOver, props: coverDrop } = useDropTarget({
+    onFiles: (files) => (files.length > 1 ? setCoverProblem('One artwork per release: drop a single PNG or JPG.') : pickCover(files[0])),
+    enabled: !locked,
+  })
   const coverLabel = cover ? 'Replace the artwork' : 'Add artwork'
   const failures = [...progress.values()].filter((p) => p.state === 'failed').length
   const stored = [...progress.values()].filter((p) => p.state === 'stored').length
@@ -142,7 +134,7 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
   // More files can land on the open dialog until Save; after that the drop is refused, not quietly lost.
   const dragging = useFileDrop((dropped) => !locked && add(dropped)) && !locked
   const remove = (file: File) => onFilesChange(files.filter((f) => f !== file))
-  const edit = (file: File, change: { title?: string; kind?: AudioKind }) => setEdits((m) => new Map(m).set(file, { ...m.get(file), ...change }))
+  const edit = (file: File, change: { title?: string; target?: Target }) => setEdits((m) => new Map(m).set(file, { ...m.get(file), ...change }))
 
   const save = async () => {
     startedAt.current = { at: performance.now(), sent: sentBytes }
@@ -173,7 +165,10 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
     for (const row of rows) {
       const trackId = release.trackIds[songOf(row)]
       await send(row.file, (onProgress) =>
-        uploadAudio({ trackId, kind: row.kind, file: row.file, contentType: row.type, durationMs: durations.get(row.file) ?? null }, onProgress),
+        uploadAudio(
+          { trackId, kind: row.target === 'final' ? 'master' : (row.target as AudioKind), final: row.target === 'final', file: row.file, contentType: row.type, durationMs: durations.get(row.file) ?? null },
+          onProgress,
+        ),
       )
     }
     setBusy(false)
@@ -294,15 +289,12 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
                       {state?.state === 'failed' ? (
                         <span role="alert" className="text-[13px] text-feedback-error">{state.error}</span>
                       ) : state?.state === 'sending' ? (
-                        <span className="flex flex-col gap-1 pt-1">
-                          <Progress value={state.sent} label={`Sending ${row.file.name}`} valueText={sentOf(state.sent, row.file.size)} />
-                          <span data-numeric className="truncate text-[12.5px] text-ink-muted">{sentOf(state.sent, row.file.size)}</span>
-                        </span>
+                        <UploadProgress name={row.file.name} size={row.file.size} sent={state.sent} />
                       ) : (
-                        <MetaLine facts={[row.file.name.split('.').pop()!.toUpperCase(), sizeOf(row.file.size), duration ? formatLength(duration) : null, !single ? row.file.name : null]} />
+                        <MetaLine wrap facts={[row.file.name.split('.').pop()!.toUpperCase(), sizeOf(row.file.size), duration ? formatLength(duration) : null, !single ? row.file.name : null]} />
                       )}
                     </div>
-                    <KindMenu kind={row.kind} disabled={locked} onKind={(kind) => edit(row.file, { kind })} />
+                    {!released && <TargetMenu target={row.target} test={!isFinal(row.type)} disabled={locked} onTarget={(target) => edit(row.file, { target })} />}
                     <Status state={state} onRemove={locked ? undefined : () => remove(row.file)} name={row.file.name} />
                   </li>
                 )
@@ -343,7 +335,7 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
           ref={picker}
           type="file"
           multiple
-          accept={ACCEPT}
+          accept={released ? FINAL_ACCEPT : AUDIO_ACCEPT}
           hidden
           onChange={(e) => {
             add([...(e.target.files ?? [])])
@@ -353,7 +345,12 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
 
         {coverProblem && <p role="alert" className="text-[13px] text-feedback-error">{coverProblem}</p>}
         {cover && progress.get(cover)?.state === 'failed' && <p role="alert" className="text-[13px] text-feedback-error">Artwork: {progress.get(cover)!.error}</p>}
-        {leftOut.length > 0 && <p className="text-[13px] text-ink-muted">Left out: {leftOut.join(', ')}.</p>}
+        {leftOut.length + finalsLeftOut.length > 0 && (
+          <p className="text-[13px] text-ink-muted">
+            Left out: {[...leftOut, ...finalsLeftOut].join(', ')}.
+            {finalsLeftOut.length > 0 && ' Releases keep the final: a WAV, AIFF or FLAC. Start it in Upcoming to keep test bounces.'}
+          </p>
+        )}
         {problem && <p role="alert" className="text-[13px] text-feedback-error">{problem}</p>}
         {failures > 0 && !busy && <p className="text-[13px] text-ink-soft">The release is saved with what made it. Try again sends only what didn’t.</p>}
 
@@ -370,31 +367,17 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
   )
 }
 
-function KindMenu({ kind, disabled, onKind }: { kind: AudioKind; disabled: boolean; onKind: (kind: AudioKind) => void }) {
-  const { label, icon: Icon } = KINDS[kind]
+/** Where a file lands on its track: the shared lane menu. A test can't be the final, so it isn't offered one. */
+function TargetMenu({ target, test, disabled, onTarget }: { target: Target; test: boolean; disabled: boolean; onTarget: (target: Target) => void }) {
+  const Icon = TARGET_ICON(target)
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild disabled={disabled}>
-        <Button variant="secondary" size="sm" aria-label={`Stack: ${label}`} className="shrink-0 gap-1.5 px-2.5 sm:w-36 sm:justify-start">
-          <Icon size={14} aria-hidden="true" className="text-accent" />
-          <span className="max-sm:hidden">{label}</span>
-          <ChevronDown size={13} aria-hidden="true" className="text-ink-muted sm:ml-auto" />
-        </Button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="end" className="min-w-[11rem]">
-        <DropdownMenu.RadioGroup value={kind} onValueChange={(value) => onKind(value as AudioKind)}>
-          {(Object.keys(KINDS) as AudioKind[]).map((value) => {
-            const { label, icon: Icon } = KINDS[value]
-            return (
-              <DropdownMenu.RadioItem key={value} value={value} className="gap-2">
-                <Icon size={14} aria-hidden="true" className="text-ink-muted" />
-                {label}
-              </DropdownMenu.RadioItem>
-            )
-          })}
-        </DropdownMenu.RadioGroup>
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
+    <LaneMenu value={target} options={test ? TARGETS.filter((t) => t !== 'final') : TARGETS} onChange={onTarget}>
+      <Button variant="secondary" size="sm" aria-label={`Lands in: ${TARGET_LABEL(target)}`} disabled={disabled} className="shrink-0 gap-1.5 px-2.5 sm:w-36 sm:justify-start">
+        <Icon size={14} aria-hidden="true" className="text-accent" />
+        <span className="max-sm:hidden">{TARGET_LABEL(target)}</span>
+        <ChevronDown size={13} aria-hidden="true" className="text-ink-muted sm:ml-auto" />
+      </Button>
+    </LaneMenu>
   )
 }
 

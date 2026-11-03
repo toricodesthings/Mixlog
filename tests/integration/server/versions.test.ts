@@ -19,8 +19,8 @@ function bounce(name: string, size: number) {
   for (let i = 0; i < size; i += UPLOAD_PART_BYTES) bytes.fill(i / UPLOAD_PART_BYTES + 1, i, i + UPLOAD_PART_BYTES)
   return new File([bytes], name)
 }
-const upload = (file: File, { trackId = song, kind = 'master' as AudioKind, durationMs = null as number | null, note = undefined as string | undefined } = {}) =>
-  uploadAudio({ trackId, kind, file, contentType: audioTypeOf(file.name, file.type)!, durationMs, note }, () => {})
+const upload = (file: File, { trackId = song, kind = 'master' as AudioKind, durationMs = null as number | null, note = undefined as string | undefined, final = false, replaces = undefined as string | undefined } = {}) =>
+  uploadAudio({ trackId, kind, file, contentType: audioTypeOf(file.name, file.type)!, durationMs, note, final, replaces }, () => {})
 const sameBytes = async (a: Uint8Array | undefined, b: Blob) => !!a && Buffer.from(a).equals(Buffer.from(await b.arrayBuffer()))
 
 beforeEach(() => {
@@ -51,8 +51,8 @@ describe('a bounce, from the browser to its stack', () => {
     expect(await sameBytes(new Uint8Array(await played.arrayBuffer()), bounce('', 25 * MB))).toBe(true)
   })
 
-  it('numbers each stack on its own', async () => {
-    expect(await upload(new File(['mix'], 'night drive mix.mp3'), { kind: 'mix' })).toMatchObject({ number: 1 })
+  it('numbers mixes and masters as one song, each track on its own', async () => {
+    expect(await upload(new File(['mix'], 'night drive mix.mp3'), { kind: 'mix' })).toMatchObject({ number: 3 })
     expect(await upload(new File(['intro'], 'intro.wav'), { trackId: intro })).toMatchObject({ number: 1 })
   })
 
@@ -69,7 +69,7 @@ describe('a bounce, from the browser to its stack', () => {
     const { id, number } = await landing
     vi.useRealTimers()
 
-    expect(number).toBe(2)
+    expect(number).toBe(4)
     expect(sent.filter((s) => s.startsWith('PUT'))).toEqual(['PUT /api/uploads part 1', 'PUT /api/uploads part 2', 'PUT /api/uploads part 2'])
     expect(await sameBytes(objects.get(`releases/${releaseId}/tracks/${song}/mix/${id}`)?.bytes, mix)).toBe(true)
   })
@@ -82,7 +82,7 @@ describe('a bounce, from the browser to its stack', () => {
     expect(await stack(song, 'master')).toHaveLength(2)
 
     network.intercept = undefined
-    expect(await upload(new File(['v3'], 'night drive v3.mp3'))).toMatchObject({ number: 3 })
+    expect(await upload(new File(['v5'], 'night drive v5.mp3'))).toMatchObject({ number: 5 })
   })
 
   it('refuses what isn’t a bounce before a byte is sent', async () => {
@@ -105,6 +105,51 @@ describe('a bounce, from the browser to its stack', () => {
     const done = await fetch('/api/uploads/complete', { method: 'POST', body: JSON.stringify({ trackId: intro, kind: 'master', id, uploadId, parts: [{ partNumber: 1, etag: 'x' }] }) })
     expect(done.status).toBe(404)
     expect(await stack(intro, 'master')).toHaveLength(1)
+  })
+})
+
+const { id: out, trackIds: [single] } = await call(createRelease, { title: 'Out Already', format: 'single', tracks: [], releasedOn: '2026-01-02', zone: 'UTC' })
+describe('filing an upload', () => {
+  const own = async (releaseId: string) => (await call(getRelease, releaseId)).versions.map((v) => [v.filename, v.is_final ? 'final' : v.kind])
+
+  it('lands a final straight in the Final lane, and the next one takes its place', async () => {
+    await upload(new File(['wav'], 'intro final.wav'), { trackId: intro, final: true })
+    await upload(new File(['wav'], 'intro final 2.wav'), { trackId: intro, final: true })
+    expect((await stack(intro, 'master')).map((v) => [v.number, v.filename, v.is_final])).toEqual([[3, 'intro final 2.wav', 1], [2, 'intro final.wav', 0], [1, 'intro.wav', 0]])
+    await expect(upload(new File(['mp3'], 'intro test.mp3'), { trackId: intro, final: true })).rejects.toThrow(/final is a WAV/)
+    await expect(upload(new File(['wav'], 'intro mix.wav'), { trackId: intro, kind: 'mix', final: true })).rejects.toThrow(/final is a WAV/)
+  })
+
+  it('in Upcoming never replaces', async () => {
+    const [top] = await stack(intro, 'master')
+    await expect(upload(new File(['wav'], 'again.wav'), { trackId: intro, replaces: top.id })).rejects.toThrow(/never|nothing is replaced/)
+  })
+
+  it('in Releases takes a final for a track without one, which ships it, and nothing else', async () => {
+    await expect(upload(new File(['mp3'], 'out.mp3'), { trackId: single })).rejects.toThrow(/one file per slot/)
+    await upload(new File(['wav'], 'out.wav'), { trackId: single, final: true })
+    expect(await own(out)).toEqual([['out.wav', 'final']])
+    expect((await call(getRelease, out)).versions[0].released_at).not.toBeNull()
+    await expect(upload(new File(['wav'], 'out 2.wav'), { trackId: single, final: true })).rejects.toThrow(/has its final/)
+  })
+
+  it('replaces a wrong final: the new one is stored and pinned before the old row and file go', async () => {
+    const [old] = (await call(getRelease, out)).versions
+    const oldKey = `releases/${out}/tracks/${single}/master/${old.id}`
+    await upload(new File(['wav'], 'out fixed.wav'), { trackId: single, final: true, replaces: old.id })
+    const [now] = (await call(getRelease, out)).versions
+    expect([now.filename, now.is_final, now.released_at !== null, now.number]).toEqual(['out fixed.wav', 1, true, 2])
+    expect([objects.has(oldKey), deletedKeys.includes(oldKey), objects.has(`releases/${out}/tracks/${single}/master/${now.id}`)]).toEqual([false, true, true])
+  })
+
+  it('refuses a replacement that doesn’t fit its slot, and keeps the old file when a send fails', async () => {
+    const [final] = (await call(getRelease, out)).versions
+    await expect(upload(new File(['wav'], 'inst.wav'), { trackId: single, kind: 'instrumental', replaces: final.id })).rejects.toThrow(/isn’t this slot’s/)
+    await expect(upload(new File(['wav'], 'x.wav'), { trackId: intro, final: true, replaces: final.id })).rejects.toThrow(/nothing is replaced/)
+    await expect(upload(new File(['mp3'], 'x.mp3'), { trackId: single, final: true, replaces: final.id })).rejects.toThrow(/final is a WAV/)
+    network.intercept = (request) => (request.method === 'PUT' ? new Response('Gone', { status: 400 }) : undefined)
+    await expect(upload(new File(['wav'], 'x.wav'), { trackId: single, final: true, replaces: final.id })).rejects.toThrow('Gone')
+    expect((await call(getRelease, out)).versions.map((v) => v.id)).toEqual([final.id])
   })
 })
 

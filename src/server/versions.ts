@@ -1,15 +1,17 @@
 import { env } from 'cloudflare:workers'
-import { and, eq, inArray, lt, ne, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull, lt, ne, sql } from 'drizzle-orm'
+import type { BatchItem } from 'drizzle-orm/batch'
 import { z } from 'zod'
 
 import { isAllowed } from '#/server/access'
 import {
   AUDIO_KINDS, MAX_ARTWORK_BYTES, MAX_AUDIO_BYTES, MAX_LICENSE_BYTES, UPLOAD_PART_BYTES,
-  artworkProblem, audioProblem, contentRange, fileKey, licenseProblem, startsLike, type AudioKind,
+  artworkProblem, audioProblem, contentRange, fileKey, isFinal, licenseProblem, startsLike, type AudioKind,
 } from '#/server/files'
 import { db } from '#/server/db'
 import { Id, isId } from '#/server/input'
-import { releases, tracks, versions } from '#/server/schema'
+import { hasFinal, pin, setAsideRest } from '#/server/releases'
+import { currentPins, releases, stamp, stampNow, tracks, versions } from '#/server/schema'
 import { keepDays } from '#/server/settings'
 
 // Server routes, not server functions: bytes stream through without a JSON round trip, and an <img> or
@@ -86,14 +88,36 @@ export async function addArtwork(request: Request, releaseId: string): Promise<R
 // The browser holds the upload as its track, stack and version ID; the Worker rebuilds the R2 key from those, so
 // nothing about it is kept in D1 until it's whole, and no storage key reaches the browser.
 const json = async (request: Request) => request.json().catch(() => null)
-const Start = z.object({ trackId: Id(), kind: z.unknown(), filename: z.string().optional().catch(undefined), contentType: z.unknown(), size: z.unknown() })
+/** How an upload is filed: `final` pins it as the track's final (a lossless master); `replaces` names the file it
+ *  overwrites in Releases (the track's final, or a shipped alternate of its kind). */
+const Filing = { final: z.boolean().optional().catch(undefined), replaces: Id().optional().catch(undefined) }
+const Start = z.object({ trackId: Id(), kind: z.unknown(), filename: z.string().optional().catch(undefined), contentType: z.unknown(), size: z.unknown(), ...Filing })
 const Upload = z.object({ trackId: Id(), kind: z.enum(AUDIO_KINDS), id: Id(), uploadId: z.string().min(1) })
 const Finish = Upload.extend({
   parts: z.array(z.object({ partNumber: z.int().min(1).max(10_000), etag: z.string() })).min(1),
   durationMs: z.int().positive().lt(86_400_000).nullish().catch(null),
   /** One line on what changed ("Final of v3"). */
   note: z.string().trim().max(200).nullish().catch(null),
+  ...Filing,
 })
+
+const SLOT = 'Releases keep one file per slot: replace it, or move the release back to Upcoming.'
+
+/** Where an audio upload lands on its track, or why it can't. Upcoming takes any bounce, and never replaces. A released
+ *  release takes only a final for a track without one (which ships it), or a replacement for a file that shipped. */
+async function filingOf(trackId: string, kind: string, contentType: string, final?: boolean, replaces?: string) {
+  if (final && (kind !== 'master' || !isFinal(contentType))) return { problem: 'A final is a WAV, AIFF or FLAC master.' }
+  const [track] = await db.select({ released: releases.releasedAt }).from(tracks).innerJoin(releases, eq(releases.id, tracks.releaseId)).where(eq(tracks.id, trackId))
+  if (!track) return { problem: 'Not found' }
+  if (!track.released) return replaces ? { problem: 'Upcoming keeps every version: nothing is replaced.' } : { released: false, old: null }
+  if (!replaces) return !final ? { problem: SLOT } : (await hasFinal(trackId)) ? { problem: 'This track has its final. Replace it instead.' } : { released: true, old: null }
+  const [old] = await db
+    .select({ id: versions.id, r2Key: versions.r2Key, kind: versions.kind, final: sql<number>`EXISTS (SELECT 1 FROM ${currentPins} p WHERE p.version_id = ${versions.id} AND p.kind = 'master')` })
+    .from(versions)
+    .where(and(eq(versions.id, replaces), eq(versions.trackId, trackId), isNotNull(versions.releasedAt), isNull(versions.prunedAt)))
+  const fits = old && (old.final ? final : !final && old.kind === kind)
+  return fits ? { released: true, old } : { problem: 'That file isn’t this slot’s to replace.' }
+}
 
 /** The R2 key of a track's file, under its release; null when the track is gone. */
 async function keyFor(trackId: string, kind: AudioKind, versionId: string) {
@@ -115,11 +139,14 @@ export async function startUpload(request: Request): Promise<Response> {
   if (!(await allowed(request))) return text(403, 'Forbidden')
   const body = Start.safeParse(await json(request))
   if (!body.success) return text(404, 'Not found')
-  const { trackId, kind, filename, contentType, size } = body.data
+  const { trackId, kind, filename, contentType, size, final, replaces } = body.data
   const problem = audioProblem(kind, contentType, size)
   if (problem) return text((size as number) > MAX_AUDIO_BYTES ? 413 : 400, problem)
   const [track] = await db.select({ releaseId: tracks.releaseId }).from(tracks).where(eq(tracks.id, trackId))
   if (!track?.releaseId) return text(404, 'Not found')
+  // Checked again on completion; here so a refused file isn't sent at all.
+  const filing = await filingOf(trackId, kind as string, contentType as string, final, replaces)
+  if ('problem' in filing) return text(400, filing.problem!)
 
   const id = crypto.randomUUID()
   const name = filename?.slice(0, 255) || 'bounce'
@@ -146,13 +173,14 @@ export async function putUploadPart(request: Request): Promise<Response> {
   }
 }
 
-/** POST /api/uploads/complete, JSON { trackId, kind, id, uploadId, parts, durationMs, note? }: joins the parts and puts the
- *  file on top of its stack as the next version. Numbered here, so an abandoned upload never leaves a gap. */
+/** POST /api/uploads/complete, JSON { trackId, kind, id, uploadId, parts, durationMs, note?, final?, replaces? }: joins the
+ *  parts and puts the file on top of its stack as the next version, filed as `filingOf` says. Numbered here, so an
+ *  abandoned upload never leaves a gap. A replacement is stored, stamped and pinned before the old row and file go. */
 export async function completeUpload(request: Request): Promise<Response> {
   if (!(await allowed(request))) return text(403, 'Forbidden')
   const upload = await ongoing(await json(request), Finish)
   if (!upload) return text(400, 'Not an upload')
-  const { trackId, kind, id, key, uploadId, parts, durationMs: duration, note } = upload
+  const { trackId, kind, id, key, uploadId, parts, durationMs: duration, note, final, replaces } = upload
 
   let object: R2Object
   try {
@@ -160,27 +188,49 @@ export async function completeUpload(request: Request): Promise<Response> {
   } catch {
     return text(404, 'This upload has gone; start it again.')
   }
-  const number = await stack({
-    id, trackId, kind, key, size: object.size, durationMs: duration ?? null, note: note || null,
-    filename: object.customMetadata?.filename ?? 'bounce', contentType: object.httpMetadata?.contentType ?? 'application/octet-stream',
-  })
+  const contentType = object.httpMetadata?.contentType ?? 'application/octet-stream'
+  const filing = await filingOf(trackId, kind, contentType, final, replaces)
+  if ('problem' in filing) {
+    await env.FILES.delete(key)
+    return text(400, filing.problem!)
+  }
+  const { released, old } = filing
+  const number = await stack(
+    { id, trackId, kind, key, size: object.size, durationMs: duration ?? null, note: note || null, filename: object.customMetadata?.filename ?? 'bounce', contentType, released },
+    [
+      ...(final || old ? pin(trackId, kind, id) : []),
+      ...(released && !old ? [setAsideRest(trackId, id)] : []),
+      ...(old ? [db.delete(versions).where(eq(versions.id, old.id))] : []),
+    ],
+  )
+  if (old) await env.FILES.delete(old.r2Key) // only once the new one is safe
   return Response.json({ id, number }, { status: 201 })
 }
 
-/** Puts a stored file on top of its track's stack and returns its number. One statement takes the next number and
- *  claims it, so two landing at once can't share one; if the row fails, the file goes too: never a half-version. */
-async function stack(v: { id: string; trackId: string; kind: string; key: string; filename: string; contentType: string; size: number; durationMs: number | null; note?: string | null }) {
+/** Puts a stored file on top of its track's stack and returns its number; `then` files it (a pin, a set-aside, the row it
+ *  replaces) in the same batch. One statement takes the next number and claims it, so two landing at once can't share
+ *  one; mixes and masters count together, pruned versions included, so a number is never reused. If the batch fails,
+ *  the file goes too: never a half-version. */
+async function stack(
+  v: { id: string; trackId: string; kind: string; key: string; filename: string; contentType: string; size: number; durationMs: number | null; note?: string | null; released?: boolean },
+  then: BatchItem<'sqlite'>[] = [],
+) {
+  const sequence = v.kind === 'mix' || v.kind === 'master' ? sql`n.kind IN ('mix', 'master')` : sql`n.kind = ${v.kind}`
   try {
-    const row = await db.get<{ number: number }>(sql`
-      INSERT INTO ${versions} (id, track_id, kind, number, r2_key, filename, content_type, size, duration_ms, note)
-      SELECT ${v.id}, ${v.trackId}, ${v.kind}, COALESCE(MAX(number), 0) + 1, ${v.key}, ${v.filename}, ${v.contentType}, ${v.size}, ${v.durationMs}, ${v.note ?? null}
-      FROM ${versions} WHERE track_id = ${v.trackId} AND kind = ${v.kind}
-      RETURNING number`)
-    return row!.number
+    await db.batch([
+      db.insert(versions).values({
+        id: v.id, trackId: v.trackId, kind: v.kind as AudioKind | 'license', r2Key: v.key, filename: v.filename, contentType: v.contentType, size: v.size,
+        durationMs: v.durationMs, note: v.note ?? null, releasedAt: v.released ? stampNow : null,
+        number: sql`(SELECT COALESCE(MAX(n.number), 0) + 1 FROM ${versions} n WHERE n.track_id = ${v.trackId} AND ${sequence})`,
+      }),
+      ...then,
+    ])
   } catch (error) {
     await env.FILES.delete(v.key)
     throw error
   }
+  const [{ number }] = await db.select({ number: versions.number }).from(versions).where(eq(versions.id, v.id))
+  return number
 }
 
 /** POST /api/tracks/$trackId/license: the body is a PDF or Word document, the track's next license. A license is a
@@ -224,7 +274,7 @@ export async function abortUpload(request: Request): Promise<Response> {
 export async function erasePruned(): Promise<number> {
   const days = await keepDays()
   if (days === null) return 0
-  const before = sql`strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ${`-${days} days`})`
+  const before = stamp(days)
   let erased = 0
   for (;;) {
     const due = await db.select({ id: versions.id, r2Key: versions.r2Key }).from(versions).where(lt(versions.prunedAt, before)).limit(90)

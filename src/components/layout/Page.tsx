@@ -50,7 +50,7 @@ export function Page({ title, crumbs = [], lead, meta, actions, bar, bleed, chil
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       {!bleed && header}
-      <main className={cn('min-h-0 flex-1 overflow-y-auto', bleed ? 'relative flex flex-col' : ['px-4 py-6 sm:px-6 lg:px-8', isCompact && 'pb-[calc(7rem+var(--player-space))]'])}>
+      <main className={cn('min-h-0 flex-1 overflow-y-auto', bleed ? 'relative flex flex-col' : ['px-4 py-6 sm:px-6 lg:px-8'])}>
         {bleed ? (
           <div className="layer-shell-base absolute inset-x-0 top-0">
             {header}

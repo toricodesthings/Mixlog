@@ -1,9 +1,11 @@
-// The one place that turns a moment into a day (Cadence's time model, trimmed: Mixlog deals in dates, never clock times).
-// Pure, `Intl` only, so the server uses it too. Nothing else parses, slices or formats a date.
+// The one place that turns a moment into a day (Cadence's time model, trimmed: Mixlog deals in dates, never clock times,
+// with one exception: a version, read as the day and time it landed, `formatMoment`). Pure, `Intl` only, so the server
+// uses it too. Nothing else parses, slices or formats a date or a time.
 
 /** A calendar day, `YYYY-MM-DD`, with no time and no zone: every date Mixlog shows or is told. */
 export type LocalDate = string
-/** A row's bookkeeping moment, ISO 8601 UTC as D1 writes it. Never shown; read only as the day it fell on (`dayOf`). */
+/** A row's bookkeeping moment, ISO 8601 UTC as D1 writes it (`stamp` in server/schema.ts, the only writer). Read as the
+ *  day it fell on (`dayOf`), or, for a version, the day and time it landed (`formatMoment`). */
 export type Instant = string
 /** An IANA zone name, e.g. `America/Toronto`. Never an offset, never "local". */
 export type Zone = string
@@ -52,4 +54,12 @@ export function formatDay(day: LocalDate, today: LocalDate, locale?: string): st
   const [y, m, d] = day.split('-').map(Number)
   const options: Intl.DateTimeFormatOptions = { timeZone: 'UTC', month: 'short', day: 'numeric', ...(day.slice(0, 4) !== today.slice(0, 4) && { year: 'numeric' }) }
   return formatter(`${locale}|${JSON.stringify(options)}`, options, locale).format(new Date(Date.UTC(y, m - 1, d, 12)))
+}
+
+/** The one time formatter, for the one exception to "dates, never clock times": a version, since an artist can bounce
+ *  many in a day. The day it landed in `zone`, said as `formatDay` says it, and the time there in the locale's own
+ *  clock: "Nov 2 · 9:14 PM", "2 Nov · 21:14". For reading only: nothing ever parses it back; the Instant is the record. */
+export function formatMoment(instant: Instant, zone: Zone, today: LocalDate, locale?: string): string {
+  const time = formatter(`time|${locale}|${zone}`, { timeZone: zone, hour: 'numeric', minute: '2-digit' }, locale).format(new Date(instant))
+  return `${formatDay(dayOf(instant, zone), today, locale)} · ${time}`
 }

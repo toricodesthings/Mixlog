@@ -1,7 +1,7 @@
 import { Clapperboard, FolderOpen, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 
-import { dayOf, deviceZone, formatDay, todayIn } from '../../lib/time'
+import { deviceZone, formatMoment, todayIn } from '../../lib/time'
 import { Scope } from '../primitives'
 import { MetaLine } from '../shared/MetaLine'
 import { ArtworkButton } from './ArtworkButton'
@@ -25,7 +25,7 @@ export function ReleaseArtwork({ release, versions }: ReleaseData) {
         {failure ? (
           <p role="alert" className="px-1 text-sm text-feedback-error">{failure} Try the cover again.</p>
         ) : artwork ? (
-          <MetaLine className="px-1" facts={[formatOf(artwork.filename), `${(artwork.size / 1024 ** 2).toFixed(1)} MB`, `Added ${formatDay(dayOf(artwork.created_at, zone), todayIn(zone))}`, artwork.filename]} />
+          <MetaLine wrap className="px-1" facts={[formatOf(artwork.filename), `${(artwork.size / 1024 ** 2).toFixed(1)} MB`, `Added ${formatMoment(artwork.created_at, zone, todayIn(zone))}`, artwork.filename]} />
         ) : (
           <p className="px-1 text-sm text-ink-muted">No artwork yet: click the cover or drop a PNG or JPG on it. A new one replaces it.</p>
         )}

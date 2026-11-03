@@ -11,22 +11,13 @@ const BARS = [
 
 /** An EQ meter: still bars at rest, dancing while `live` (something is playing). Decorative. Where the player's
  *  signal runs (player/signal.ts: desktop), a live meter's bars read the music instead, each its own band, low to high. */
-export function Meter({ live = false, bars = 5, className, peak }: {
-    live?: boolean;
-    bars?: number;
-    className?: string;
-    /** Lights the tallest bar's tip in Phantom: only where Phantom is allowed (the brand mark). */
-    peak?: boolean;
-}) {
+export function Meter({ live = false, bars = 5, className }: { live?: boolean; bars?: number; className?: string }) {
     return (
         <span aria-hidden="true" data-signal={live ? "" : undefined} className={cn("inline-flex h-4 items-end gap-[2px]", live && "meter-live", className)}>
             {BARS.slice(0, bars).map((b, i) => (
                 <span
                     key={i}
-                    className={cn(
-                        "meter-bar block h-full w-[3px] rounded-full bg-accent",
-                        peak && b.rest === 1 && "bg-linear-to-t from-accent from-55% to-phantom",
-                    )}
+                    className="meter-bar block h-full w-[3px] rounded-full bg-accent"
                     style={{ "--rest": b.rest, "--period": `${b.period}ms`, "--delay": `${b.delay}ms`, "--level": `var(--level-${Math.round((i * 4) / Math.max(bars - 1, 1))})` } as React.CSSProperties}
                 />
             ))}

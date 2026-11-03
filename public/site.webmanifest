@@ -1,0 +1,12 @@
+{
+  "name": "Mixlog",
+  "short_name": "Mixlog",
+  "description": "Every version, one place, any room.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1020",
+  "theme_color": "#0a1020",
+  "icons": [
+    { "src": "/brand/mixlog-mark.png", "sizes": "1024x1024", "type": "image/png" }
+  ]
+}

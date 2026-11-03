@@ -30,3 +30,14 @@ export function suggestFormat(titles: string[]): ReleaseFormat {
   const songs = new Set(titles.map((t) => t.trim().toLowerCase())).size
   return songs <= 1 ? 'single' : songs <= 4 ? 'ep' : 'album'
 }
+
+/** Which files to suggest as their song's final: per song, the newest lossless file read as a master. Never more:
+ *  the rest stay as read, and every suggestion is shown and correctable before Save. Returns their indexes. */
+export function suggestFinals(files: { song: number; kind: AudioKind; lossless: boolean; modified: number }[]): Set<number> {
+  const best = new Map<number, number>()
+  files.forEach((f, i) => {
+    const held = best.get(f.song)
+    if (f.kind === 'master' && f.lossless && (held === undefined || f.modified > files[held].modified)) best.set(f.song, i)
+  })
+  return new Set(best.values())
+}

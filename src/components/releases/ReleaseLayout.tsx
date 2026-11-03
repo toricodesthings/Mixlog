@@ -10,6 +10,7 @@ import { cn } from '../../lib/utils'
 import { Button, Led, Tip, useHoverSlide } from '../primitives'
 import * as ScrollArea from '../primitives/ScrollArea'
 import { Page } from '../layout/Page'
+import { UploadButton } from '../uploads/UploadDialog'
 import { useRoomStyle } from '../scene/palette'
 import { MetaLine } from '../shared/MetaLine'
 import { ArtworkButton } from './ArtworkButton'
@@ -38,7 +39,10 @@ export function ReleaseLayout(data: ReleaseData) {
   const { isDesktop } = useShellMode()
   const [artFailure, setArtFailure] = useState<string | null>(null)
   // The summary says the facts in full; every other part keeps them under the title.
-  const onSummary = useLocation({ select: (l) => l.pathname.replace(/\/$/, '').endsWith(release.id) })
+  const path = useLocation({ select: (l) => l.pathname.replace(/\/$/, '') })
+  const onSummary = path.endsWith(release.id)
+  // Upload sits in the header wherever one track's lanes are the page: a single's Tracks, or a track of an EP or album.
+  const oneTrack = section === 'upcoming' && (/\/tracks\/[^/]+$/.test(path) || (release.format === 'single' && path.endsWith('/tracks')))
   const count = release.format === 'single' ? null : tracks.length
   const slide = useHoverSlide('rounded-xl bg-accent-dim')
   const room = useRoomStyle(release.title, release.artwork_id)
@@ -93,12 +97,15 @@ export function ReleaseLayout(data: ReleaseData) {
               {artFailure} Tap the cover to try again.
             </p>
           ) : onSummary ? null : (
-            <MetaLine facts={[dateLabel(section, release, deviceZone()), ...releaseFacts(release, FORMAT_LABEL[release.format])]} />
+            <MetaLine wrap facts={[dateLabel(section, release, deviceZone()), ...releaseFacts(release, FORMAT_LABEL[release.format])]} />
           )
         }
         actions={
-          isDesktop ? undefined : (
+          isDesktop ? (
+            oneTrack && <UploadButton />
+          ) : (
             <>
+              {oneTrack && <UploadButton />}
               <SaveAndExit section={section} compact />
               {section === 'upcoming' ? <MoveToReleases compact /> : <MoveBack {...data} compact />}
             </>

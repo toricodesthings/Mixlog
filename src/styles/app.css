@@ -47,6 +47,14 @@
   /* === PHANTOM — the one unexpected light (+48V lit on the desk). Rare by rule: src/AGENTS.md §6. === */
   --color-phantom: #ff6bd6;
 
+  /* === THE BRAND MARK (primitives/BrandMark, public/brand/): its own colours, as its files, one set per theme.
+     Ember is the last warm light of blue hour, the mark's warm end and nowhere else. === */
+  --color-mark-signal: #6cb4ff;
+  --color-mark-haze: #aaa8f2;
+  --color-mark-rose: #f49ac1;
+  --color-mark-phantom: #ff6bd6;
+  --color-ember: #ffa36b;
+
   /* === ACCENT INDIRECTION (palette-responsive; components use these, never a named accent) === */
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
@@ -144,6 +152,11 @@
   --color-tube: #7a4a0c;
   --color-haze: #4a44a6;
   --color-phantom: #a3127a;
+  --color-mark-signal: #1449c2;
+  --color-mark-haze: #4a44a6;
+  --color-mark-rose: #a3306f;
+  --color-mark-phantom: #a3127a;
+  --color-ember: #b5480c;
 
   --accent-soft: rgba(20, 73, 194, 0.08);
   --accent-dim: rgba(20, 73, 194, 0.04);
@@ -261,6 +274,13 @@
     background: color-mix(in srgb, var(--color-panel) 45%, transparent);
     -webkit-backdrop-filter: blur(32px) saturate(1.3);
     backdrop-filter: blur(32px) saturate(1.3);
+    border: 1px solid var(--color-line);
+  }
+
+  [data-theme="daylight"] .glass {
+    background: color-mix(in srgb, var(--color-panel-raised) 85%, transparent);
+    -webkit-backdrop-filter: blur(32px) saturate(1.1);
+    backdrop-filter: blur(32px) saturate(1.1);
     border: 1px solid var(--color-line);
   }
 
@@ -647,6 +667,38 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 .mobile-icon-button:hover,
 .mobile-icon-button:active { background: var(--color-room-surface); }
 
+.mobile-tab-bar a, .mobile-tab-bar button { cursor: pointer; }
+.mobile-tab-bar.safe-bottom { padding-bottom: max(0.875rem, env(safe-area-inset-bottom)); }
+.mobile-tab-bar {
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+}
+/* Floating dock (Cadence's): a soft glass pill lifted off the page by a deep, diffuse shadow, a visible gap
+   to the screen's bottom edge. */
+.mobile-dock {
+  box-shadow:
+    0 16px 40px -12px rgba(2, 6, 14, 0.55),
+    0 4px 12px -4px rgba(2, 6, 14, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+/* The dock's lens: the active tab's glass, held brighter while pressed. */
+.dock-lens {
+  --edge-strength: 0.7;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  transition: background-color var(--duration-fast) ease;
+}
+.mobile-dock[data-held] > .dock-lens {
+  --edge-strength: 1;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.dock-link { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+[data-theme="daylight"] .mobile-dock {
+  box-shadow:
+    0 16px 36px -14px rgba(94, 72, 41, 0.28),
+    0 3px 10px -4px rgba(94, 72, 41, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
 /* While typing, the keyboard covers the home indicator: a sheet drops its safe-area pad. */
 @media (pointer: coarse) {
   .mobile-sheet-shell:has(:is(textarea, [contenteditable="true"], input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"])):focus) {
@@ -713,6 +765,11 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 @keyframes meter-dance { 0% { scale: 1 0.18; } 100% { scale: 1 var(--rest, 0.6); } }
 /* With the signal (player/signal.ts) each bar reads its band, set every frame, so no transition */
 .meter-live[data-live] .meter-bar { animation: none; scale: 1 var(--level, var(--rest)); }
+
+/* The brand mark (primitives/BrandMark) sings like a voice around its centre line; its resting frame is the logo. */
+.brand-bar { transform-box: fill-box; transform-origin: center; }
+:is(.brand-live, [data-meter-host]:hover) .brand-bar { animation: brand-sing var(--period, 900ms) ease-in-out infinite alternate; animation-delay: var(--delay, 0ms); }
+@keyframes brand-sing { from { scale: 1 1; } to { scale: 1 0.45; } }
 
 /* Scope trace (primitives/Scope): the line draws itself in, then a pulse of signal keeps travelling it. */
 /* The dash runs past the path's end (1.2 of a pathLength of 1): with a non-scaling stroke, Chrome measures it on screen,
@@ -935,10 +992,6 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 .edge-fade-x { mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent); }
 
 /* ══ THE PLAYER (components/player): its bar, its playhead and the listening room's record ══ */
-
-/* Pages keep clear of the mini player on touch while it's showing (it floats above the dock); 0 otherwise */
-:root { --player-space: 0rem; }
-:root:has([data-mini-player]) { --player-space: 4.5rem; }
 
 /* The docked bar: the shell's glass, lit along its top edge from the left like a level trace */
 .player-bar {

@@ -2,12 +2,12 @@ import { useRouter } from '@tanstack/react-router'
 import { ImagePlus } from 'lucide-react'
 import { useRef, useState } from 'react'
 
-import { artworkProblem } from '#/server/files'
+import { ARTWORK_ACCEPT, artworkProblem } from '#/server/files'
+import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { uploadArtwork } from '../../lib/files'
 import { cn } from '../../lib/utils'
 import { Progress, Tip } from '../primitives'
 import { ReleaseArt } from './ReleaseArt'
-import { ARTWORK_ACCEPT, useCoverDrop } from './use-cover-drop'
 
 /** The release's cover (in its page header, or its Summary scene), and the only way to its artwork: click it, or drop a PNG or JPG on it.
  *  A release has one artwork, so a new one replaces it. A failure goes to `onFailure` for the header to say; the cover retries. */
@@ -45,7 +45,10 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
     }
   }
 
-  const { over, props: drop } = useCoverDrop((file) => void send(file), (message) => setState({ status: 'failed', message }), status !== 'uploading')
+  const { over, props: drop } = useDropTarget({
+    onFiles: (files) => (files.length > 1 ? setState({ status: 'failed', message: 'One artwork per release: drop a single PNG or JPG.' }) : void send(files[0])),
+    enabled: status !== 'uploading',
+  })
 
   return (
     <div className={size === 'panel' ? 'w-full' : 'shrink-0'}>
@@ -57,7 +60,7 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
           disabled={status === 'uploading'}
           onClick={() => input.current?.click()}
           {...drop}
-          className={cn('group press relative', size === 'panel' ? 'block w-full rounded-[1.4rem]' : size === 'stage' ? 'block rounded-[1.4rem] sm:rounded-[1.8rem]' : 'rounded-2xl', status === 'failed' && 'ring-2 ring-feedback-error/70', over && 'ring-2 ring-accent glow-accent')}
+          className={cn('group press relative', size === 'panel' ? 'block w-full rounded-[1.4rem]' : size === 'stage' ? 'block rounded-[1.4rem] sm:rounded-[1.8rem]' : 'rounded-2xl', status === 'failed' && 'ring-2 ring-feedback-error/70', over === 'files' && 'ring-2 ring-accent glow-accent')}
         >
           <ReleaseArt title={title} artworkId={artworkId} size={size} className={size === 'stage' ? 'scene-cover' : undefined} />
           <span

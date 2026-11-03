@@ -74,15 +74,18 @@ async function sendPart(query: string, part: number, body: Blob, onSent: (bytes:
 }
 
 /** Sends an audio file to a track's stack in ~10 MB parts. Resolves once it's stored as the next version;
- *  `onProgress` gets the share sent (0–1). On failure the parts already sent are dropped, never left as a half-version. */
+ *  `onProgress` gets the share sent (0–1). On failure the parts already sent are dropped, never left as a half-version.
+ *  `final` lands it as the track's final (a lossless master); `replaces` names the file it overwrites in Releases. */
 export async function uploadAudio(
-  { trackId, kind, file, contentType, durationMs, note }: { trackId: string; kind: AudioKind; file: File; contentType: string; durationMs: number | null; note?: string },
+  { trackId, kind, file, contentType, durationMs, note, final, replaces }: {
+    trackId: string; kind: AudioKind; file: File; contentType: string; durationMs: number | null; note?: string; final?: boolean; replaces?: string
+  },
   onProgress: (sent: number) => void,
 ): Promise<{ id: string; number: number }> {
   const started = await fetch('/api/uploads', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ trackId, kind, filename: file.name.slice(0, 255), contentType, size: file.size }),
+    body: JSON.stringify({ trackId, kind, filename: file.name.slice(0, 255), contentType, size: file.size, final, replaces }),
   })
   if (!started.ok) throw await failed(started, 'Couldn’t start the upload.')
   // The upload is its track, stack and version ID: the Worker keeps where in storage that goes.
@@ -97,7 +100,7 @@ export async function uploadAudio(
     const done = await fetch('/api/uploads/complete', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...upload, parts, durationMs, note }),
+      body: JSON.stringify({ ...upload, parts, durationMs, note, final, replaces }),
     })
     if (!done.ok) throw await failed(done, 'Couldn’t finish the upload.')
     return await done.json()

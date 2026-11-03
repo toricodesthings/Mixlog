@@ -1,28 +1,23 @@
 import { describe, expect, it } from 'vitest'
 
-import { finalMasterOf, mastersOf, moveBackWindow, prunedOf, shippedOf } from '#/server/shipping'
+import { moveBackWindow, prunedOf, shippedOf } from '#/server/shipping'
 
-const v = (id: string, kind: string, number: number, content_type: string, is_current = 0, track_id: string | null = 't') => ({ id, track_id, kind, number, content_type, is_current })
+const v = (id: string, kind: string, number: number, content_type: string, is_current = 0, track_id: string | null = 't', is_final = 0) =>
+  ({ id, track_id, kind, number, content_type, is_current, is_final })
 
 describe('what ships', () => {
   const rows = [
-    v('m1', 'master', 1, 'audio/wav'),
+    v('m1', 'master', 1, 'audio/wav', 0, 't', 1),
     v('m2', 'master', 2, 'audio/mpeg', 1),
-    v('x1', 'mix', 1, 'audio/mpeg', 1),
+    v('x1', 'mix', 3, 'audio/mpeg', 1),
     v('i1', 'instrumental', 1, 'audio/wav', 1),
     v('l1', 'license', 1, 'application/pdf', 1),
     v('art', 'artwork', 1, 'image/png', 1, null),
   ]
 
-  it('needs the current master to be lossless: a WAV underneath isn’t the final', () => {
-    expect(finalMasterOf('t', rows)).toBeNull()
-    expect(finalMasterOf('t', rows.map((r) => (r.id === 'm1' ? { ...r, is_current: 1 } : r.id === 'm2' ? { ...r, is_current: 0 } : r)))?.id).toBe('m1')
-    expect(mastersOf('t', rows).map((r) => r.id)).toEqual(['m2', 'm1'])
-  })
-
-  it('ships each current stack but the mix; prunes the rest; keeps licenses and the release’s own', () => {
-    expect(shippedOf(rows)).toEqual(['m2', 'i1'])
-    expect(prunedOf(rows)).toEqual(['m1', 'x1'])
+  it('ships the final, not the newest master, and each current alternate; sets the rest aside but licenses and the release’s own', () => {
+    expect(shippedOf(rows)).toEqual(['m1', 'i1'])
+    expect(prunedOf(rows)).toEqual(['m2', 'x1'])
   })
 })
 

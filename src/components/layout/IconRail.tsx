@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { DESTINATIONS, SETTINGS_ENTRY, type Destination } from '../../lib/nav'
 import { cn } from '../../lib/utils'
 import { seedDev, wipeDev } from '#/server/dev'
-import { Led, Meter, Tip } from '../primitives'
+import { BrandMark, Led, Tip } from '../primitives'
 import * as DropdownMenu from '../primitives/DropdownMenu'
 import { useSettingsParam } from '../settings/use-settings-param'
 
@@ -60,8 +60,8 @@ export function IconRail() {
       )}
     >
       <div data-meter-host className="flex h-11 items-center gap-3 px-[11px]">
-        {/* The brand mark: an EQ that dances on hover, its peak lit in Phantom (the one place it lives in the shell). */}
-        <Meter peak className="ml-[1px] h-5 shrink-0" />
+        {/* The brand mark sings on hover; its Phantom peak is the one place Phantom lives in the shell. */}
+        <BrandMark className="-ml-[2px] h-[26px] w-[26px] shrink-0" />
         <Label expanded={expanded} className="font-display text-base font-semibold tracking-tight text-ink">
           Mixlog
         </Label>

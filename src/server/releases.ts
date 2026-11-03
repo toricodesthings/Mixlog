@@ -1,6 +1,6 @@
 import { notFound } from '@tanstack/react-router'
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { isZone, todayIn, type Instant, type LocalDate } from '#/lib/time'
@@ -9,7 +9,8 @@ import { db } from '#/server/db'
 import { Id, idInput, readWith } from '#/server/input'
 import { currentPins, releases, stampNow, tracks, versions } from '#/server/schema'
 import { keepDays } from '#/server/settings'
-import { finalMasterOf, moveBackWindow, prunedOf, shippedOf } from '#/server/shipping'
+import { LANES, lanesOf, moveProblem } from '#/server/lanes'
+import { moveBackWindow, prunedOf, shippedOf } from '#/server/shipping'
 
 export type { ReleaseFormat, TrackOrigin }
 export type ReleaseRow = {
@@ -23,7 +24,7 @@ export type ReleaseRow = {
   /** Bookkeeping: when it was started; Upcoming shows the day it fell on. */
   created_at: Instant
   track_count: number
-  /** The current masters' lengths added up; null until a track has a master with a length. */
+  /** Each track's length (its final, else newest master, else newest mix) added up; null until one has a length. */
   duration_ms: number | null
   /** The current artwork version, or null (the UI draws a monogram). */
   artwork_id: string | null
@@ -46,6 +47,8 @@ export type VersionRow = {
   created_at: Instant
   /** 1 when it's its stack's current version. */
   is_current: number
+  /** 1 when it's its track's final: the master the artist filed in the Final lane. */
+  is_final: number
 }
 
 /** A stack's current version: the pin if there is one, else the newest not pruned. `column` is the stack's owner
@@ -54,7 +57,11 @@ const current = (column: 'track_id' | 'release_id', owner: SQL, kind: string) =>
   (SELECT p.version_id FROM ${currentPins} p WHERE p.${sql.raw(column)} = ${owner} AND p.kind = ${kind}),
   (SELECT n.id FROM ${versions} n WHERE n.${sql.raw(column)} = ${owner} AND n.kind = ${kind} AND n.pruned_at IS NULL ORDER BY n.number DESC LIMIT 1))`
 
-const masterLength = (trackId: SQL) => sql`(SELECT v.duration_ms FROM ${versions} v WHERE v.id = ${current('track_id', trackId, 'master')})`
+/** How long a track plays: what `playOf` plays (lanes.ts), the final, else the newest master, else the newest mix. */
+const playLength = (trackId: SQL) => sql`(SELECT v.duration_ms FROM ${versions} v WHERE v.id = COALESCE(
+  (SELECT p.version_id FROM ${currentPins} p WHERE p.track_id = ${trackId} AND p.kind = 'master'),
+  (SELECT n.id FROM ${versions} n WHERE n.track_id = ${trackId} AND n.kind IN ('master', 'mix') AND n.pruned_at IS NULL
+    ORDER BY n.kind = 'master' DESC, n.number DESC LIMIT 1)))`
 
 /** An outer row's column, by its full name. Inside a single-table select Drizzle writes a column bare (`"id"`),
  *  which a correlated subquery would read as its own table's: these must always say whose. */
@@ -73,7 +80,7 @@ export const releaseQuery = createServerOnlyFn(() =>
       created_at: releases.createdAt,
       upc: releases.upc,
       track_count: sql<number>`(SELECT COUNT(*) FROM ${tracks} t WHERE t.release_id = ${outer('releases', 'id')})`,
-      duration_ms: sql<number | null>`(SELECT SUM(${masterLength(sql`t.id`)}) FROM ${tracks} t WHERE t.release_id = ${outer('releases', 'id')})`,
+      duration_ms: sql<number | null>`(SELECT SUM(${playLength(sql`t.id`)}) FROM ${tracks} t WHERE t.release_id = ${outer('releases', 'id')})`,
       artwork_id: sql<string | null>`${current('release_id', outer('releases', 'id'), 'artwork')}`,
     })
     .from(releases),
@@ -111,6 +118,7 @@ const versionsOf = createServerOnlyFn((id: string) =>
           AND (p.track_id = ${outer('versions', 'track_id')} OR p.release_id = ${outer('versions', 'release_id')})),
         (SELECT n.id FROM ${versions} n WHERE n.kind = ${outer('versions', 'kind')} AND n.pruned_at IS NULL
           AND (n.track_id = ${outer('versions', 'track_id')} OR n.release_id = ${outer('versions', 'release_id')}) ORDER BY n.number DESC LIMIT 1))`,
+      is_final: sql<number>`${outer('versions', 'kind')} = 'master' AND EXISTS (SELECT 1 FROM ${currentPins} p WHERE p.version_id = ${outer('versions', 'id')} AND p.kind = 'master')`,
     })
     .from(versions)
     .where(and(or(eq(versions.releaseId, id), inArray(versions.trackId, tracksOf(id))), isNull(versions.prunedAt)))
@@ -125,7 +133,7 @@ export const getRelease = createServerFn()
     const [[trackRows, versionRows, [{ pruned }]], keep] = await Promise.all([
       db.batch([
         db
-          .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, duration_ms: sql<number | null>`${masterLength(outer('tracks', 'id'))}` })
+          .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, duration_ms: sql<number | null>`${playLength(outer('tracks', 'id'))}` })
           .from(tracks)
           .where(eq(tracks.releaseId, id))
           .orderBy(tracks.position, tracks.createdAt),
@@ -187,21 +195,53 @@ export const updateRelease = createServerFn({ method: 'POST' })
     ])
   })
 
-/** Picks a stack's current version (Make current): a pin, so it stays current whatever lands on top. Never on a
- *  release that's out: what shipped stays as shipped. */
-export const makeCurrent = createServerFn({ method: 'POST' })
-  .validator(readWith(z.object({ versionId: Id() })))
-  .handler(async ({ data }) => {
+/** Files a mix or master in a lane: Mixes, Masters or Final (lanes.ts has the rules, shared with the page). Moving keeps
+ *  the file and its number; only `kind` and the final pin change, in one batch. In Releases the one move is giving a
+ *  track without a final its final, which ships the track: stamped, pinned, and the rest of it set aside. */
+export const fileVersion = createServerFn({ method: 'POST' })
+  .validator(readWith(z.object({ versionId: Id(), to: z.enum(LANES, 'That isn’t a lane.') })))
+  .handler(async ({ data: { versionId, to } }) => {
     const [version] = await db
-      .select({ trackId: versions.trackId, releaseId: versions.releaseId, kind: versions.kind, released: releases.releasedAt })
+      .select({ trackId: versions.trackId, kind: versions.kind, content_type: versions.contentType, released: releases.releasedAt, is_final: finalOf(versions.id) })
       .from(versions)
-      .leftJoin(tracks, eq(tracks.id, versions.trackId))
-      .innerJoin(releases, or(eq(releases.id, versions.releaseId), eq(releases.id, tracks.releaseId)))
-      .where(and(eq(versions.id, data.versionId), isNull(versions.prunedAt)))
+      .innerJoin(tracks, eq(tracks.id, versions.trackId))
+      .innerJoin(releases, eq(releases.id, tracks.releaseId))
+      .where(and(eq(versions.id, versionId), isNull(versions.prunedAt)))
     if (!version) throw notFound()
-    if (version.released) throw new Error('This release is out: what shipped stays as shipped.')
-    await db.batch([unpin(version), db.insert(currentPins).values({ versionId: data.versionId, trackId: version.trackId, releaseId: version.releaseId, kind: version.kind })])
+    const problem = moveProblem(version, to, version.released ? 'released' : 'upcoming')
+    if (problem) throw new Error(problem)
+    const trackId = version.trackId!
+    const kind = to === 'mix' ? 'mix' : 'master'
+    if (version.released) {
+      if (await hasFinal(trackId)) throw new Error('This track has its final. Replace it instead.')
+      return void (await db.batch([db.update(versions).set({ kind, releasedAt: stampNow }).where(eq(versions.id, versionId)), ...pin(trackId, 'master', versionId), setAsideRest(trackId, versionId)]))
+    }
+    await db.batch([
+      db.update(versions).set({ kind }).where(eq(versions.id, versionId)),
+      ...(to === 'final' ? pin(trackId, 'master', versionId) : [db.delete(currentPins).where(eq(currentPins.versionId, versionId))]),
+    ])
   })
+
+/** 1 when a version is pinned as its track's final. */
+const finalOf = (id: SQL | typeof versions.id) => sql<number>`EXISTS (SELECT 1 FROM ${currentPins} p WHERE p.version_id = ${id} AND p.kind = 'master')`
+
+/** Whether a track has its final. */
+export const hasFinal = createServerOnlyFn(async (trackId: string) =>
+  Boolean((await db.select({ id: currentPins.versionId }).from(currentPins).where(and(eq(currentPins.trackId, trackId), eq(currentPins.kind, 'master'))))[0]),
+)
+
+/** Pins `versionId` as its track's `kind` (a master pin is the final), unpinning whatever held it. */
+export const pin = createServerOnlyFn((trackId: string, kind: string, versionId: string) =>
+  [unpin({ trackId, releaseId: null, kind }), db.insert(currentPins).values({ versionId, trackId, kind })] as const,
+)
+
+/** Sets aside everything on a released track that didn't ship but `versionId` (which is shipping now). */
+export const setAsideRest = createServerOnlyFn((trackId: string, versionId: string) =>
+  db
+    .update(versions)
+    .set({ prunedAt: stampNow })
+    .where(and(eq(versions.trackId, trackId), ne(versions.id, versionId), isNull(versions.releasedAt), isNull(versions.prunedAt), ne(versions.kind, 'license'))),
+)
 
 const unpin = (stack: { trackId: string | null; releaseId: string | null; kind: string }) =>
   db.delete(currentPins).where(and(stack.trackId ? eq(currentPins.trackId, stack.trackId) : eq(currentPins.releaseId, stack.releaseId!), eq(currentPins.kind, stack.kind)))
@@ -209,19 +249,19 @@ const unpin = (stack: { trackId: string | null; releaseId: string | null; kind: 
 /** D1 binds at most 100 values a statement: long ID lists go in slices. */
 const slices = (ids: string[]) => Array.from({ length: Math.ceil(ids.length / 90) }, (_, i) => ids.slice(i * 90, i * 90 + 90))
 
-/** Stamps a release out: its day, and the Released stamp on the release and on what shipped (each track's final
- *  master and the current version of its other stacks, each pinned so it stays current). Everything else on its tracks
- *  (older versions, every mix) is pruned: hidden now, erased by the cleanup cron after the keep window. One batch.
- *  When Settings keeps everything, nothing is pruned: the release keeps every version it had. */
+/** Stamps a release out: its day, and the Released stamp on the release and on what shipped (each track's final and
+ *  the current version of its other stacks, each pinned so it stays current). Everything else on its tracks (other
+ *  masters, every mix) is set aside: hidden now, so Releases shows only what shipped, and erased by the cleanup cron
+ *  after the keep window (never, when Settings keeps everything). One batch. */
 export const shipRelease = createServerOnlyFn(async (id: string, releasedOn: LocalDate) => {
   const [release] = await db.select({ releasedAt: releases.releasedAt }).from(releases).where(eq(releases.id, id))
   if (!release) throw notFound()
   if (release.releasedAt) throw new Error('This release is already out.')
   const [trackRows, rows] = await db.batch([tracksOf(id).orderBy(tracks.position), versionsOf(id)])
-  const missing = trackRows.find((t) => !finalMasterOf(t.id, rows as VersionRow[]))
-  if (missing) throw new Error('Every track needs its final master, a WAV, AIFF or FLAC, before it goes out.')
+  const missing = trackRows.find((t) => !lanesOf(t.id, rows as VersionRow[]).final)
+  if (missing) throw new Error('Every track needs its final, a WAV, AIFF or FLAC, before it goes out.')
   const shipped = rows.filter((v) => shippedOf(rows as VersionRow[]).includes(v.id))
-  const pruned = (await keepDays()) === null ? [] : prunedOf(rows as VersionRow[])
+  const pruned = prunedOf(rows as VersionRow[])
   await db.batch([
     db.update(releases).set({ releasedAt: stampNow, releaseDate: releasedOn }).where(eq(releases.id, id)),
     ...slices(shipped.map((v) => v.id)).map((ids) => db.update(versions).set({ releasedAt: stampNow }).where(inArray(versions.id, ids))),

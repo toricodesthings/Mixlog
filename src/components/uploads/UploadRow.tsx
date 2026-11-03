@@ -1,0 +1,53 @@
+import { RotateCcw, X } from 'lucide-react'
+
+import { cn } from '../../lib/utils'
+import { Button, Led, Progress, Tip } from '../primitives'
+import { sentOf, timeLeft } from './progress'
+import type { Pending } from './use-lane-upload'
+
+/** A file's bar and what it says: "12.4 of 48.0 MB · 20 s left", then "Storing" once it's all sent. */
+export function UploadProgress({ name, size, sent, startedAt }: { name: string; size: number; sent: number; startedAt?: number }) {
+  const left = startedAt ? timeLeft(sent * size, size, (performance.now() - startedAt) / 1000) : null
+  return (
+    <span className="flex flex-col gap-1 pt-1">
+      <Progress value={sent} label={`Sending ${name}`} valueText={sentOf(sent, size)} />
+      <span data-numeric className="truncate text-[12.5px] text-ink-muted">
+        {sent >= 1 ? 'Storing' : [sentOf(sent, size), left].filter(Boolean).join(' · ')}
+      </span>
+    </span>
+  )
+}
+
+/** A file on its way into a lane, where its version will land: a light, its name, its bar. A failure keeps the row
+ *  with its reason and Try again; nothing half-sent is kept. */
+export function UploadRow({ pending, onRetry, onDismiss, className }: { pending: Pending; onRetry: () => void; onDismiss: () => void; className?: string }) {
+  const { file, state, sent, startedAt, error } = pending
+  return (
+    <li className={cn('surface-item flex min-h-14 items-center gap-3 rounded-2xl py-2 pr-1 pl-4', className)}>
+      <Led lit={state !== 'failed'} breathe={state === 'sending'} />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-[15px] font-medium text-ink">{file.name}</span>
+        {state === 'failed' ? (
+          <span role="alert" className="text-[13px] text-feedback-error">{error}</span>
+        ) : state === 'queued' ? (
+          <span className="readout text-ink-muted">Waiting its turn</span>
+        ) : (
+          <UploadProgress name={file.name} size={file.size} sent={sent} startedAt={startedAt} />
+        )}
+      </span>
+      {state === 'failed' && (
+        <>
+          <Button variant="secondary" size="sm" onClick={onRetry} className="gap-1.5">
+            <RotateCcw size={14} aria-hidden="true" />
+            Try again
+          </Button>
+          <Tip label="Leave it out">
+            <Button variant="ghost" size="icon" onClick={onDismiss} aria-label={`Leave out ${file.name}`}>
+              <X size={15} aria-hidden="true" />
+            </Button>
+          </Tip>
+        </>
+      )}
+    </li>
+  )
+}

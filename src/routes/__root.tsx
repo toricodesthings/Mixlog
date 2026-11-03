@@ -16,7 +16,13 @@ export const Route = createRootRoute({
       { name: 'theme-color', content: '#0a1020' },
       { title: 'Mixlog' },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', href: '/brand/mixlog-mark.png', type: 'image/png' },
+      { rel: 'apple-touch-icon', href: '/brand/mixlog-mark.png' },
+      // Access sits in front of everything, so the manifest is fetched with the session's cookie.
+      { rel: 'manifest', href: '/site.webmanifest', crossOrigin: 'use-credentials' },
+    ],
     // Before first paint, so a Daylight device never flashes Blue Hour.
     scripts: [{ children: APPEARANCE_BOOT }],
   }),

@@ -8,5 +8,6 @@ export * from "./Input";
 export { Led } from "./Led";
 export { useHoverSlide } from "./HoverSlide";
 export { Meter } from "./Meter";
+export { BrandMark } from "./BrandMark";
 export { Scope } from "./Scope";
 export { Progress } from "./Progress";
