@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { network, sent } from '../../support/browser'
 import { deletedKeys, multiparts, objects } from '../../support/cloudflare-workers'
 import { call } from '../../support/start'
-import { downloadUrl, fileUrl, readFile, uploadArtwork, uploadAudio, uploadLicense } from '#/lib/files'
+import { downloadUrl, fileUrl, previewUrl, readFile, uploadArtwork, uploadAudio, uploadLicense } from '#/lib/files'
 import { UPLOAD_PART_BYTES, audioTypeOf, type AudioKind } from '#/server/files'
 import { createRelease, getRelease } from '#/server/releases'
 
@@ -182,7 +182,35 @@ describe('artwork', () => {
     const { release: now, versions } = await release()
     expect(versions.filter((v) => v.kind === 'artwork')).toMatchObject([{ id: now.artwork_id, number: 2, filename: 'cover v2.png' }])
     expect(deletedKeys).toContain(`releases/${releaseId}/artwork/${first}`)
+    expect(deletedKeys).toContain(`releases/${releaseId}/artwork/${first}.preview.webp`)
     expect(objects.has(`releases/${releaseId}/artwork/${now.artwork_id}`)).toBe(true)
+  })
+
+  it('makes a small WebP preview on upload, and serves it beside the untouched original', async () => {
+    const { id } = await uploadArtwork(releaseId, png('cover v3.png'))
+    const key = `releases/${releaseId}/artwork/${id}`
+    expect(new TextDecoder().decode(objects.get(`${key}.preview.webp`)?.bytes)).toMatch(/^\[\{"width":1024,"fit":"scale-down"\},\{"format":"image\/webp","quality":60\}\]/)
+
+    const preview = await fetch(previewUrl(id))
+    expect(preview.headers.get('content-type')).toBe('image/webp')
+    expect(Buffer.from(await preview.arrayBuffer()).equals(Buffer.from(objects.get(`${key}.preview.webp`)!.bytes))).toBe(true)
+    const original = await fetch(fileUrl(id))
+    expect(original.headers.get('content-type')).toBe('image/png')
+    expect(await sameBytes(objects.get(key)?.bytes, png('x'))).toBe(true)
+  })
+
+  it('makes a missing preview when asked, and falls back to the original when it can’t', async () => {
+    const { id } = await uploadArtwork(releaseId, png('cover v4.png'))
+    const key = `releases/${releaseId}/artwork/${id}`
+    objects.delete(`${key}.preview.webp`)
+    expect((await fetch(previewUrl(id))).headers.get('content-type')).toBe('image/webp')
+    expect(objects.has(`${key}.preview.webp`)).toBe(true)
+
+    // Images can't read it: the upload still lands, and the cover is the original
+    const { id: odd } = await uploadArtwork(releaseId, new File(['not a png'], 'cover v5.png', { type: 'image/png' }))
+    const fallback = await fetch(previewUrl(odd))
+    expect(fallback.headers.get('content-type')).toBe('image/png')
+    expect(await fallback.text()).toBe('not a png')
   })
 
   it('takes only a PNG or JPG, and keeps the cover it has', async () => {

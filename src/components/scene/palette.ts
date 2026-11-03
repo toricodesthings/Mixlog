@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 
-import { fileUrl } from '../../lib/files'
+import { previewUrl } from '../../lib/files'
 
 /** The side of the square the artwork is sampled at, unsmoothed, so its colours aren't averaged into mud first. */
 const SAMPLE = 48
@@ -114,7 +114,7 @@ export function titleHue(title: string) {
  * artwork is read, or when it has no colour of its own.
  */
 export function useRoomStyle(title: string, artworkId: string | null) {
-  const palette = useArtPalette(artworkId && fileUrl(artworkId))
+  const palette = useArtPalette(artworkId && previewUrl(artworkId))
   const hue = titleHue(title)
   return { '--art-h': hue, '--art-h2': hue - 20, '--art-k': 1, ...palette } as CSSProperties
 }

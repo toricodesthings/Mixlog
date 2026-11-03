@@ -1,6 +1,7 @@
 // `cloudflare:workers` for tests in plain Node: `env.DB` is D1's API over an in-memory SQLite (node:sqlite) built
 // from `migrations/`, so server queries run for real. Only the calls Drizzle's D1 driver makes are here. `env.FILES`
 // is R2 in memory: whole objects, one-page listing, ranged reads, and multipart uploads that fail like R2's when the upload is gone.
+// `env.IMAGES` "encodes" by prefixing the bytes with what it was asked for, and refuses anything that isn't a PNG.
 import { readFileSync, readdirSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
 
@@ -58,7 +59,22 @@ function objectOf(key: string, stored: Stored, range?: Range) {
   return { key, size, httpEtag: `"${key}"`, httpMetadata: stored.httpMetadata, customMetadata: stored.customMetadata, range, body: new Blob([stored.bytes.slice(offset, end)]).stream() }
 }
 
+const PNG = [0x89, 0x50, 0x4e, 0x47]
 export const env = {
+  IMAGES: {
+    input: (stream: ReadableStream) => {
+      const steps: object[] = []
+      const transformer = {
+        transform: (step: object) => (steps.push(step), transformer),
+        output: async (options: object) => {
+          const bytes = await read(stream)
+          if (!PNG.every((b, i) => bytes[i] === b)) throw new Error('ImagesError 9412: not an image')
+          return { response: () => new Response(new Blob([JSON.stringify([...steps, options]), bytes])) }
+        },
+      }
+      return transformer
+    },
+  },
   FILES: {
     put: async (key: string, body: BodyInit, options?: Omit<Stored, 'bytes'>) => void objects.set(key, { bytes: await read(body), ...options }),
     get: async (key: string, options?: { range?: Headers }) => {

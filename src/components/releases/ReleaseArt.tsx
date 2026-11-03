@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { fileUrl } from '../../lib/files'
+import { fileUrl, previewUrl } from '../../lib/files'
 import { titleHue } from '../scene/palette'
 import { cn } from '../../lib/utils'
 
@@ -17,11 +17,11 @@ const monogramOf = (title: string) => (title.match(/[\p{L}\p{N}]/u)?.[0] ?? '♪
 
 /** A release's cover: its current artwork, or a monogram pressed from its title (grooves and all) until it has one. Decorative; the title sits beside it.
  *  Its artwork on its way is a clip-shaped skeleton, fading into the image once it's here.
- *  `src` shows a picked image before it's uploaded. */
-export function ReleaseArt({ title, artworkId, src, size, className }: { title: string; artworkId: string | null; src?: string; size: keyof typeof SIZES; className?: string }) {
+ *  Its preview by default; `full` loads the original (the Artwork part). `src` shows a picked image before it's uploaded. */
+export function ReleaseArt({ title, artworkId, src, full, size, className }: { title: string; artworkId: string | null; src?: string; full?: boolean; size: keyof typeof SIZES; className?: string }) {
   const [broken, setBroken] = useState<string | null>(null)
   const [loaded, setLoaded] = useState<string | null>(null)
-  const url = src ?? (artworkId && fileUrl(artworkId))
+  const url = src ?? (artworkId && (full ? fileUrl : previewUrl)(artworkId))
   const showImage = url && broken !== url
   return (
     <span

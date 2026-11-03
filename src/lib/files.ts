@@ -4,6 +4,8 @@ import { UPLOAD_PART_BYTES, licenseTypeOf, type AudioKind } from '#/server/files
 
 /** Where a version's file is served: an <img> or <audio> can point straight at it. */
 export const fileUrl = (versionId: string) => `/api/files/${versionId}`
+/** An artwork's small WebP, for covers everywhere but the Artwork part, which shows the original. */
+export const previewUrl = (versionId: string) => `${fileUrl(versionId)}?preview`
 /** The same file, saved under its own filename instead of opened. */
 export const downloadUrl = (versionId: string) => `${fileUrl(versionId)}?download`
 

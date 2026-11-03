@@ -62,7 +62,7 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
           {...drop}
           className={cn('group press relative', size === 'panel' ? 'block w-full rounded-[1.4rem]' : size === 'stage' ? 'block rounded-[1.4rem] sm:rounded-[1.8rem]' : 'rounded-2xl', status === 'failed' && 'ring-2 ring-feedback-error/70', over === 'files' && 'ring-2 ring-accent glow-accent')}
         >
-          <ReleaseArt title={title} artworkId={artworkId} size={size} className={size === 'stage' ? 'scene-cover' : undefined} />
+          <ReleaseArt title={title} artworkId={artworkId} full={size === 'panel'} size={size} className={size === 'stage' ? 'scene-cover' : undefined} />
           <span
             className={cn(
               'absolute inset-0 flex items-center justify-center rounded-[inherit] bg-room-void/60 text-ink transition-opacity duration-(--duration-normal)',

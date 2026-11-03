@@ -20,18 +20,20 @@ import { keepDays } from '#/server/settings'
 const text = (status: number, body: string) => new Response(body, { status, headers: { 'content-type': 'text/plain; charset=utf-8' } })
 
 /** GET /api/files/$versionId: the file exactly as uploaded, with range requests for playback. `?download` saves it
- *  under its own filename instead. */
+ *  under its own filename instead; `?preview`, for artwork, is its small WebP (the original if it can't be made). */
 export async function serveFile(request: Request, versionId: string): Promise<Response> {
   if (!(await allowed(request))) return text(403, 'Forbidden')
   if (!isId(versionId)) return text(404, 'Not found')
-  const [version] = await db.select({ r2Key: versions.r2Key, contentType: versions.contentType, filename: versions.filename }).from(versions).where(eq(versions.id, versionId))
+  const [version] = await db.select({ r2Key: versions.r2Key, kind: versions.kind, contentType: versions.contentType, filename: versions.filename }).from(versions).where(eq(versions.id, versionId))
   if (!version) return text(404, 'Not found')
-  const ranged = request.headers.has('range')
-  const object = await env.FILES.get(version.r2Key, ranged ? { range: request.headers } : {})
+  const params = new URL(request.url).searchParams
+  const preview = params.has('preview') && version.kind === 'artwork' ? await previewOf(version.r2Key) : null
+  const ranged = !preview && request.headers.has('range')
+  const object = preview ?? (await env.FILES.get(version.r2Key, ranged ? { range: request.headers } : {}))
   if (!object) return text(404, 'Not found')
 
   const headers = new Headers({
-    'content-type': version.contentType,
+    'content-type': preview ? PREVIEW_TYPE : version.contentType,
     etag: object.httpEtag,
     'accept-ranges': 'bytes',
     // A version never changes, so the browser can keep it; private, because it's behind Access.
@@ -39,7 +41,7 @@ export async function serveFile(request: Request, versionId: string): Promise<Re
     'x-content-type-options': 'nosniff',
     'content-security-policy': "default-src 'none'; sandbox",
   })
-  if (new URL(request.url).searchParams.has('download')) {
+  if (params.has('download')) {
     headers.set('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(version.filename).replace(/'/g, '%27')}`)
   }
   if (ranged && object.range) {
@@ -49,8 +51,33 @@ export async function serveFile(request: Request, versionId: string): Promise<Re
   return new Response(object.body, { headers })
 }
 
+// An artwork's preview: a small WebP beside the original, for every cover but the Artwork part's. Derived, so
+// disposable: made on upload, made again when missing, gone with its original, never the artwork itself.
+const PREVIEW_TYPE = 'image/webp'
+const previewKey = (key: string) => `${key}.preview.webp`
+
+/** Makes an artwork's preview from its original with the Images binding and stores it. A failure is only a warning:
+ *  the cover shows its original instead. */
+async function makePreview(key: string) {
+  const original = await env.FILES.get(key)
+  if (!original) return
+  try {
+    const result = await env.IMAGES.input(original.body).transform({ width: 1024, fit: 'scale-down' }).output({ format: PREVIEW_TYPE, quality: 60 })
+    // Whole, not streamed: R2 needs a body's length, and a preview is small.
+    await env.FILES.put(previewKey(key), await result.response().arrayBuffer(), { httpMetadata: { contentType: PREVIEW_TYPE }, customMetadata: { preview: key } })
+  } catch (error) {
+    report('warn', 'artwork preview failed', error, { key })
+  }
+}
+
+/** An artwork's preview, made now if it's missing (artwork from before previews); null when it can't be. */
+async function previewOf(key: string) {
+  return (await env.FILES.get(previewKey(key))) ?? (await makePreview(key), await env.FILES.get(previewKey(key)))
+}
+
 /** POST /api/releases/$releaseId/artwork: the body is the image. A release has one artwork: once the new one is
- *  stored and recorded, the old one (row and file) goes. The one place Mixlog replaces a file, by the artist's rule. */
+ *  stored and recorded, the old one (row, file and preview) goes and the new one's preview is made. The one place
+ *  Mixlog replaces a file, by the artist's rule. */
 export async function addArtwork(request: Request, releaseId: string): Promise<Response> {
   if (!(await allowed(request))) return text(403, 'Forbidden')
   if (!isId(releaseId)) return text(404, 'Not found')
@@ -80,7 +107,8 @@ export async function addArtwork(request: Request, releaseId: string): Promise<R
   }
   // Only after the new one is safe. Its pin, if any, goes with the row.
   const old = await db.delete(versions).where(and(artworkOf, ne(versions.id, id))).returning({ r2Key: versions.r2Key })
-  if (old.length) await env.FILES.delete(old.map((v) => v.r2Key))
+  if (old.length) await env.FILES.delete(old.flatMap((v) => [v.r2Key, previewKey(v.r2Key)]))
+  await makePreview(key) // before answering, so the covers that load next find it
   return Response.json({ id, number: next }, { status: 201 })
 }
 

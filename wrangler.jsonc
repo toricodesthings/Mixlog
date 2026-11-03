@@ -17,6 +17,8 @@
 	// `pnpm dev` simulates both locally (.wrangler/state). No database ID: the first deploy creates it and writes it back.
 	"d1_databases": [{ "binding": "DB", "database_name": "mixlog", "migrations_dir": "migrations" }],
 	"r2_buckets": [{ "binding": "FILES", "bucket_name": "mixlog" }],
+	// Makes each artwork's small WebP preview (src/server/versions.ts); offline in `pnpm dev`. One transformation per cover.
+	"images": { "binding": "IMAGES" },
 	// Daily cleanup (src/server.ts): erases versions pruned by Move to Releases once their 14-day grace window has passed.
 	"triggers": { "crons": ["0 4 * * *"] },
 	// Cloudflare Access: Zero Trust → Access → Applications → your app. Not secrets.

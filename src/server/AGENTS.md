@@ -10,6 +10,7 @@ The Worker side of the one Mixlog app: TanStack Start server functions on Cloudf
 | RPC | TanStack Start server functions (`createServerFn`) |
 | Metadata | Cloudflare D1 through Drizzle (`db.ts`, schema in `schema.ts`, migrations by `drizzle-kit`) |
 | Files | Cloudflare R2 through its Worker binding (`env.FILES`), private bucket `mixlog`; never the S3 API |
+| Images | The Images binding (`env.IMAGES`): each artwork's WebP preview; never a library |
 | Auth | Cloudflare Access JWTs, verified with `jose` against the team's JWKS |
 | Input | Zod schemas, through `readWith` (`input.ts`) for our own error words |
 | Lang | TypeScript |
@@ -33,7 +34,7 @@ src/
     ├── details.ts   # Pure Details rules (detailsInput, lyricsInput, ISRC and UPC, track origin and needsLicense), shared with the browser
     ├── releases.ts  # releaseQuery (cover, track count, length), listUpcoming, listReleased, getRelease (tracks, every version and which is current), createRelease (with `releasedOn`, straight to Releases), updateRelease (Details), fileVersion (a version's lane), moveToReleases/moveToUpcoming (over shipRelease/unshipRelease)
     ├── tracks.ts    # saveLyrics: a track's lyrics, autosaved by the writing room
-    ├── versions.ts  # serveFile, addArtwork, addLicense, start/putPart/complete/abortUpload: the handlers behind routes/api/; erasePruned, the cron's job
+    ├── versions.ts  # serveFile (`?preview`: artwork's WebP), addArtwork (and its preview), addLicense, start/putPart/complete/abortUpload: the handlers behind routes/api/; erasePruned, the cron's job
     └── dev.ts       # wipeDev, seedDev: `pnpm dev` only (each refuses unless `import.meta.env.DEV`), for the rail's Developer menu; its MP3 test bounces are `fixtures/`
 src/routes/api/      # Server routes, one line each: files.$versionId (GET), releases.$releaseId.artwork (POST), tracks.$trackId.license (POST), uploads (POST/PUT/DELETE), uploads.complete (POST)
 migrations/          # NNNN_what.sql, generated from schema.ts by `pnpm db:generate` (0001 and 0002 predate it); meta/ is drizzle-kit's
@@ -73,9 +74,9 @@ The Worker serves the prerendered SPA shell (no data in it). Every server functi
 - The bucket is private, never public or listable, reached only through the Worker.
 - **Keys are foldered like the song** (`fileKey` in `files.ts`): `releases/<release>/tracks/<track>/<kind>/<version>` for a track's files, `releases/<release>/<kind>/<version>` for the release's own (artwork, a release video). A new kind needs no new scheme. The IDs are the rows' own random UUIDs, never a second set: the key with its metadata is what recovers the files without D1. A key is fixed at upload (R2 can't rename) and `versions.r2_key` is what's served, so a file from the older `tracks/…` layout still plays, and a version moved between lanes keeps the key of the lane it landed in (recovered without D1, it would be refiled there, never lost). Keys never reach the browser.
 - Audio and video go through the Worker in chunks, never whole (a Worker request body caps near 100 MB). Audio today: `POST /api/uploads` starts an R2 multipart upload for a track's stack (`master`, `mix`, `instrumental`, `acapella`; MP3, WAV, AIFF, FLAC, M4A or OGG, typed by extension; 4 GB at most), the browser holds it as `{ trackId, kind, id, uploadId }` and the Worker rebuilds the key from the track's release; `PUT /api/uploads?trackId&kind&id&uploadId&part` sends each 10 MB part (the browser retries a part three times), `POST /api/uploads/complete` joins them and inserts the version, `DELETE` drops the parts of one that won't finish. Nothing is in D1 until it's whole: the key and the object's metadata carry the release, track, stack and filename. The number is taken at completion inside the INSERT, so an abandoned upload never leaves a gap and two finishing at once can't share one. A failed insert deletes the object: never a half-version. How it's filed (`filingOf`, checked at start and again at completion) goes in the same batch: `final` (a lossless master) pins it as the final; Upcoming never replaces. A released release takes only a final for a track without one (which ships it) or a replacement: `replaces` names the final or shipped alternate it overwrites, and the new one is stored, stamped and pinned before the old row and file are deleted.
-- **Artwork** is the one single-request upload: `POST /api/releases/$releaseId/artwork`, the body is the image, streamed straight into R2. PNG or JPG only (what distributors take; never SVG), 20 MB at most (`files.ts`). **One per release:** the new one is stored and recorded first (if the D1 row fails, its object is deleted), then the old row and file are deleted, the same order a replacement in Releases follows.
+- **Artwork** is the one single-request upload: `POST /api/releases/$releaseId/artwork`, the body is the image, streamed straight into R2. PNG or JPG only (what distributors take; never SVG), 20 MB at most (`files.ts`). **One per release:** the new one is stored and recorded first (if the D1 row fails, its object is deleted), then the old row and file are deleted, the same order a replacement in Releases follows. **Its preview** (`<key>.preview.webp`, 1024 px WebP from `env.IMAGES`) is made before the upload answers, made again if missing, and deleted with the original; a failure only warns, and the original is served instead.
 - **Licenses**: `POST /api/tracks/$trackId/license`, the body is a PDF, .docx or .doc (typed by extension), 20 MB at most, read whole so its first bytes must match its type (a page or program renamed `.pdf` is refused), then stored and stacked like a bounce. The browser reads it with pdf.js (no annotation layer) or, for a .docx, as text in a sandboxed frame with no scripts (`LicenseDocument`).
-- `GET /api/files/$versionId` serves any version exactly as uploaded (`?download` saves it under its filename): range requests for playback, `private, immutable` caching (a version never changes), `nosniff` and a sandboxing CSP. No transcodes, no hidden copies.
+- `GET /api/files/$versionId` serves any version exactly as uploaded (`?download` saves it under its filename): range requests for playback, `private, immutable` caching (a version never changes), `nosniff` and a sandboxing CSP. No transcodes and no hidden copies, but artwork's disposable `?preview`.
 - One path in dev and production. No R2 API tokens, CORS, or signed URLs ever reach the browser.
 
 ## 7. Auth
@@ -92,6 +93,7 @@ Delegated to Cloudflare Access, never built. No passwords, sessions, cookies or 
 |---|---|
 | `DB` | D1 database `mixlog` (migrations in `migrations/`) |
 | `FILES` | R2 bucket `mixlog` |
+| `IMAGES` | Images binding (offline in `pnpm dev`: resize and format only) |
 | `ACCESS_TEAM_DOMAIN` | `https://<team>.cloudflareaccess.com`, issuer and JWKS host |
 | `ACCESS_AUD` | The Access application's audience tag |
 
