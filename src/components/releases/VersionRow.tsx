@@ -128,6 +128,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
           movable && !isTouch && 'cursor-grab active:cursor-grabbing',
           t.dragged?.id === version.id && 'opacity-50',
           drop.over && 'ring-2 ring-accent glow-accent',
+          metersOpen && mode === 'wide' && 'row-patched',
         )}
       >
         {audio ? (

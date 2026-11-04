@@ -1239,3 +1239,21 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 .meter-segment-lit { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
 .meter-segment-over { background: var(--meter-over); box-shadow: 0 0 6px color-mix(in srgb, var(--meter-over) 50%, transparent); }
 .meter-ceiling { margin-right: 3px; }
+
+/* The wide panel docked at the room's right edge (meters/MetersPanel), its edge lit where the cable lands */
+.meters-dock { border-left: 1px solid color-mix(in srgb, var(--accent) 35%, var(--color-line)); box-shadow: -12px 0 32px -16px color-mix(in srgb, var(--accent) 35%, transparent); }
+/* The row it reads: its edge lit, as if the cable powers it */
+.row-patched {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 18px -4px color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+/* The patch cable between them: a soft glow, the wire, a pulse of signal running it, a jack at each end */
+.patch-cable { position: fixed; inset: 0; width: 100vw; height: 100dvh; pointer-events: none; z-index: 5; overflow: visible; transition: opacity 150ms ease-out; }
+.patch-cable path { fill: none; stroke-linecap: round; }
+.patch-glow { stroke: color-mix(in srgb, var(--accent) 40%, transparent); stroke-width: 6; filter: blur(4px); }
+.patch-wire { stroke: color-mix(in srgb, var(--accent) 75%, transparent); stroke-width: 1.5; }
+.patch-pulse { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 8 92; animation: patch-signal 2.4s linear infinite; filter: drop-shadow(0 0 4px var(--accent)); }
+.patch-jack { fill: color-mix(in srgb, var(--accent) 70%, transparent); }
+@keyframes patch-signal { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+:root[data-motion="reduced"] .patch-pulse { display: none; }
+@media (prefers-reduced-motion: reduce) { .patch-pulse { display: none; } }

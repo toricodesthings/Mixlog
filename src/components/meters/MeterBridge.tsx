@@ -1,7 +1,8 @@
 import { useRouter } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
-import { Activity, ArrowDown, ArrowUp, ChevronDown, Equal, X } from 'lucide-react'
+import { Activity, ArrowDown, ArrowUp, AudioWaveform, ChevronDown, Equal, FileAudio, Gauge, MoveVertical, Music, OctagonAlert, Scale, Spline, TrendingUp, Waves, X } from 'lucide-react'
 import { useState, type ReactNode, type Ref } from 'react'
+import { siApplemusic, siDeezer, siSpotify, siTidal, siYoutube, type SimpleIcon } from 'simple-icons'
 
 import { PLATFORMS, deltaOf, isMeasured, normalizationOf, previousOf, type Delta, type Headline, type Measured } from '#/server/loudness'
 import type { VersionRow as Version } from '#/server/releases'
@@ -12,6 +13,7 @@ import { clock } from '../player/controls'
 import { LoudnessWave } from '../player/LoudnessWave'
 import { usePlayer } from '../player/Player'
 import { Button, Scope, Tip, Transfer, Tuning } from '../primitives'
+import * as ScrollArea from '../primitives/ScrollArea'
 import type { TrackState } from '../releases/Lane'
 
 /** What the bridge reads from its track: a row's `TrackState`, or the wide panel's own. */
@@ -38,25 +40,47 @@ export function resolutionOf(version: Version, a: Measured) {
  * and More, folded. Facts, never verdicts: louder isn't better, so a change since the version before is Haze, never
  * green or red. The same bridge unfolds under a row or fills the wide panel.
  */
-export function MeterBridge({ t, version, headingRef, onClose }: { t: BridgeTrack; version: Version; headingRef?: Ref<HTMLHeadingElement>; onClose?: () => void }) {
+export function MeterBridge({ t, version, headingRef, onClose, docked }: {
+  t: BridgeTrack
+  version: Version
+  headingRef?: Ref<HTMLHeadingElement>
+  onClose?: () => void
+  /** In the wide panel: the header is level with the page's, and the readings scroll under it. */
+  docked?: boolean
+}) {
   const label = versionLabel(version, t.section)
   const a = version.analysis
+  const body = isMeasured(a) ? <Measurements t={t} version={version} a={a} /> : a ? <Unread /> : <Unmeasured version={version} />
   return (
-    <section role="region" aria-label={`Meters, ${label}`} className="meter-bridge @container flex flex-col gap-4">
-      <header className="flex items-center gap-2">
-        <h4 ref={headingRef} tabIndex={-1} className="readout flex min-w-0 flex-1 items-center gap-2 text-ink-soft outline-none">
-          <Activity size={14} aria-hidden="true" className="shrink-0 text-accent" />
-          <span className="truncate">{label}{isMeasured(a) ? ` · ${resolutionOf(version, a)}` : ''}</span>
-        </h4>
+    <section role="region" aria-label={`Meters, ${label}`} className={cn('meter-bridge @container flex flex-col', docked ? 'h-full' : 'gap-4')}>
+      <header className={cn('flex items-center gap-3', docked && 'layer-shell-header signal-rule h-(--dock-header-h,var(--shell-header-h)) shrink-0 px-5')}>
+        <span data-meters-jack className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <Activity size={18} aria-hidden="true" />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <h4 ref={headingRef} tabIndex={-1} className="truncate font-display text-xl font-semibold leading-tight tracking-tight text-ink outline-none">{label}</h4>
+          {isMeasured(a) && <p className="readout truncate text-ink-muted">{resolutionOf(version, a)} · {clock(a.ms / 1000)}</p>}
+        </div>
         {onClose && (
           <Tip label="Close" side="left">
             <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close the meters" className="shrink-0 rounded-full text-ink-muted">
-              <X size={16} aria-hidden="true" />
+              <X size={18} aria-hidden="true" />
             </Button>
           </Tip>
         )}
       </header>
-      {isMeasured(a) ? <Measurements t={t} version={version} a={a} /> : a ? <Unread /> : <Unmeasured version={version} />}
+      {docked ? (
+        <ScrollArea.Root className="flex-1">
+          <ScrollArea.Viewport>
+            <div className="flex flex-col gap-5 p-5 pb-8">{body}</div>
+          </ScrollArea.Viewport>
+          <ScrollArea.Scrollbar className="mr-1">
+            <ScrollArea.Thumb />
+          </ScrollArea.Scrollbar>
+        </ScrollArea.Root>
+      ) : (
+        body
+      )}
     </section>
   )
 }
@@ -215,6 +239,7 @@ function Normalization({ a, platforms }: { a: Measured; platforms: readonly (typ
           <li key={p.name}>
             <Tip label={`${p.name} plays at ${reading(p.target, 0)} LUFS`} side="bottom">
               <span tabIndex={0} className="readout flex items-center gap-1.5 rounded text-ink-soft">
+                <Logo icon={LOGO[p.name]} />
                 <span aria-hidden="true" className="normal-case tracking-normal font-sans text-[13px] font-medium">{p.name}</span>
                 <Icon size={12} aria-hidden="true" className="text-accent" />
                 {by !== 0 && <span aria-hidden="true" data-numeric>{Math.abs(by).toFixed(1)}</span>}
@@ -228,30 +253,45 @@ function Normalization({ a, platforms }: { a: Measured; platforms: readonly (typ
   )
 }
 
-/** The technical layer: every other reading, a label and a value each, no deltas. */
+/** Each platform's mark, in the room's ink, never its brand colour. Amazon Music has none in simple-icons. */
+const LOGO: Record<string, SimpleIcon | undefined> = { Spotify: siSpotify, 'Apple Music': siApplemusic, YouTube: siYoutube, Tidal: siTidal, Deezer: siDeezer }
+
+function Logo({ icon }: { icon: SimpleIcon | undefined }) {
+  if (!icon) return <Music size={14} aria-hidden="true" className="shrink-0" />
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-3.5 shrink-0 fill-current">
+      <path d={icon.path} />
+    </svg>
+  )
+}
+
+/** The technical layer: every other reading, an icon, a label and a value each, no deltas; two across, four when wide. */
 function Technical({ version, a }: { version: Version; a: Measured }) {
-  const rows: [string, string][] = [
-    ['Sample peak', `${reading(a.samplePeak, 1, true)} dBFS`],
-    ['Clips', `${a.clipped}`],
-    ['Momentary max', a.momentaryMax === null ? '—' : `${reading(a.momentaryMax)} LUFS`],
-    ['Short-term max', a.shortTermMax === null ? '—' : `${reading(a.shortTermMax)} LUFS`],
-    ['LRA', a.lra === null ? '—' : `${reading(a.lra)} LU`],
-    ['DR', a.dr === null ? '—' : `${a.dr}`],
-    ['DC', a.dc.map((d) => reading(d)).join(' · ') + ' dB'],
-    ...(a.correlation ? [['Phase low', `${reading(a.correlation.min, 2, true)} at ${clock(a.correlation.minAtMs / 1000)}`] as [string, string]] : []),
-    ...(a.lufs === null ? [] : PLATFORMS.slice(3).map((p): [string, string] => {
+  const rows: [ReactNode, string, string][] = [
+    [<MoveVertical size={14} />, 'Sample peak', `${reading(a.samplePeak, 1, true)} dBFS`],
+    [<OctagonAlert size={14} />, 'Clips', `${a.clipped}`],
+    [<Gauge size={14} />, 'Momentary max', a.momentaryMax === null ? '—' : `${reading(a.momentaryMax)} LUFS`],
+    [<TrendingUp size={14} />, 'Short-term max', a.shortTermMax === null ? '—' : `${reading(a.shortTermMax)} LUFS`],
+    [<AudioWaveform size={14} />, 'LRA', a.lra === null ? '—' : `${reading(a.lra)} LU`],
+    [<Scale size={14} />, 'DR', a.dr === null ? '—' : `${a.dr}`],
+    [<Waves size={14} />, 'DC', a.dc.map((d) => reading(d)).join(' · ') + ' dB'],
+    ...(a.correlation ? [[<Spline size={14} />, 'Phase low', `${reading(a.correlation.min, 2, true)} at ${clock(a.correlation.minAtMs / 1000)}`] as [ReactNode, string, string]] : []),
+    ...(a.lufs === null ? [] : PLATFORMS.slice(3).map((p): [ReactNode, string, string] => {
       const by = normalizationOf(a, p) ?? 0
-      return [p.name, by === 0 ? '±0.0' : `${by < 0 ? '↓' : '↑'} ${Math.abs(by).toFixed(1)}`]
+      return [<Logo icon={LOGO[p.name]} />, p.name, by === 0 ? '±0.0' : `${by < 0 ? '↓' : '↑'} ${Math.abs(by).toFixed(1)}`]
     })),
-    ['File', [formatOf(version.filename), a.format.bits && `${a.format.bits}-bit`, `${Math.round(a.format.rate / 100) / 10} kHz`, a.format.kbps && `${a.format.kbps} kbps`, a.format.channels === 1 ? 'mono' : a.format.channels === 2 ? 'stereo' : `${a.format.channels} ch`].filter(Boolean).join(' · ')],
-    ['Meter', `${a.meter} · ${a.source === 'device' ? 'Device' : 'Overnight'}`],
+    [<FileAudio size={14} />, 'File', [formatOf(version.filename), a.format.bits && `${a.format.bits}-bit`, `${Math.round(a.format.rate / 100) / 10} kHz`, a.format.kbps && `${a.format.kbps} kbps`, a.format.channels === 1 ? 'mono' : a.format.channels === 2 ? 'stereo' : `${a.format.channels} ch`].filter(Boolean).join(' · ')],
+    [<Activity size={14} />, 'Meter', `${a.meter} · ${a.source === 'device' ? 'Device' : 'Overnight'}`],
   ]
   return (
-    <dl className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-5 gap-y-3 pt-2">
-      {rows.map(([k, v]) => (
-        <div key={k} className="flex flex-col gap-0.5">
-          <dt className="readout text-ink-muted">{k}</dt>
-          <dd data-numeric className="text-[13.5px] text-ink">{v}</dd>
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-4 pt-3 @2xl:grid-cols-4">
+      {rows.map(([icon, k, v]) => (
+        <div key={k} className={cn('flex min-w-0 gap-2.5', k === 'File' && 'col-span-2')}>
+          <span aria-hidden="true" className="mt-px flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-dim text-accent">{icon}</span>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <dt className="readout truncate text-ink-muted">{k}</dt>
+            <dd data-numeric className="text-[13.5px] text-ink">{v}</dd>
+          </div>
         </div>
       ))}
     </dl>

@@ -10,11 +10,12 @@ export type Crumb = { label: string; link: LinkOptions }
 
 /**
  * Every page: a header with the trail to it, then its scrolling content.
- * Desktop shows the whole trail; compact shows only the way back up.
+ * Desktop shows the whole trail; compact, or a page whose title is said elsewhere, shows only the way back up.
  */
 export function Page({ title, crumbs = [], lead, meta, actions, bar, bleed, children }: {
-  /** Its name; a skeleton while the page is on its way (`releases/Pending`). */
-  title: ReactNode
+  /** Its name; a skeleton while the page is on its way (`releases/Pending`). Left out where a panel beside it names
+   *  the page (a release on desktop). */
+  title?: ReactNode
   crumbs?: Crumb[]
   /** Before the title, like a cover beside a track name (ReleaseArt). */
   lead?: ReactNode
@@ -30,7 +31,8 @@ export function Page({ title, crumbs = [], lead, meta, actions, bar, bleed, chil
   children: ReactNode
 }) {
   const { isCompact } = useShellMode()
-  const back = isCompact || Boolean(bleed)
+  // With no title after it (compact, a bleed page, or a panel beside it naming the page), the trail is just the way back.
+  const back = isCompact || Boolean(bleed) || !title
   const header = (
     <header
       className={cn(
@@ -42,7 +44,7 @@ export function Page({ title, crumbs = [], lead, meta, actions, bar, bleed, chil
       {lead}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {crumbs.length > 0 && <Breadcrumbs crumbs={back ? crumbs.slice(-1) : crumbs} back={back} />}
-        {!bleed && <h1 className={cn('truncate font-display font-semibold leading-tight tracking-tight', isCompact ? 'text-[22px]' : 'text-2xl')}>{title}</h1>}
+        {!bleed && title && <h1 className={cn('truncate font-display font-semibold leading-tight tracking-tight', isCompact ? 'text-[22px]' : 'text-2xl')}>{title}</h1>}
         {meta}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}

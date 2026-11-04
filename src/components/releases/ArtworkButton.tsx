@@ -51,7 +51,7 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
   })
 
   return (
-    <div className={size === 'panel' ? 'w-full' : 'shrink-0'}>
+    <div className={size === 'panel' ? 'w-full' : 'flex shrink-0'}>
       <Tip label={label}>
         <button
           type="button"

@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { CalendarClock, Disc3, Images, ListMusic, LogOut, ScrollText, Sparkles, type LucideIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { moveToUpcoming } from '#/server/releases'
@@ -10,6 +10,7 @@ import { cn } from '../../lib/utils'
 import { Button, Led, Tip, Tuning, useHoverSlide } from '../primitives'
 import * as ScrollArea from '../primitives/ScrollArea'
 import { Page } from '../layout/Page'
+import { DOCK } from '../meters/MetersPanel'
 import { UploadButton } from '../uploads/UploadDialog'
 import { useRoomStyle } from '../scene/palette'
 import { MetaLine } from '../shared/MetaLine'
@@ -46,11 +47,33 @@ export function ReleaseLayout(data: ReleaseData) {
   const count = release.format === 'single' ? null : tracks.length
   const slide = useHoverSlide('rounded-xl bg-accent-dim')
   const room = useRoomStyle(release.title, release.artwork_id)
+  const cover = <ArtworkButton releaseId={release.id} title={release.title} artworkId={release.artwork_id} onFailure={setArtFailure} />
+  const facts = artFailure ? (
+    <p role="alert" className="truncate text-[13px] text-feedback-error">
+      {artFailure} Tap the cover to try again.
+    </p>
+  ) : (
+    <MetaLine wrap={!isDesktop} className={isDesktop ? 'text-xs' : undefined} facts={[dateLabel(section, release, deviceZone()), ...releaseFacts(release, FORMAT_LABEL[release.format])]} />
+  )
 
   return (
-    <div className="art-room flex min-w-0 flex-1" style={room}>
+    <div className="art-room flex min-w-0 flex-1" style={isDesktop ? ({ ...room, '--shell-header-h': 'calc(5.5rem + 1px)' } as CSSProperties) : room}>
       {isDesktop && (
         <aside aria-label={release.title} className="flex h-full w-64 shrink-0 flex-col border-r border-line/60">
+          {/* The release itself, on every part: its cover, title and facts, level with the page's header beside it (the
+              room's headers are 5.5rem plus the rule on desktop: 16px around the cover on every side).
+              Summary's scene says the title as the page's h1, so here it's only a name there. */}
+          <header className="surface-shell layer-shell-header signal-rule flex h-(--shell-header-h) shrink-0 items-center gap-2.5 px-4">
+            {cover}
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              {onSummary ? (
+                <p className="truncate font-display text-lg font-semibold leading-tight tracking-tight">{release.title}</p>
+              ) : (
+                <h1 className="truncate font-display text-lg font-semibold leading-tight tracking-tight">{release.title}</h1>
+              )}
+              {facts}
+            </div>
+          </header>
           <ScrollArea.Root className="flex-1">
             <ScrollArea.Viewport>
           <nav aria-label="Release parts">
@@ -88,18 +111,11 @@ export function ReleaseLayout(data: ReleaseData) {
         </aside>
       )}
       <Page
-        title={release.title}
+        // On desktop the release is named in the parts panel's header, so the page's keeps only the way back up.
+        title={isDesktop ? undefined : release.title}
         crumbs={[sectionCrumb(section)]}
-        lead={onSummary ? undefined : <ArtworkButton releaseId={release.id} title={release.title} artworkId={release.artwork_id} onFailure={setArtFailure} />}
-        meta={
-          artFailure ? (
-            <p role="alert" className="truncate text-[13px] text-feedback-error">
-              {artFailure} Tap the cover to try again.
-            </p>
-          ) : onSummary ? null : (
-            <MetaLine wrap facts={[dateLabel(section, release, deviceZone()), ...releaseFacts(release, FORMAT_LABEL[release.format])]} />
-          )
-        }
+        lead={onSummary || isDesktop ? undefined : cover}
+        meta={onSummary && !artFailure ? null : isDesktop ? undefined : facts}
         actions={
           isDesktop ? (
             oneTrack && <UploadButton />
@@ -132,6 +148,7 @@ export function ReleaseLayout(data: ReleaseData) {
       >
         <Outlet />
       </Page>
+      <div id={DOCK} className="contents" />
       {section === 'upcoming' && <MoveToReleasesDialog {...data} />}
     </div>
   )

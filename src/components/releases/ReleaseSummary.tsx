@@ -50,7 +50,7 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
 
   return (
     <>
-      <section aria-labelledby="release-title" className="art-scene @container relative isolate flex min-h-full shrink-0 flex-col overflow-hidden">
+      <section aria-labelledby="release-title" className={cn('art-scene @container relative isolate flex shrink-0 flex-col overflow-hidden', isCompact ? 'min-h-full' : release.format === 'single' ? 'h-full min-h-[42.25rem]' : 'h-full min-h-[43.5rem]')}>
         {/* Upper left when the signal path sits right; under it, above the ridges, when it spans the sky */}
         <Sky moon={isDesktop ? 'top-[16%] left-[12%]' : 'top-[44%] left-[20%]'} />
 
@@ -60,29 +60,32 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
         <div className="min-h-2 flex-[0.5]" />
         <SignalPath section={section} releaseId={release.id} stations={stations} />
 
-        <div className="min-h-16 flex-1" />
-        {/* The land grows with a tall screen, so the sky never outweighs it */}
-        <div className="scene-horizon relative shrink-0">
-          <Land className={cn('relative block w-full', isCompact ? 'h-[max(15.625cqw,30dvh)]' : 'h-[max(15.625cqw,24dvh)]')} />
+        <div className="min-h-12 flex-1" />
+        {/* The land grows with a tall screen, so the sky never outweighs it; on desktop it gives way (its sky side
+            cropped) before the page would scroll, so a scene that fits never scrolls, player bar or not. Below the scene at its
+            smallest (42.25rem, 43.5rem with an EP's strip) it stops giving way and scrolls instead */}
+        <div className={cn('scene-horizon relative', isCompact ? 'h-[max(15.625cqw,30dvh)] shrink-0' : 'h-[max(15.625cqw,24dvh)] min-h-28 shrink')}>
+          <Land className="relative block h-full w-full" />
         </div>
 
         {/* Now playing: the cover, the title, its facts once, Play, and (for an EP or album) a strip with a segment per
-            track. The cover's top and the title's line up; room under them for the now-playing pill. */}
-        <div className={cn('scene-ground relative flex items-start gap-4 px-4 sm:gap-8 sm:px-10', isCompact ? 'pb-8' : 'pb-12')}>
-          <div className="-mt-6 shrink-0">
+            track. As much room above as below; the title lines up with the cover's top and Play with its bottom (an EP's strip
+            runs taller, so its cover is centred on them). */}
+        <div className={cn('scene-ground relative flex items-stretch gap-4 px-4 sm:gap-8 sm:px-10', isCompact ? 'py-8' : 'py-10')}>
+          <div className="flex shrink-0 items-center">
             <ArtworkButton releaseId={release.id} title={release.title} artworkId={release.artwork_id} onFailure={setArtFailure} size="stage" />
           </div>
-          <div className="-mt-6 flex min-w-0 flex-1 flex-col gap-3 sm:gap-4">
+          <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
-              <h1 id="release-title" className="truncate font-display text-[1.75rem] leading-[1.05] font-semibold tracking-[-0.02em] sm:text-5xl @5xl:text-6xl">
+              <h1 id="release-title" className="truncate pb-[0.12em] font-display text-[1.75rem] leading-[1.05] font-semibold tracking-[-0.02em] sm:text-5xl @5xl:text-6xl">
                 {release.title}
               </h1>
               {artFailure ? (
-                <p role="alert" className="mt-1.5 text-sm text-feedback-error">
+                <p role="alert" className="mt-2 text-sm text-feedback-error">
                   {artFailure} Tap the cover to try again.
                 </p>
               ) : (
-                <MetaLine wrap facts={[...releaseFacts(release, FORMAT_LABEL[release.format]), day]} className="mt-1.5 text-sm text-ink-soft" />
+                <MetaLine wrap facts={[...releaseFacts(release, FORMAT_LABEL[release.format]), day]} className="mt-2 text-sm text-ink-soft" />
               )}
             </div>
             <div className="flex min-w-0 items-center gap-3">
