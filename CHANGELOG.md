@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-04
+
 Meters: every bounce measured for loudness, true peak, phase and dynamics.
 
 ### Added
