@@ -1,0 +1,305 @@
+import { useRouter } from '@tanstack/react-router'
+import { motion } from 'framer-motion'
+import { Activity, ArrowDown, ArrowUp, ChevronDown, Equal, X } from 'lucide-react'
+import { useState, type ReactNode, type Ref } from 'react'
+
+import { PLATFORMS, deltaOf, isMeasured, normalizationOf, previousOf, type Delta, type Headline, type Measured } from '#/server/loudness'
+import type { VersionRow as Version } from '#/server/releases'
+import { SPRINGS } from '../../lib/constants/motion'
+import { deviceZone } from '../../lib/time'
+import { cn } from '../../lib/utils'
+import { clock } from '../player/controls'
+import { LoudnessWave } from '../player/LoudnessWave'
+import { usePlayer } from '../player/Player'
+import { Button, Scope, Tip, Transfer, Tuning } from '../primitives'
+import type { TrackState } from '../releases/Lane'
+
+/** What the bridge reads from its track: a row's `TrackState`, or the wide panel's own. */
+export type BridgeTrack = Pick<TrackState, 'data' | 'release' | 'track' | 'section'>
+import { formatOf, playableOf, versionLabel } from '../releases/stacks'
+import { sizeOf } from '../uploads/progress'
+import { measureAndSave } from './save'
+
+/** A number as a meter reads it: a real minus sign, a plus when `signed`, fixed decimals. */
+export const reading = (v: number, digits = 1, signed = false) => `${v < 0 ? '−' : signed && v > 0 ? '+' : ''}${Math.abs(v).toFixed(digits)}`
+const spoken = (v: number, digits = 1) => `${v < 0 ? 'minus ' : ''}${Math.abs(v).toFixed(digits)}`
+const along = (v: number, from: number, to: number) => `${Math.min(100, Math.max(0, ((v - from) / (to - from)) * 100))}%`
+
+/** "WAV 24/48", "MP3 320", "FLAC 16/44.1": the file as an engineer names it. */
+export function resolutionOf(version: Version, a: Measured) {
+  const { bits, rate, kbps } = a.format
+  const khz = `${Math.round(rate / 100) / 10}`
+  return `${formatOf(version.filename)} ${bits ? `${bits}/${khz}` : kbps ? `${kbps}` : khz}`
+}
+
+/**
+ * A version's meters, read from the whole song: its loudness over time (a playhead too), then four instruments in the
+ * order an engineer reads a master (loudness, true peak, phase, dynamics), what each platform would do to its level,
+ * and More, folded. Facts, never verdicts: louder isn't better, so a change since the version before is Haze, never
+ * green or red. The same bridge unfolds under a row or fills the wide panel.
+ */
+export function MeterBridge({ t, version, headingRef, onClose }: { t: BridgeTrack; version: Version; headingRef?: Ref<HTMLHeadingElement>; onClose?: () => void }) {
+  const label = versionLabel(version, t.section)
+  const a = version.analysis
+  return (
+    <section role="region" aria-label={`Meters, ${label}`} className="meter-bridge @container flex flex-col gap-4">
+      <header className="flex items-center gap-2">
+        <h4 ref={headingRef} tabIndex={-1} className="readout flex min-w-0 flex-1 items-center gap-2 text-ink-soft outline-none">
+          <Activity size={14} aria-hidden="true" className="shrink-0 text-accent" />
+          <span className="truncate">{label}{isMeasured(a) ? ` · ${resolutionOf(version, a)}` : ''}</span>
+        </h4>
+        {onClose && (
+          <Tip label="Close" side="left">
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close the meters" className="shrink-0 rounded-full text-ink-muted">
+              <X size={16} aria-hidden="true" />
+            </Button>
+          </Tip>
+        )}
+      </header>
+      {isMeasured(a) ? <Measurements t={t} version={version} a={a} /> : a ? <Unread /> : <Unmeasured version={version} />}
+    </section>
+  )
+}
+
+function Measurements({ t, version, a }: { t: BridgeTrack; version: Version; a: Measured }) {
+  const player = usePlayer()
+  const item = playableOf(t.release, t.track, version, deviceZone())
+  const previous = t.section === 'upcoming' ? previousOf(version, t.data.versions) : null
+  const deltas = previous ? deltaOf(a, previous.analysis) : null
+  const since = previous ? versionLabel(previous, t.section) : ''
+  const [more, setMore] = useState(false)
+  const delta = (key: Headline, unit: string, word: [string, string]) => deltas?.[key] && <DeltaLine d={deltas[key]!} unit={unit} word={word} since={since} number={previous!.number} />
+
+  return (
+    <>
+      {item.wave && <LoudnessWave item={item} wave={item.wave} className="pt-2" />}
+      <div className="grid grid-cols-2 gap-x-5 gap-y-5 @2xl:grid-cols-4">
+        <Instrument name="Loudness" tip="Integrated loudness across the whole song" value={a.lufs} unit="LUFS" said={a.lufs === null ? 'silent' : `${spoken(a.lufs)} LUFS`} delta={delta('lufs', 'LU', ['louder', 'quieter'])}>
+          {a.lufs !== null && <LoudnessScale lufs={a.lufs} />}
+        </Instrument>
+        <Instrument name="True peak" tip="The highest the waveform reaches between samples" value={a.truePeak} unit="dBTP" signed said={`${spoken(a.truePeak)} dB true peak`} delta={delta('truePeak', 'dB', ['higher', 'lower'])}>
+          <PeakMeter dbtp={a.truePeak} />
+        </Instrument>
+        <Instrument
+          name="Phase"
+          tip="How alike left and right are: +1 the same, 0 unrelated, −1 cancelling"
+          value={a.correlation?.mean ?? null}
+          digits={2}
+          signed
+          empty="Mono"
+          said={a.correlation ? `correlation ${spoken(a.correlation.mean, 2)}` : 'mono'}
+          delta={delta('correlation', '', ['wider', 'narrower'])}
+        >
+          {a.correlation && (
+            <PhaseMeter
+              c={a.correlation}
+              onLow={() => player.play(item, { at: a.correlation!.minAtMs / a.ms })}
+            />
+          )}
+        </Instrument>
+        <Instrument name="Dynamics" tip="Peak to loudness ratio: from the song's loudness up to its true peak" value={a.plr} unit="PLR" said={a.plr === null ? 'none' : `${spoken(a.plr)} dB peak to loudness`} delta={delta('plr', 'dB', ['more', 'less'])}>
+          {a.lufs !== null && <CrestSpan lufs={a.lufs} dbtp={a.truePeak} />}
+        </Instrument>
+      </div>
+      {a.lufs !== null && <Normalization a={a} platforms={PLATFORMS.slice(0, 3)} />}
+      <div>
+        <button
+          type="button"
+          onClick={() => setMore(!more)}
+          aria-expanded={more}
+          className="readout press -ml-2 flex min-h-11 items-center gap-1.5 rounded-full px-2 text-ink-muted hover:text-ink"
+        >
+          <ChevronDown size={14} aria-hidden="true" className={cn('transition-transform duration-200', more && 'rotate-180')} />
+          More
+        </button>
+        {more && <Technical version={version} a={a} />}
+      </div>
+    </>
+  )
+}
+
+function Instrument({ name, tip, value, unit, digits = 1, signed, empty = '—', said, delta, children }: {
+  name: string; tip: string; value: number | null; unit?: string; digits?: number; signed?: boolean; empty?: string; said: string; delta?: ReactNode; children?: ReactNode
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <Tip label={tip} side="top">
+        <span tabIndex={0} className="readout w-fit rounded text-ink-muted">{name}</span>
+      </Tip>
+      <p className="flex items-baseline gap-1.5 whitespace-nowrap">
+        <span aria-hidden="true" data-numeric className="font-display text-2xl font-semibold tracking-tight text-ink">{value === null ? empty : reading(value, digits, signed)}</span>
+        {unit && value !== null && <span aria-hidden="true" className="readout text-ink-muted">{unit}</span>}
+        <span className="sr-only">{said}</span>
+      </p>
+      <div className="h-5">{children}</div>
+      <div className="min-h-4">{delta}</div>
+    </div>
+  )
+}
+
+function DeltaLine({ d, unit, word, since, number }: { d: Delta; unit: string; word: [string, string]; since: string; number: number }) {
+  const Icon = d.same ? Equal : d.by > 0 ? ArrowUp : ArrowDown
+  const sentence = d.same ? `The same as ${since}` : `${Math.abs(d.by)} ${unit} ${d.by > 0 ? word[0] : word[1]} than ${since}`.replace('  ', ' ')
+  return (
+    <Tip label={`Since ${since}`} side="bottom">
+      <span tabIndex={0} className="readout flex w-fit items-center gap-1 rounded text-accent-tertiary">
+        <Icon size={12} aria-hidden="true" />
+        {!d.same && <span aria-hidden="true" data-numeric>{Math.abs(d.by).toFixed(unit ? 1 : 2)}</span>}
+        <span aria-hidden="true" className="text-ink-muted">v{number}</span>
+        <span className="sr-only">{sentence}</span>
+      </span>
+    </Tip>
+  )
+}
+
+/** −24 to −6 LUFS, a tick at each headline platform's target (−16, −14), the song a lit dot. */
+function LoudnessScale({ lufs }: { lufs: number }) {
+  return (
+    <span aria-hidden="true" className="meter-rule">
+      {[-16, -14].map((at) => <span key={at} className="meter-tick" style={{ left: along(at, -24, -6) }} />)}
+      <span className="meter-dot" style={{ left: along(lufs, -24, -6) }} />
+    </span>
+  )
+}
+
+/** LED segments from −6 to +1 dBTP in half-dB steps, the ceiling at −1; over it, the warm Tube light. */
+function PeakMeter({ dbtp }: { dbtp: number }) {
+  const steps = Array.from({ length: 14 }, (_, i) => -6 + i * 0.5)
+  return (
+    <span aria-hidden="true" className="flex h-full items-center gap-[2px]">
+      {steps.map((at) => (
+        <span key={at} className={cn('meter-segment', at < dbtp && (at >= -1 ? 'meter-segment-over' : 'meter-segment-lit'), at === -1 && 'meter-ceiling')} />
+      ))}
+    </span>
+  )
+}
+
+/** −1 to +1, a mark at 0; the needle at the song's mean settles from the centre once, the lowest 3 s a hollow mark. */
+function PhaseMeter({ c, onLow }: { c: NonNullable<Measured['correlation']>; onLow: () => void }) {
+  return (
+    <span className="meter-rule">
+      <span aria-hidden="true" className="meter-tick" style={{ left: '50%' }} />
+      <motion.span aria-hidden="true" className="meter-needle" initial={{ left: '50%' }} animate={{ left: along(c.mean, -1, 1) }} transition={SPRINGS.SNAP} />
+      <Tip label={`Lowest ${reading(c.min, 2, true)} at ${clock(c.minAtMs / 1000)}`} side="bottom">
+        <button
+          type="button"
+          onClick={onLow}
+          aria-label={`Play from the lowest phase, ${clock(c.minAtMs / 1000)}`}
+          className="meter-low"
+          style={{ left: along(c.min, -1, 1) }}
+        />
+      </Tip>
+    </span>
+  )
+}
+
+/** The crest: two marks on one rule (−30 to +3 dB), loudness and true peak; the lit gap between them is the PLR. */
+function CrestSpan({ lufs, dbtp }: { lufs: number; dbtp: number }) {
+  return (
+    <span aria-hidden="true" className="meter-rule">
+      <span className="meter-span" style={{ left: along(lufs, -30, 3), right: `calc(100% - ${along(dbtp, -30, 3)})` }} />
+      <span className="meter-dot" style={{ left: along(lufs, -30, 3) }} />
+      <span className="meter-dot" style={{ left: along(dbtp, -30, 3) }} />
+    </span>
+  )
+}
+
+function Normalization({ a, platforms }: { a: Measured; platforms: readonly (typeof PLATFORMS)[number][] }) {
+  return (
+    <ul className="flex flex-wrap gap-x-5 gap-y-2">
+      {platforms.map((p) => {
+        const by = normalizationOf(a, p) ?? 0
+        const Icon = by < 0 ? ArrowDown : by > 0 ? ArrowUp : Equal
+        const said = by === 0 ? `${p.name} leaves it as it is` : `${p.name} turns it ${by < 0 ? 'down' : 'up'} ${Math.abs(by).toFixed(1)} dB`
+        return (
+          <li key={p.name}>
+            <Tip label={`${p.name} plays at ${reading(p.target, 0)} LUFS`} side="bottom">
+              <span tabIndex={0} className="readout flex items-center gap-1.5 rounded text-ink-soft">
+                <span aria-hidden="true" className="normal-case tracking-normal font-sans text-[13px] font-medium">{p.name}</span>
+                <Icon size={12} aria-hidden="true" className="text-accent" />
+                {by !== 0 && <span aria-hidden="true" data-numeric>{Math.abs(by).toFixed(1)}</span>}
+                <span className="sr-only">{said}</span>
+              </span>
+            </Tip>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** The technical layer: every other reading, a label and a value each, no deltas. */
+function Technical({ version, a }: { version: Version; a: Measured }) {
+  const rows: [string, string][] = [
+    ['Sample peak', `${reading(a.samplePeak, 1, true)} dBFS`],
+    ['Clips', `${a.clipped}`],
+    ['Momentary max', a.momentaryMax === null ? '—' : `${reading(a.momentaryMax)} LUFS`],
+    ['Short-term max', a.shortTermMax === null ? '—' : `${reading(a.shortTermMax)} LUFS`],
+    ['LRA', a.lra === null ? '—' : `${reading(a.lra)} LU`],
+    ['DR', a.dr === null ? '—' : `${a.dr}`],
+    ['DC', a.dc.map((d) => reading(d)).join(' · ') + ' dB'],
+    ...(a.correlation ? [['Phase low', `${reading(a.correlation.min, 2, true)} at ${clock(a.correlation.minAtMs / 1000)}`] as [string, string]] : []),
+    ...(a.lufs === null ? [] : PLATFORMS.slice(3).map((p): [string, string] => {
+      const by = normalizationOf(a, p) ?? 0
+      return [p.name, by === 0 ? '±0.0' : `${by < 0 ? '↓' : '↑'} ${Math.abs(by).toFixed(1)}`]
+    })),
+    ['File', [formatOf(version.filename), a.format.bits && `${a.format.bits}-bit`, `${Math.round(a.format.rate / 100) / 10} kHz`, a.format.kbps && `${a.format.kbps} kbps`, a.format.channels === 1 ? 'mono' : a.format.channels === 2 ? 'stereo' : `${a.format.channels} ch`].filter(Boolean).join(' · ')],
+    ['Meter', `${a.meter} · ${a.source === 'device' ? 'Device' : 'Overnight'}`],
+  ]
+  return (
+    <dl className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-5 gap-y-3 pt-2">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex flex-col gap-0.5">
+          <dt className="readout text-ink-muted">{k}</dt>
+          <dd data-numeric className="text-[13.5px] text-ink">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+function Unread() {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Scope flat className="h-8 w-40" />
+      <Tip label="Mixlog can’t read this format yet." side="bottom">
+        <span tabIndex={0} className="readout rounded text-ink-muted">No reading</span>
+      </Tip>
+    </div>
+  )
+}
+
+/** Not measured yet (before 1.2.0, or its reading never landed): Measure reads it here; otherwise tonight's run does. */
+function Unmeasured({ version }: { version: Version }) {
+  const router = useRouter()
+  const [state, setState] = useState<{ step: 'idle' | 'down' | 'reading' | 'failed'; share: number }>({ step: 'idle', share: 0 })
+  const measure = async () => {
+    setState({ step: 'down', share: 0 })
+    const analysis = await measureAndSave(version, (share) => setState({ step: share >= 1 ? 'reading' : 'down', share })).catch(() => null)
+    if (!analysis) return setState({ step: 'failed', share: 0 })
+    await router.invalidate()
+  }
+  if (state.step === 'down' || state.step === 'reading') {
+    return (
+      <p className="readout flex min-h-11 items-center gap-2 text-ink-muted" role="status">
+        {state.step === 'down' ? <Transfer direction="down" value={state.share} className="size-5" /> : <Tuning />}
+        Measuring
+      </p>
+    )
+  }
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <div className="flex flex-wrap items-center gap-4">
+        <Scope flat className="h-8 w-40" />
+        <span className="readout text-ink-muted">Not measured</span>
+      </div>
+      <Tip label={`Downloads ${sizeOf(version.size)} to measure here. Otherwise tonight.`} side="bottom">
+        <Button variant="secondary" size="sm" onClick={measure} className="gap-1.5">
+          <Activity size={14} aria-hidden="true" />
+          Measure
+        </Button>
+      </Tip>
+      {state.step === 'failed' && <p role="alert" className="text-[13px] text-feedback-error">Couldn’t measure it. Try again.</p>}
+    </div>
+  )
+}

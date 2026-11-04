@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+Meters: every bounce measured for loudness, true peak, phase and dynamics.
+
+### Added
+
+- Every bounce is measured as it uploads: loudness, true peak, phase and dynamics, behind its row's meters.
+- A loudness waveform shows each version's whole song and plays from wherever you tap it.
+- Versions uploaded earlier are measured overnight, or right away with Measure.
+- Move to Releases shows each final's loudness and true peak.
+
+### Changed
+
+- The listening room's playhead is the song's loudness waveform.
+
 ## [1.1.1] - 2026-11-03
 
 ### Changed

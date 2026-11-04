@@ -1,6 +1,7 @@
 import { AudioWaveform, Clapperboard, File, Film, Gauge, Image, Layers, MicVocal, Piano, ScrollText, SlidersHorizontal, type LucideIcon } from 'lucide-react'
 
 import { lanesOf } from '#/server/lanes'
+import { isMeasured } from '#/server/loudness'
 import type { ReleaseRow, TrackRow, VersionRow } from '#/server/releases'
 import { formatMoment, todayIn, type Zone } from '../../lib/time'
 import type { Playable } from '../player/Player'
@@ -59,6 +60,7 @@ export function playableOf(release: ReleaseRow, track: TrackRow, version: Versio
     release: release.title,
     artworkId: release.artwork_id,
     link: releaseLink(section, release.id),
+    wave: isMeasured(version.analysis) ? { bars: version.analysis.wave, ms: version.analysis.ms, loudestMs: version.analysis.loudest?.atMs ?? null } : null,
   }
 }
 

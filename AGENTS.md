@@ -23,6 +23,7 @@ Before writing something, check whether the platform or a dependency already doe
 - **Zod** checks everything that comes in: server function inputs, `/api` request bodies, URL search params (`readWith(schema)` in `server/input.ts` turns the first problem into the artist's words). No `typeof` ladders.
 - **Drizzle** (as in Cadence) is the schema (`server/schema.ts`), the queries (`server/db.ts`) and the migrations (`pnpm db:generate`, applied by Wrangler). No raw `env.DB` calls, no hand-written migrations.
 - **jose** verifies Access tokens. Never hand-rolled auth.
+- **The meter** (`meter/`, Rust → WASM: Symphonia decodes, `ebur128` reads BS.1770 loudness) measures every bounce, in a Web Worker as it uploads and in the Worker overnight. Its built `pkg/` is committed, so nothing else needs Rust; its own guide is `meter/AGENTS.md`.
 - **TanStack Router / Start** for routing, URL state, loaders and server functions; **Radix** (through `components/primitives/`) for anything interactive a screen reader must get right; **framer-motion** for motion; **clsx + tailwind-merge** (`cn`) for classes; **lucide-react** for icons.
 
 Hand-written code stays where it's Mixlog's own rule (stacks, versions, filename suggestions, the date model) or a few lines that a dependency would make larger. A new dependency is pinned, maintained, runs on Workers when it's server-side, and replaces more code than it adds.
@@ -44,9 +45,9 @@ Banned outside `lib/time.ts` (`pnpm check:time`): slicing or splitting a timesta
 
 ## Commands
 
-`pnpm dev` (http://localhost:3000) · `pnpm test` (all of `tests/`) · `test:unit` · `test:integration` · `test:tz` (all of it in four zones) · `check:time` · `pnpm typecheck` · `pnpm build` · `pnpm preview` · `pnpm run deploy` (plain `pnpm deploy` is a pnpm built-in) · `pnpm db:generate` (a migration from `server/schema.ts`) · `db:check` · `pnpm db:migrate` (local D1; `db:migrate:remote` for production) · `pnpm cf-typegen` (after changing bindings in `wrangler.jsonc`).
+`pnpm dev` (http://localhost:3000) · `pnpm test` (all of `tests/`) · `test:unit` · `test:integration` · `test:tz` (all of it in four zones) · `check:time` · `pnpm typecheck` · `pnpm build` · `pnpm preview` · `pnpm run deploy` (plain `pnpm deploy` is a pnpm built-in) · `pnpm db:generate` (a migration from `server/schema.ts`) · `db:check` · `pnpm db:migrate` (local D1; `db:migrate:remote` for production) · `pnpm cf-typegen` (after changing bindings in `wrangler.jsonc`) · `pnpm meter:test` · `meter:build` (after changing `meter/`; commit `meter/pkg`).
 
-Before pushing: `pnpm typecheck`, `pnpm test`, `pnpm check:time` and `pnpm build` pass locally. CI (`.github/workflows/ci.yml`) reruns them plus the four-zone tests and a deploy dry-run on every PR and push to `main`, and its Security job fails on tracked secret files or `docs/`, embedded keys or tokens, and high-severity production dependency advisories. It's a health signal; deploys stay by hand.
+Before pushing: `pnpm typecheck`, `pnpm test`, `pnpm check:time` and `pnpm build` pass locally. CI (`.github/workflows/ci.yml`) reruns them plus the four-zone tests and a deploy dry-run on every PR and push to `main`, its Meter job runs the meter's calibration tests and fails if `meter/pkg` isn't what `meter/` builds, and its Security job fails on tracked secret files or `docs/`, embedded keys or tokens, and high-severity production dependency advisories. It's a health signal; deploys stay by hand.
 
 ## AGENTS.md files are the current truth
 

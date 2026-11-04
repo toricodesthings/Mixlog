@@ -57,6 +57,26 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: pnpm exec wrangler deploy --dry-run
 
+  # meter/pkg is committed so nothing else needs Rust; this proves it's what meter/ builds, and that it's calibrated.
+  meter:
+    name: Meter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Toolchain
+        working-directory: meter
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked --version 0.15.1
+      - name: Calibration
+        id: test
+        run: cargo test --release --locked --manifest-path meter/Cargo.toml
+      - name: Committed pkg matches the source
+        if: ${{ !cancelled() }}
+        run: |
+          sh scripts/meter-build.sh
+          git diff --exit-code meter/pkg
+
   security:
     name: Security
     runs-on: ubuntu-latest

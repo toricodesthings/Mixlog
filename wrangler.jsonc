@@ -21,6 +21,8 @@
 	"images": { "binding": "IMAGES" },
 	// Daily cleanup (src/server.ts): erases versions pruned by Move to Releases once their 14-day grace window has passed.
 	"triggers": { "crons": ["0 4 * * *"] },
+	// The meter reads whole songs in the Worker (the cron): Workers Paid allows up to 5 minutes of CPU per invocation.
+	"limits": { "cpu_ms": 300000 },
 	// Cloudflare Access: Zero Trust → Access → Applications → your app. Not secrets.
 	"vars": {
 		"ACCESS_TEAM_DOMAIN": "https://pitoursirak.cloudflareaccess.com",

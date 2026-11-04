@@ -9,6 +9,7 @@ import { useFileDrop } from '../../hooks/ui/use-file-drop'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { dayOf, deviceZone, formatDay, todayIn } from '../../lib/time'
 import { Button, Led, Tip, useHoverSlide } from '../primitives'
+import { WithMeters } from '../meters/MetersPanel'
 import { EmptyState } from '../shared/EmptyState'
 import { UploadDialog, useUploadParam } from '../uploads/UploadDialog'
 import { UploadRow } from '../uploads/UploadRow'
@@ -36,28 +37,30 @@ export function ReleaseTracks(data: ReleaseData) {
   const back = pruned > 0 && release.released_at ? moveBackWindow(release.released_at, keepDays) : null
   const zone = deviceZone()
   return (
-    <div className="flex flex-col gap-4">
-      {back && (
-        <p className="flex items-center gap-2 px-2 text-sm text-ink-muted">
-          <Led tone="tube" />
-          <span data-numeric>
-            {pruned} {pruned === 1 ? 'version' : 'versions'} set aside
-            {back.until ? ` · erased ${formatDay(dayOf(back.until, zone), todayIn(zone))}` : ''}
-          </span>
-        </p>
-      )}
-      {tracks.map((track, i) => (
-        <TrackLanes
-          key={track.id}
-          data={data}
-          track={track}
-          number={release.format === 'single' ? null : i + 1}
-          link={release.format === 'single' ? undefined : trackLink(section, release.id, track.id)}
-          filesOver={filesOver}
-          uploads={release.format === 'single'}
-        />
-      ))}
-    </div>
+    <WithMeters data={data}>
+      <div className="flex flex-col gap-4">
+        {back && (
+          <p className="flex items-center gap-2 px-2 text-sm text-ink-muted">
+            <Led tone="tube" />
+            <span data-numeric>
+              {pruned} {pruned === 1 ? 'version' : 'versions'} set aside
+              {back.until ? ` · erased ${formatDay(dayOf(back.until, zone), todayIn(zone))}` : ''}
+            </span>
+          </p>
+        )}
+        {tracks.map((track, i) => (
+          <TrackLanes
+            key={track.id}
+            data={data}
+            track={track}
+            number={release.format === 'single' ? null : i + 1}
+            link={release.format === 'single' ? undefined : trackLink(section, release.id, track.id)}
+            filesOver={filesOver}
+            uploads={release.format === 'single'}
+          />
+        ))}
+      </div>
+    </WithMeters>
   )
 }
 
@@ -66,13 +69,15 @@ export function TrackPage(data: ReleaseData & { track: TrackRow }) {
   const section = sectionOf(data.release)
   const filesOver = useFileDrop(() => {})
   return (
-    <div className="flex flex-col gap-4">
-      <Link {...releaseLink(section, data.release.id, 'tracks')} className="flex w-fit items-center gap-1 rounded text-[13px] font-medium text-accent hover:underline hover:underline-offset-4">
-        <ChevronLeft size={14} aria-hidden="true" />
-        All tracks
-      </Link>
-      <TrackLanes data={data} track={data.track} number={data.tracks.indexOf(data.track) + 1} filesOver={filesOver} uploads />
-    </div>
+    <WithMeters data={data}>
+      <div className="flex flex-col gap-4">
+        <Link {...releaseLink(section, data.release.id, 'tracks')} className="flex w-fit items-center gap-1 rounded text-[13px] font-medium text-accent hover:underline hover:underline-offset-4">
+          <ChevronLeft size={14} aria-hidden="true" />
+          All tracks
+        </Link>
+        <TrackLanes data={data} track={data.track} number={data.tracks.indexOf(data.track) + 1} filesOver={filesOver} uploads />
+      </div>
+    </WithMeters>
   )
 }
 

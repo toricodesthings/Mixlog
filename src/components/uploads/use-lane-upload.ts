@@ -4,12 +4,18 @@ import { useEffect, useRef, useState } from 'react'
 import { MAX_AUDIO_BYTES, audioTypeOf, isFinal, type AudioKind } from '#/server/files'
 import type { Lane } from '#/server/lanes'
 import { readDuration, uploadAudio } from '../../lib/files'
+import { saveLate } from '../meters/save'
 
 /** Where a file can land on a track: a lane, or an alternate's row. */
 export type Target = Lane | Exclude<AudioKind, 'master' | 'mix'>
 
-/** A file on its way: queued, sending (its share sent, since `startedAt`, for the time left) or failed with why. */
-export type Pending = { key: number; file: File; target: Target; replaces?: string; note?: string; state: 'queued' | 'sending' | 'failed'; sent: number; startedAt: number; error?: string }
+/** A file on its way: queued, sending (its share sent, since `startedAt`, for the time left; then `phase`, once it's all
+ *  sent) or failed with why. */
+export type Pending = {
+  key: number; file: File; target: Target; replaces?: string; note?: string; state: 'queued' | 'sending' | 'failed'; sent: number; startedAt: number
+  phase?: Phase; error?: string
+}
+export type Phase = 'measuring' | 'storing'
 
 /** Which files a drop on `target` sends, and where: only audio, and the Final lane only lossless files, the first one as
  *  the final and the rest as masters. `note` says what was left out or sent elsewhere, before anything goes. */
@@ -42,15 +48,17 @@ export function useLaneUpload(trackId: string) {
     if (pending.some((p) => p.state === 'sending')) return
     const next = pending.find((p) => p.state === 'queued')
     if (!next) return
-    update(next.key, { state: 'sending', sent: 0, startedAt: performance.now(), error: undefined })
+    update(next.key, { state: 'sending', sent: 0, startedAt: performance.now(), phase: undefined, error: undefined })
     void (async () => {
       try {
         const final = next.target === 'final'
         const kind = final ? 'master' : (next.target as AudioKind)
-        const { id } = await uploadAudio(
+        const { id, late } = await uploadAudio(
           { trackId, kind, file: next.file, contentType: audioTypeOf(next.file.name, next.file.type)!, durationMs: await readDuration(next.file), final, replaces: next.replaces, note: next.note },
           (sent) => update(next.key, { sent }),
+          (phase) => update(next.key, { phase }),
         )
+        saveLate(id, late, () => void router.invalidate())
         await router.invalidate()
         setLanded(id)
         setPending((all) => all.filter((p) => p.key !== next.key))

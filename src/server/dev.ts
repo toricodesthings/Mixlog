@@ -6,6 +6,7 @@ import { env } from 'cloudflare:workers'
 
 import { db } from '#/server/db'
 import { fileKey } from '#/server/files'
+import { measureMissing } from '#/server/meter'
 import { currentPins, notes, releases, stamp, stampNow, tracks, versions } from '#/server/schema'
 
 const devOnly = () => {
@@ -131,6 +132,8 @@ export const seedDev = createServerFn({ method: 'POST' }).handler(async () => {
   devOnly()
   await wipe()
   await seed()
+  // Through the Worker runner, so the samples have readings and every seed exercises it.
+  await measureMissing(1000)
 })
 
 const RATE = 22_050

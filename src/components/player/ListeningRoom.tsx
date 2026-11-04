@@ -10,6 +10,7 @@ import { Land } from '../scene/Land'
 import { useRoomStyle } from '../scene/palette'
 import { Sky } from '../scene/Sky'
 import { PlayToggle, Scrubber, SkipButton, VolumeControl } from './controls'
+import { LoudnessWave } from './LoudnessWave'
 import { useListenParam, usePlayer, type Playable } from './Player'
 import { Vinyl } from './Vinyl'
 
@@ -112,7 +113,7 @@ function Room({ decks, onLower }: { decks: Deck[]; onLower: () => void }) {
                     </span>
                   </p>
                 </div>
-                <Scrubber className="mt-1" />
+                {lead.wave ? <LoudnessWave item={lead} wave={lead.wave} size="room" className="mt-2" /> : <Scrubber className="mt-1" />}
                 <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center">
                   <span />
                   <div className="flex items-center gap-1 sm:gap-3">

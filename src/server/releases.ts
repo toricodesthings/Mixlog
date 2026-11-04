@@ -6,7 +6,9 @@ import { z } from 'zod'
 import { isZone, todayIn, type Instant, type LocalDate } from '#/lib/time'
 import { Format, LocalDay, Title, detailsInput, type ReleaseFormat, type TrackOrigin } from '#/server/details'
 import { db } from '#/server/db'
+import { AUDIO_KINDS } from '#/server/files'
 import { Id, idInput, readWith, Refusal } from '#/server/input'
+import { analysisInput, type Analysis } from '#/server/loudness'
 import { currentPins, releases, stampNow, tracks, versions } from '#/server/schema'
 import { keepDays } from '#/server/settings'
 import { LANES, lanesOf, moveProblem } from '#/server/lanes'
@@ -43,6 +45,8 @@ export type VersionRow = {
   size: number
   duration_ms: number | null
   note: string | null
+  /** What the meter read; null until it's measured. */
+  analysis: Analysis | null
   released_at: Instant | null
   created_at: Instant
   /** 1 when it's its stack's current version. */
@@ -111,6 +115,7 @@ const versionsOf = createServerOnlyFn((id: string) =>
       size: versions.size,
       duration_ms: versions.durationMs,
       note: versions.note,
+      analysis: versions.analysis,
       released_at: versions.releasedAt,
       created_at: versions.createdAt,
       is_current: sql<number>`${outer('versions', 'id')} = COALESCE(
@@ -281,6 +286,26 @@ export const unshipRelease = createServerOnlyFn(async (id: string, now = Date.no
     db.update(versions).set({ releasedAt: null, prunedAt: null }).where(or(eq(versions.releaseId, id), inArray(versions.trackId, tracksOf(id)))),
   ])
 })
+
+/** Writes a version's analysis when it has none, or only one from an older meter: a late upload result, Measure, the
+ *  cron. Never on a pruned version or one that isn't audio. True when it wrote. */
+export const storeAnalysis = createServerOnlyFn(async (versionId: string, analysis: Analysis): Promise<boolean> => {
+  const written = await db
+    .update(versions)
+    .set({ analysis })
+    .where(and(
+      eq(versions.id, versionId), isNull(versions.prunedAt), inArray(versions.kind, AUDIO_KINDS),
+      sql`(${versions.analysis} IS NULL OR json_extract(${versions.analysis}, '$.meter') < ${analysis.meter})`,
+    ))
+    .returning({ id: versions.id })
+  return written.length > 0
+})
+
+export const saveAnalysis = createServerFn({ method: 'POST' })
+  .validator(readWith(z.object({ versionId: Id(), analysis: analysisInput })))
+  .handler(async ({ data }) => {
+    await storeAnalysis(data.versionId, data.analysis)
+  })
 
 /** Move to Releases, from the release's Move dialog: the day it went out, no later than today in the artist's `zone`. */
 export const moveToReleases = createServerFn({ method: 'POST' })

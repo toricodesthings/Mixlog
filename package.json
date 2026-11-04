@@ -9,7 +9,8 @@
 		"node": ">=24.21.0"
 	},
 	"imports": {
-		"#/*": "./src/*"
+		"#/*": "./src/*",
+		"#meter": "./meter/pkg/mixlog_meter.js"
 	},
 	"scripts": {
 		"dev": "vite dev --port 3000",
@@ -23,6 +24,8 @@
 		"test:unit": "vitest run tests/unit",
 		"test:integration": "vitest run tests/integration --passWithNoTests",
 		"test:tz": "node scripts/test-tz.mjs",
+		"meter:build": "sh scripts/meter-build.sh",
+		"meter:test": "cargo test --release --manifest-path meter/Cargo.toml",
 		"check:time": "node scripts/check-time.mjs",
 		"db:generate": "drizzle-kit generate",
 		"db:check": "drizzle-kit check",

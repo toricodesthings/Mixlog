@@ -10,6 +10,7 @@ import {
 } from '#/server/files'
 import { db } from '#/server/db'
 import { Id, isId } from '#/server/input'
+import { analysisInput, type Analysis } from '#/server/loudness'
 import { report } from '#/server/log'
 import { hasFinal, pin, setAsideRest } from '#/server/releases'
 import { currentPins, releases, stamp, stampNow, tracks, versions } from '#/server/schema'
@@ -126,6 +127,8 @@ const Finish = Upload.extend({
   durationMs: z.int().positive().lt(86_400_000).nullish().catch(null),
   /** One line on what changed ("Final of v3"). */
   note: z.string().trim().max(200).nullish().catch(null),
+  /** What the meter read on the device, if it finished in time; checked on its own, so a bad one never refuses the file. */
+  analysis: z.unknown().optional(),
   ...Filing,
 })
 
@@ -210,6 +213,7 @@ export async function completeUpload(request: Request): Promise<Response> {
   const upload = await ongoing(await json(request), Finish)
   if (!upload) return text(400, 'Not an upload')
   const { trackId, kind, id, key, uploadId, parts, durationMs: duration, note, final, replaces } = upload
+  const analysis = readingOf(upload.analysis, key)
 
   let object: R2Object | null
   try {
@@ -229,7 +233,7 @@ export async function completeUpload(request: Request): Promise<Response> {
   }
   const { released, old } = filing
   const number = await stack(
-    { id, trackId, kind, key, size: object.size, durationMs: duration ?? null, note: note || null, filename: object.customMetadata?.filename ?? 'bounce', contentType, released },
+    { id, trackId, kind, key, size: object.size, durationMs: duration ?? null, note: note || null, filename: object.customMetadata?.filename ?? 'bounce', contentType, released, analysis },
     [
       ...(final || old ? pin(trackId, kind, id) : []),
       ...(released && !old ? [setAsideRest(trackId, id)] : []),
@@ -245,7 +249,7 @@ export async function completeUpload(request: Request): Promise<Response> {
  *  one; mixes and masters count together, pruned versions included, so a number is never reused. If the batch fails,
  *  the file goes too: never a half-version. */
 async function stack(
-  v: { id: string; trackId: string; kind: string; key: string; filename: string; contentType: string; size: number; durationMs: number | null; note?: string | null; released?: boolean },
+  v: { id: string; trackId: string; kind: string; key: string; filename: string; contentType: string; size: number; durationMs: number | null; note?: string | null; released?: boolean; analysis?: Analysis | null },
   then: BatchItem<'sqlite'>[] = [],
 ) {
   const sequence = v.kind === 'mix' || v.kind === 'master' ? sql`n.kind IN ('mix', 'master')` : sql`n.kind = ${v.kind}`
@@ -253,7 +257,7 @@ async function stack(
     await db.batch([
       db.insert(versions).values({
         id: v.id, trackId: v.trackId, kind: v.kind as AudioKind | 'license', r2Key: v.key, filename: v.filename, contentType: v.contentType, size: v.size,
-        durationMs: v.durationMs, note: v.note ?? null, releasedAt: v.released ? stampNow : null,
+        durationMs: v.durationMs, note: v.note ?? null, releasedAt: v.released ? stampNow : null, analysis: v.analysis ?? null,
         number: sql`(SELECT COALESCE(MAX(n.number), 0) + 1 FROM ${versions} n WHERE n.track_id = ${v.trackId} AND ${sequence})`,
       }),
       ...then,
@@ -264,6 +268,15 @@ async function stack(
   }
   const [{ number }] = await db.select({ number: versions.number }).from(versions).where(eq(versions.id, v.id))
   return number
+}
+
+/** An analysis sent with a bounce, or null when there's none or it isn't one (dropped with a warning: the file still lands). */
+function readingOf(input: unknown, key: string): Analysis | null {
+  if (input === undefined || input === null) return null
+  const reading = analysisInput.safeParse(input)
+  if (reading.success) return reading.data
+  report('warn', 'analysis dropped', reading.error, { key })
+  return null
 }
 
 /** POST /api/tracks/$trackId/license: the body is a PDF or Word document, the track's next license. A license is a

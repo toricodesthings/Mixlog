@@ -216,7 +216,7 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
             <UploadRow key={p.key} pending={p} onRetry={() => t.uploads.retry(p.key)} onDismiss={() => t.uploads.dismiss(p.key)} />
           ))}
           {shown.map((version) => (
-            <VersionRow key={version.id} t={t} version={version} slide={slide.row} />
+            <VersionRow key={version.id} t={t} version={version} slide={slide.row} compact={size === 'compact'} />
           ))}
         </ol>
       )}

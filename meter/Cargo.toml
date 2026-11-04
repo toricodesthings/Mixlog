@@ -1,0 +1,24 @@
+[package]
+name = "mixlog-meter"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ebur128 = "=0.1.10"
+symphonia = { version = "=0.5.4", default-features = false, features = ["wav", "aiff", "pcm", "flac", "mp3", "aac", "isomp4", "ogg", "vorbis", "alac"] }
+serde = { version = "1", features = ["derive"] }
+wasm-bindgen = "=0.2.100"
+js-sys = "=0.3.77"
+serde-wasm-bindgen = "=0.6.5"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

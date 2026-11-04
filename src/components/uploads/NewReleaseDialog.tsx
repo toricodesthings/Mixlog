@@ -21,13 +21,14 @@ import { FORMAT_LABEL, releaseLink, type Section } from '../releases/sections'
 import { sentOf, sizeOf, timeLeft } from './progress'
 import { readFilename, suggestFinals, suggestFormat } from './suggest'
 import { UploadProgress } from './UploadRow'
-import type { Target } from './use-lane-upload'
+import { saveLate } from '../meters/save'
+import type { Phase, Target } from './use-lane-upload'
 
 const FORMATS = (['single', 'ep', 'album'] as const).map((value) => ({ value, label: FORMAT_LABEL[value] }))
 /** Where a new file can land: the lanes, then the alternates. */
 const TARGETS = ['final', 'master', 'mix', 'instrumental', 'acapella'] as const satisfies Target[]
 
-type Progress = { state: 'sending' | 'stored' | 'failed'; sent: number; error?: string }
+type Progress = { state: 'sending' | 'stored' | 'failed'; sent: number; phase?: Phase; error?: string }
 const errorOf = (error: unknown, fallback: string) => (error instanceof Error && error.message) || fallback
 
 /**
@@ -150,11 +151,11 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
     }
     // One at a time: on bad signal, one file finishing beats four half-sent.
     let ok = true
-    const send = async (file: File, upload: (onProgress: (sent: number) => void) => Promise<unknown>) => {
+    const send = async (file: File, upload: (onProgress: (sent: number) => void, onPhase: (phase: Phase) => void) => Promise<unknown>) => {
       if (progress.get(file)?.state === 'stored') return
       mark(file, { state: 'sending', sent: 0 })
       try {
-        await upload((sent) => mark(file, { state: 'sending', sent }))
+        await upload((sent) => mark(file, { state: 'sending', sent }), (phase) => mark(file, { state: 'sending', sent: 1, phase }))
         mark(file, { state: 'stored', sent: 1 })
       } catch (error) {
         ok = false
@@ -164,12 +165,14 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
     if (cover) await send(cover, (onProgress) => uploadArtwork(release.id, cover, onProgress))
     for (const row of rows) {
       const trackId = release.trackIds[songOf(row)]
-      await send(row.file, (onProgress) =>
-        uploadAudio(
+      await send(row.file, async (onProgress, onPhase) => {
+        const { id, late } = await uploadAudio(
           { trackId, kind: row.target === 'final' ? 'master' : (row.target as AudioKind), final: row.target === 'final', file: row.file, contentType: row.type, durationMs: durations.get(row.file) ?? null },
           onProgress,
-        ),
-      )
+          onPhase,
+        )
+        saveLate(id, late, () => void router.invalidate())
+      })
     }
     setBusy(false)
     await router.invalidate()
@@ -291,7 +294,7 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
                       {state?.state === 'failed' ? (
                         <span role="alert" className="text-[13px] text-feedback-error">{state.error}</span>
                       ) : state?.state === 'sending' ? (
-                        <UploadProgress name={row.file.name} size={row.file.size} sent={state.sent} />
+                        <UploadProgress name={row.file.name} size={row.file.size} sent={state.sent} phase={state.phase} />
                       ) : (
                         <MetaLine wrap facts={[row.file.name.split('.').pop()!.toUpperCase(), sizeOf(row.file.size), duration ? formatLength(duration) : null, !single ? row.file.name : null]} />
                       )}

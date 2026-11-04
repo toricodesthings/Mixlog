@@ -226,6 +226,9 @@
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
   }
 
+  /* A heading focus is moved to (a bridge opening) isn't a control: no ring. */
+  [tabindex="-1"]:focus-visible { box-shadow: none; }
+
   /* Composite wrappers that draw their own focus state opt out with data-focus-container. */
   [role="form"] input:focus-visible,
   [data-focus-container] input:focus-visible,
@@ -1166,3 +1169,73 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 .vinyl-arm-metal { fill: oklch(0.72 0.01 250); }
 .vinyl-arm-base { fill: oklch(0.3 0.01 250); stroke: oklch(0.5 0.01 250); stroke-width: 0.6; }
 .vinyl-arm-cartridge { fill: var(--color-tube); }
+
+/* ══ METERS — the loudness waveform (player/LoudnessWave) and the meter bridge (meters/MeterBridge).
+   Tokens derive from the room's own; the accent inside `.art-room` is the artwork's, so they follow it. ══ */
+:root {
+  --wave-rest: color-mix(in srgb, var(--color-ink-muted) 35%, transparent);
+  --wave-buffered: color-mix(in srgb, var(--color-ink-muted) 50%, transparent);
+  --meter-track: var(--color-line-light);
+  --meter-tick: var(--color-ink-muted);
+  --meter-over: var(--accent-secondary);
+}
+
+/* The bars stand on a horizon (--wave-h above the bottom), the mist is a fifth as tall below it */
+.loudness-wave { height: calc(var(--wave-h) * 1.2); }
+.wave-layer { position: absolute; left: 0; top: 0; pointer-events: none; }
+.wave-rest { fill: var(--wave-rest); }
+.wave-buffered { fill: var(--wave-buffered); clip-path: inset(0 calc(100% - var(--buffered)) 0 0); }
+.wave-hover { fill: color-mix(in srgb, var(--color-ink-muted) 20%, transparent); clip-path: inset(0 calc(100% - var(--hover)) 0 0); }
+.wave-lit { clip-path: inset(0 calc(100% - var(--fill)) 0 0); }
+.wave-mist {
+  position: absolute; left: 0; top: var(--wave-h); height: calc(var(--wave-h) * 0.2); width: 100%;
+  fill: var(--accent); opacity: 0.12; scale: 1 -1; filter: blur(3px); pointer-events: none;
+}
+.wave-ground {
+  position: absolute; inset-inline: 0; top: var(--wave-h); height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 40%, var(--color-line-strong)) var(--fill), var(--color-line-strong) var(--fill));
+}
+.wave-loudest {
+  position: absolute; top: calc(var(--wave-h) - 3px); width: 2px; height: 7px; translate: -1px 0; border-radius: 9999px;
+  background: var(--accent-secondary); box-shadow: 0 0 6px color-mix(in srgb, var(--accent-secondary) 60%, transparent); pointer-events: none;
+}
+.wave-playhead {
+  position: absolute; top: 0; left: var(--fill); width: 2px; height: calc(var(--wave-h) + 2px); translate: -1px 0;
+  border-radius: 9999px; background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); pointer-events: none;
+  transform-origin: bottom;
+}
+/* With the live signal (desktop), the playhead breathes with the level under it: ambient, never meaning */
+.wave-playhead[data-live] { scale: 1 calc(0.75 + var(--level-1, 0.6) * 0.3); }
+.wave-ghost {
+  position: absolute; top: 0; left: var(--hover); height: var(--wave-h); width: 1px; translate: -0.5px 0;
+  background: color-mix(in srgb, var(--color-ink) 45%, transparent); pointer-events: none;
+}
+.wave-ghost > span { position: absolute; bottom: calc(100% + 4px); left: 50%; translate: -50% 0; white-space: nowrap; }
+/* The native range lies over it all: keyboard, screen reader and touch for free. At least 44px tall on touch */
+.wave-range {
+  position: absolute; inset-inline: 0; top: 50%; translate: 0 -50%; height: max(100%, 44px); width: 100%;
+  appearance: none; background: transparent; opacity: 0; cursor: pointer; margin: 0;
+}
+.wave-range::-webkit-slider-thumb { appearance: none; width: 1px; height: 1px; }
+.loudness-wave:has(.wave-range:focus-visible) { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 4px; border-radius: 0.5rem; }
+
+/* The meter bridge's instruments: a rule with ticks, a lit dot, LED segments, a needle, a crest span */
+.meter-rule { position: relative; display: block; top: 50%; height: 2px; translate: 0 -50%; border-radius: 9999px; background: var(--meter-track); }
+.meter-tick { position: absolute; top: -4px; width: 1px; height: 10px; translate: -0.5px 0; background: var(--meter-tick); }
+.meter-dot {
+  position: absolute; top: 50%; width: 9px; height: 9px; translate: -50% -50%; border-radius: 9999px;
+  background: var(--accent); box-shadow: 0 0 8px var(--accent-glow), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.meter-span { position: absolute; top: 0; bottom: 0; border-radius: 9999px; background: linear-gradient(90deg, var(--accent), var(--accent-tertiary)); }
+.meter-needle { position: absolute; top: -7px; width: 2px; height: 16px; translate: -1px 0; border-radius: 9999px; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+/* The lowest 3 s: a hollow mark you can press, with a 44px target around it */
+.meter-low {
+  position: absolute; top: 50%; width: 11px; height: 11px; translate: -50% -50%; border-radius: 9999px;
+  border: 1.5px solid var(--accent-tertiary); background: var(--color-room-base); cursor: pointer;
+}
+.meter-low::before { content: ""; position: absolute; inset: -17px; }
+.meter-low:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 3px; }
+.meter-segment { flex: 1; min-width: 3px; height: 10px; border-radius: 2px; background: var(--meter-track); }
+.meter-segment-lit { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+.meter-segment-over { background: var(--meter-over); box-shadow: 0 0 6px color-mix(in srgb, var(--meter-over) 50%, transparent); }
+.meter-ceiling { margin-right: 3px; }

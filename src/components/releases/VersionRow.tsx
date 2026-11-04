@@ -1,14 +1,20 @@
-import { ArrowUpDown, Download, File, FlaskConical, Play, RefreshCw } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Activity, ArrowUpDown, Download, File, FlaskConical, Play, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import { audioTypeOf, isFinal } from '#/server/files'
+import { isMeasured, type Measured } from '#/server/loudness'
 import { LANES, laneOf, nextLane, type Lane } from '#/server/lanes'
 import type { VersionRow as Version } from '#/server/releases'
 import { VERSION_DRAG, useDropTarget } from '../../hooks/ui/use-drop-target'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
+import { SPRINGS, TWEENS } from '../../lib/constants/motion'
 import { downloadUrl } from '../../lib/files'
 import { deviceZone, formatMoment, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
+import { MeterBridge, reading } from '../meters/MeterBridge'
+import { metersButton } from '../meters/MetersPanel'
+import { useMetersParam } from '../meters/use-meters-param'
 import { Fetching } from '../player/controls'
 import { usePlayer } from '../player/Player'
 import { Button, Led, Meter, Tip, useHoverSlide } from '../primitives'
@@ -27,9 +33,10 @@ const ext = /\.[^.]+$/
  * lanes: its Move menu, a drag (with a mouse), or Alt+↑/↓. In Releases a slot holds one file with no number: a wrong one
  * is replaced by dropping a file on the row or with Replace, after a confirm on the row that names both files.
  */
-export function VersionRow({ t, version, slide }: { t: TrackState; version: Version; slide: ReturnType<typeof useHoverSlide>['row'] }) {
+export function VersionRow({ t, version, slide, compact }: { t: TrackState; version: Version; slide: ReturnType<typeof useHoverSlide>['row']; compact?: boolean }) {
   const player = usePlayer()
-  const { isCompact, isTouch } = useShellMode()
+  const { isCompact, isTouch, mode } = useShellMode()
+  const meters = useMetersParam()
   const zone = deviceZone()
   const { release, track, section } = t
   const lane = laneOf(version)
@@ -43,6 +50,14 @@ export function VersionRow({ t, version, slide }: { t: TrackState; version: Vers
   const name = lane ? version.note || version.filename.replace(ext, '') : label
   const Mark = version.is_final ? FINAL_ICON : (KIND_ICON[version.kind] ?? File)
   const target = (version.is_final ? 'final' : version.kind) as Target
+  const metersOpen = audio && !compact && meters.open === version.id
+  // Narrower than wide, the bridge unfolds under its row; focus goes to it, and back to the button when it closes.
+  const unfolded = metersOpen && mode !== 'wide'
+  const bridgeHeading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (unfolded) bridgeHeading.current?.focus()
+  }, [unfolded])
+  const closeMeters = () => void meters.close().then(() => metersButton(version.id)?.focus())
 
   // Releases: a replacement waits on the row for a confirm, then sends there.
   const [proposed, setProposed] = useState<File | null>(null)
@@ -89,6 +104,7 @@ export function VersionRow({ t, version, slide }: { t: TrackState; version: Vers
         {formatOf(version.filename)}
         {test && <span className="sr-only">, test bounce</span>}
       </span>
+      {compact && isMeasured(version.analysis) && version.analysis.lufs !== null && <Loudness a={version.analysis} />}
       <span className={cn('readout whitespace-nowrap text-ink-muted', isCompact ? 'basis-full' : 'w-36 text-right')}>{formatMoment(version.created_at, zone, todayIn(zone))}</span>
     </span>
   )
@@ -141,6 +157,23 @@ export function VersionRow({ t, version, slide }: { t: TrackState; version: Vers
           {isCompact && facts}
         </span>
         {!isCompact && facts}
+        {audio && !compact && (
+          <Tip label="Meters" side="left">
+            <Button
+              variant="ghost"
+              size="icon"
+              data-meters-for={version.id}
+              onClick={() => meters.toggle(version.id)}
+              aria-label={`Meters for ${label}`}
+              aria-expanded={metersOpen}
+              aria-controls={metersOpen ? `meters-${version.id}` : undefined}
+              className={cn('relative shrink-0 rounded-full', metersOpen ? 'text-accent' : 'text-ink-muted hover:text-accent')}
+            >
+              <Activity size={16} aria-hidden="true" />
+              {metersOpen && <Led className="absolute top-2 right-2" />}
+            </Button>
+          </Tip>
+        )}
         {movable && (
           <LaneMenu title={`Move v${version.number} to`} value={lane} options={LANES} test={test} onChange={(to) => (to === 'final' && test ? askWav() : void t.move(version, to as Lane))}>
             <Button ref={moveButton} variant="ghost" size="icon" aria-label={`Move v${version.number}, now in ${lane === 'final' ? 'the final' : lane === 'master' ? 'Masters' : 'Mixes'}`} className="shrink-0 rounded-full text-ink-muted hover:text-accent" disabled={t.moving}>
@@ -167,6 +200,24 @@ export function VersionRow({ t, version, slide }: { t: TrackState; version: Vers
           </a>
         </Tip>
       </li>
+      <AnimatePresence initial={false}>
+        {unfolded && (
+          <motion.li
+            key="meters"
+            id={`meters-${version.id}`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1, transition: SPRINGS.GLIDE }}
+            exit={{ height: 0, opacity: 0, transition: TWEENS.FADE }}
+            onAnimationComplete={() => document.getElementById(`meters-${version.id}`)?.scrollIntoView({ block: 'nearest' })}
+            onKeyDown={(e) => e.key === 'Escape' && closeMeters()}
+            className="overflow-hidden"
+          >
+            <div className="surface-row my-1 rounded-[1.25rem] p-4 sm:p-5">
+              <MeterBridge t={t} version={version} headingRef={bridgeHeading} />
+            </div>
+          </motion.li>
+        )}
+      </AnimatePresence>
       {proposed && (
         <li role="group" aria-label="Replace this file?" className="surface-item flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl px-4 py-3 ring-1 ring-accent-secondary/40">
           <p className="min-w-0 flex-1 basis-60 text-sm text-ink-soft">
@@ -183,5 +234,25 @@ export function VersionRow({ t, version, slide }: { t: TrackState; version: Vers
       {refused && <li role="status" className="px-4 pb-2 text-[13px] text-ink-soft">{refused}</li>}
       {replacing && <UploadRow pending={replacing} onRetry={() => t.uploads.retry(replacing.key)} onDismiss={() => t.uploads.dismiss(replacing.key)} />}
     </>
+  )
+}
+
+/** Move to Releases' one fact per final: its loudness and true peak, and a Tube light when the peak is above the −1 dBTP
+ *  most platforms ask for. A fact, never a block. */
+function Loudness({ a }: { a: Measured }) {
+  const over = a.truePeak > -1
+  return (
+    <span className="readout flex items-center gap-1.5 whitespace-nowrap text-ink-soft">
+      <Activity size={13} aria-hidden="true" className="text-accent" />
+      <span data-numeric>{reading(a.lufs!)} LUFS · {reading(a.truePeak, 1, true)} dBTP</span>
+      {over && (
+        <Tip label="Most platforms ask for −1 dBTP or lower" side="top">
+          <span tabIndex={0} className="flex items-center rounded">
+            <Led tone="tube" />
+            <span className="sr-only">true peak above −1 dBTP</span>
+          </span>
+        </Tip>
+      )}
+    </span>
   )
 }

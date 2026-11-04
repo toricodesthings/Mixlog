@@ -2,6 +2,7 @@
 // here; never hand-write one. The product model from the manifesto: Release, Track, Version, Note, plus Details.
 // Times are ISO-8601 UTC text, days `YYYY-MM-DD` (see lib/time.ts). IDs are crypto.randomUUID().
 import { sql } from 'drizzle-orm'
+import type { Analysis } from '#/server/loudness'
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 /** The one way an Instant is written (ISO 8601 UTC with milliseconds, `2026-11-03T02:14:09.512Z`): now, or `days`
@@ -46,8 +47,8 @@ export const tracks = sqliteTable('tracks', {
 export const VERSION_KINDS = ['mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'license', 'other'] as const
 
 // One immutable file. Belongs to a track (bounces, its license), or to a release (artwork, release video).
-// Rows are never updated except released_at, pruned_at, and kind between mix and master (moving a bounce between
-// lanes); files are never overwritten. A track's mixes and masters share one number sequence, so a move keeps it.
+// Rows are never updated except released_at, pruned_at, kind between mix and master (moving a bounce between
+// lanes), and analysis (filled when null, or replaced by a newer meter); files are never overwritten. A track's mixes and masters share one number sequence, so a move keeps it.
 export const versions = sqliteTable(
   'versions',
   {
@@ -67,6 +68,8 @@ export const versions = sqliteTable(
     // window (shipping.ts), and unstamped if the release moves back to Upcoming before then.
     prunedAt: text('pruned_at'),
     createdAt: createdAt(),
+    // What the meter read from the file (meter/, server/loudness.ts): derived and rebuildable, so never in R2 metadata.
+    analysis: text('analysis', { mode: 'json' }).$type<Analysis>(),
   },
   (t) => [
     check('versions_kind', sql`${t.kind} IN ('mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'license', 'other')`),

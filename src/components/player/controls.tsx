@@ -8,7 +8,7 @@ import { readiness, usePlayer, usePlayhead } from './Player'
 
 /** The transport's controls, shared by the bar and the listening room, so they look and behave the same everywhere. */
 
-const clock = (seconds: number) => formatLength(seconds * 1000)
+export const clock = (seconds: number) => formatLength(seconds * 1000)
 
 /** While the file is on its way: the download ring around the button's edge, filling as the next seconds arrive, the
  *  arrow coming in. Shared by the transport and a version's own Play, so waiting looks the same everywhere. */

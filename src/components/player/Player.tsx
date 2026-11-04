@@ -18,7 +18,11 @@ export type Playable = {
   release: string
   artworkId: string | null
   link: LinkOptions
+  /** The song's loudness for its LoudnessWave (the meter's 256 bars, its length, where it's loudest); null until measured. */
+  wave: Wave | null
 }
+
+export type Wave = { bars: number[]; ms: number; loudestMs: number | null }
 
 type PlayerState = {
   item: Playable | null
@@ -27,8 +31,8 @@ type PlayerState = {
   loading: boolean
   volume: number
   muted: boolean
-  /** Plays `item`; the one already loaded toggles instead. */
-  play: (item: Playable) => void
+  /** Plays `item`; the one already loaded toggles instead. `at` starts it from a share of the way through (0–1). */
+  play: (item: Playable, options?: { at?: number }) => void
   toggle: () => void
   stop: () => void
   /** Jumps to a share of the way through (0–1). */
@@ -70,6 +74,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false)
   const [volume, setVolumeState] = useState(1)
   const [muted, setMutedState] = useState(false)
+  /** Where the next item starts, applied once its length is known. */
+  const startAt = useRef<number | null>(null)
 
   const state = useMemo<PlayerState>(() => {
     const el = () => audio.current
@@ -85,7 +91,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       volume,
       muted,
       toggle,
-      play: (next) => (next.versionId === item?.versionId ? toggle() : setItem(next)),
+      play: (next, { at } = {}) => {
+        const a = el()
+        if (next.versionId !== item?.versionId) return (startAt.current = at ?? null), setItem(next)
+        if (at === undefined) return toggle()
+        if (a?.duration) a.currentTime = at * a.duration
+        if (a?.paused) void a.play().catch(refused)
+      },
       stop: () => (el()?.pause(), setItem(null)),
       seek: (share) => {
         const a = el()
@@ -144,6 +156,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         ref={audio}
         src={item ? fileUrl(item.versionId) : undefined}
         preload="metadata"
+        onLoadedMetadata={(event) => {
+          const a = event.currentTarget
+          if (startAt.current !== null && a.duration) a.currentTime = startAt.current * a.duration
+          startAt.current = null
+        }}
         onPlay={() => setPlaying(true)}
         onWaiting={() => setLoading(true)}
         onPlaying={() => setLoading(false)}

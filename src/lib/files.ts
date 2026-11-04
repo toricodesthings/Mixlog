@@ -1,4 +1,6 @@
 import { UPLOAD_PART_BYTES, licenseTypeOf, type AudioKind } from '#/server/files'
+import { measure } from './meter'
+import type { Analysis } from '#/server/loudness'
 
 /** File bytes go through the Worker's /api routes, not server functions: the one place the app talks to the Worker directly. */
 
@@ -73,15 +75,20 @@ async function sendPart(query: string, part: number, body: Blob, onSent: (bytes:
   }
 }
 
+const MEASURE_WAIT = 30_000
+
 /** Sends an audio file to a track's stack in ~10 MB parts. Resolves once it's stored as the next version;
  *  `onProgress` gets the share sent (0–1). On failure the parts already sent are dropped, never left as a half-version.
- *  `final` lands it as the track's final (a lossless master); `replaces` names the file it overwrites in Releases. */
+ *  `final` lands it as the track's final (a lossless master); `replaces` names the file it overwrites in Releases.
+ *  The meter reads it on this device as it goes; `onPhase` says when it's waiting on that, then storing. A reading
+ *  that isn't in by MEASURE_WAIT comes back as `late`, for the caller to save once it lands (`saveLate`). */
 export async function uploadAudio(
   { trackId, kind, file, contentType, durationMs, note, final, replaces }: {
     trackId: string; kind: AudioKind; file: File; contentType: string; durationMs: number | null; note?: string; final?: boolean; replaces?: string
   },
   onProgress: (sent: number) => void,
-): Promise<{ id: string; number: number }> {
+  onPhase?: (phase: 'measuring' | 'storing') => void,
+): Promise<{ id: string; number: number; late?: Promise<Analysis | null> }> {
   const started = await fetch('/api/uploads', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -91,19 +98,28 @@ export async function uploadAudio(
   // The upload is its track, stack and version ID: the Worker keeps where in storage that goes.
   const { id, uploadId } = (await started.json()) as { id: string; uploadId: string }
   const upload = { trackId, kind, id, uploadId }
+  const reading = measure(file)
   const query = new URLSearchParams(upload).toString()
   try {
     const parts = []
     for (let offset = 0, part = 1; offset < file.size; offset += UPLOAD_PART_BYTES, part++) {
       parts.push(await sendPart(query, part, file.slice(offset, offset + UPLOAD_PART_BYTES), (bytes) => onProgress(Math.min(1, (offset + bytes) / file.size))))
     }
+    // Measured alongside sending; waited for at most MEASURE_WAIT after the last part, so it never holds a bounce back.
+    let analysis = await Promise.race([reading, Promise.resolve(undefined)])
+    if (analysis === undefined) {
+      onPhase?.('measuring')
+      analysis = await Promise.race([reading, new Promise<undefined>((resolve) => setTimeout(resolve, MEASURE_WAIT))])
+    }
+    onPhase?.('storing')
+    const measured = analysis && 'ms' in analysis ? analysis : null
     const done = await fetch('/api/uploads/complete', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...upload, parts, durationMs, note, final, replaces }),
+      body: JSON.stringify({ ...upload, parts, durationMs: measured?.ms ?? durationMs, note, final, replaces, analysis }),
     })
     if (!done.ok) throw await failed(done, 'Couldn’t finish the upload.')
-    return await done.json()
+    return { ...(await done.json()), late: analysis === undefined ? reading : undefined }
   } catch (error) {
     void fetch(`/api/uploads?${query}`, { method: 'DELETE' }).catch(() => {})
     throw error

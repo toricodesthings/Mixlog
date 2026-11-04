@@ -57,7 +57,8 @@ function objectOf(key: string, stored: Stored, range?: Range) {
   const size = stored.bytes.byteLength
   const offset = !range ? 0 : 'suffix' in range ? Math.max(0, size - range.suffix) : range.offset
   const end = !range ? size : 'suffix' in range ? size : range.length === undefined ? size : offset + range.length
-  return { key, size, httpEtag: `"${key}"`, httpMetadata: stored.httpMetadata, customMetadata: stored.customMetadata, range, body: new Blob([stored.bytes.slice(offset, end)]).stream() }
+  const bytes = stored.bytes.slice(offset, end)
+  return { key, size, httpEtag: `"${key}"`, httpMetadata: stored.httpMetadata, customMetadata: stored.customMetadata, range, body: new Blob([bytes]).stream(), arrayBuffer: async () => bytes.buffer }
 }
 
 const PNG = [0x89, 0x50, 0x4e, 0x47]
@@ -78,9 +79,10 @@ export const env = {
   },
   FILES: {
     put: async (key: string, body: BodyInit, options?: Omit<Stored, 'bytes'>) => void objects.set(key, { bytes: await read(body), ...options }),
-    get: async (key: string, options?: { range?: Headers }) => {
+    get: async (key: string, options?: { range?: Headers | Range }) => {
       const stored = objects.get(key)
-      return stored ? objectOf(key, stored, rangeOf(options?.range?.get('range'))) : null
+      const range = options?.range instanceof Headers ? rangeOf(options.range.get('range')) : options?.range
+      return stored ? objectOf(key, stored, range) : null
     },
     head: async (key: string) => {
       const stored = objects.get(key)
