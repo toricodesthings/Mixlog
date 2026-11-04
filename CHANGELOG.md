@@ -12,7 +12,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 - On a wide screen the meters dock at the right edge, wired to the row they read, which lights up.
 - The loudness waveform is drawn as amplitude, so a chorus stands clearly above its verse.
-- The meters' More layer is a grid with an icon per reading, and each platform shows its logo.
+- The meters fold into Readings, Penalty (every platform, with its logo) and More, each opening on its own.
 
 ## [1.2.0] - 2026-11-04
 

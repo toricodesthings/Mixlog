@@ -1,12 +1,12 @@
 import { useRouter } from '@tanstack/react-router'
-import { motion } from 'framer-motion'
-import { Activity, ArrowDown, ArrowUp, AudioWaveform, ChevronDown, Equal, FileAudio, Gauge, MoveVertical, Music, OctagonAlert, Scale, Spline, TrendingUp, Waves, X } from 'lucide-react'
-import { useState, type ReactNode, type Ref } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Activity, ArrowDown, ArrowUp, AudioWaveform, ChevronDown, Equal, FileAudio, Gauge, MoveVertical, Music, OctagonAlert, Scale, SlidersHorizontal, Spline, TrendingUp, Volume2, Waves, X } from 'lucide-react'
+import { useId, useState, type ReactNode, type Ref } from 'react'
 import { siApplemusic, siDeezer, siSpotify, siTidal, siYoutube, type SimpleIcon } from 'simple-icons'
 
 import { PLATFORMS, deltaOf, isMeasured, normalizationOf, previousOf, type Delta, type Headline, type Measured } from '#/server/loudness'
 import type { VersionRow as Version } from '#/server/releases'
-import { SPRINGS } from '../../lib/constants/motion'
+import { SPRINGS, TWEENS } from '../../lib/constants/motion'
 import { deviceZone } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { clock } from '../player/controls'
@@ -35,10 +35,11 @@ export function resolutionOf(version: Version, a: Measured) {
 }
 
 /**
- * A version's meters, read from the whole song: its loudness over time (a playhead too), then four instruments in the
- * order an engineer reads a master (loudness, true peak, phase, dynamics), what each platform would do to its level,
- * and More, folded. Facts, never verdicts: louder isn't better, so a change since the version before is Haze, never
- * green or red. The same bridge unfolds under a row or fills the wide panel.
+ * A version's meters, read from the whole song: its loudness over time (a playhead too), then three folds, each a card
+ * that opens and closes: Readings (open: loudness, true peak, phase, dynamics, in the order an engineer reads a
+ * master), Penalty (what each platform does to its level) and More. Facts, never verdicts: louder isn't better, so a
+ * change since the version before is Haze, never green or red. The same bridge unfolds under a row or fills the wide
+ * panel.
  */
 export function MeterBridge({ t, version, headingRef, onClose, docked }: {
   t: BridgeTrack
@@ -91,54 +92,74 @@ function Measurements({ t, version, a }: { t: BridgeTrack; version: Version; a: 
   const previous = t.section === 'upcoming' ? previousOf(version, t.data.versions) : null
   const deltas = previous ? deltaOf(a, previous.analysis) : null
   const since = previous ? versionLabel(previous, t.section) : ''
-  const [more, setMore] = useState(false)
   const delta = (key: Headline, unit: string, word: [string, string]) => deltas?.[key] && <DeltaLine d={deltas[key]!} unit={unit} word={word} since={since} number={previous!.number} />
 
   return (
     <>
       {item.wave && <LoudnessWave item={item} wave={item.wave} className="pt-2" />}
-      <div className="grid grid-cols-2 gap-x-5 gap-y-5 @2xl:grid-cols-4">
-        <Instrument name="Loudness" tip="Integrated loudness across the whole song" value={a.lufs} unit="LUFS" said={a.lufs === null ? 'silent' : `${spoken(a.lufs)} LUFS`} delta={delta('lufs', 'LU', ['louder', 'quieter'])}>
-          {a.lufs !== null && <LoudnessScale lufs={a.lufs} />}
-        </Instrument>
-        <Instrument name="True peak" tip="The highest the waveform reaches between samples" value={a.truePeak} unit="dBTP" signed said={`${spoken(a.truePeak)} dB true peak`} delta={delta('truePeak', 'dB', ['higher', 'lower'])}>
-          <PeakMeter dbtp={a.truePeak} />
-        </Instrument>
-        <Instrument
-          name="Phase"
-          tip="How alike left and right are: +1 the same, 0 unrelated, −1 cancelling"
-          value={a.correlation?.mean ?? null}
-          digits={2}
-          signed
-          empty="Mono"
-          said={a.correlation ? `correlation ${spoken(a.correlation.mean, 2)}` : 'mono'}
-          delta={delta('correlation', '', ['wider', 'narrower'])}
-        >
-          {a.correlation && (
-            <PhaseMeter
-              c={a.correlation}
-              onLow={() => player.play(item, { at: a.correlation!.minAtMs / a.ms })}
-            />
-          )}
-        </Instrument>
-        <Instrument name="Dynamics" tip="Peak to loudness ratio: from the song's loudness up to its true peak" value={a.plr} unit="PLR" said={a.plr === null ? 'none' : `${spoken(a.plr)} dB peak to loudness`} delta={delta('plr', 'dB', ['more', 'less'])}>
-          {a.lufs !== null && <CrestSpan lufs={a.lufs} dbtp={a.truePeak} />}
-        </Instrument>
-      </div>
-      {a.lufs !== null && <Normalization a={a} platforms={PLATFORMS.slice(0, 3)} />}
-      <div>
-        <button
-          type="button"
-          onClick={() => setMore(!more)}
-          aria-expanded={more}
-          className="readout press -ml-2 flex min-h-11 items-center gap-1.5 rounded-full px-2 text-ink-muted hover:text-ink"
-        >
-          <ChevronDown size={14} aria-hidden="true" className={cn('transition-transform duration-200', more && 'rotate-180')} />
-          More
-        </button>
-        {more && <Technical version={version} a={a} />}
-      </div>
+      <Group icon={<Activity size={16} />} title="Readings" summary={[a.lufs === null ? 'Silent' : `${reading(a.lufs)} LUFS`, `${reading(a.truePeak, 1, true)} dBTP`].join(' · ')} open>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-7 @2xl:grid-cols-4">
+          <Instrument name="Loudness" tip="Integrated loudness across the whole song" value={a.lufs} unit="LUFS" said={a.lufs === null ? 'silent' : `${spoken(a.lufs)} LUFS`} delta={delta('lufs', 'LU', ['louder', 'quieter'])}>
+            {a.lufs !== null && <LoudnessScale lufs={a.lufs} />}
+          </Instrument>
+          <Instrument name="True peak" tip="The highest the waveform reaches between samples" value={a.truePeak} unit="dBTP" signed said={`${spoken(a.truePeak)} dB true peak`} delta={delta('truePeak', 'dB', ['higher', 'lower'])}>
+            <PeakMeter dbtp={a.truePeak} />
+          </Instrument>
+          <Instrument
+            name="Phase"
+            tip="How alike left and right are: +1 the same, 0 unrelated, −1 cancelling"
+            value={a.correlation?.mean ?? null}
+            digits={2}
+            signed
+            empty="Mono"
+            said={a.correlation ? `correlation ${spoken(a.correlation.mean, 2)}` : 'mono'}
+            delta={delta('correlation', '', ['wider', 'narrower'])}
+          >
+            {a.correlation && (
+              <PhaseMeter
+                c={a.correlation}
+                onLow={() => player.play(item, { at: a.correlation!.minAtMs / a.ms })}
+              />
+            )}
+          </Instrument>
+          <Instrument name="Dynamics" tip="Peak to loudness ratio: from the song's loudness up to its true peak" value={a.plr} unit="PLR" said={a.plr === null ? 'none' : `${spoken(a.plr)} dB peak to loudness`} delta={delta('plr', 'dB', ['more', 'less'])}>
+            {a.lufs !== null && <CrestSpan lufs={a.lufs} dbtp={a.truePeak} />}
+          </Instrument>
+        </div>
+      </Group>
+      {a.lufs !== null && <Penalty a={a} />}
+      <Group icon={<SlidersHorizontal size={16} />} title="More" summary="Peaks, range, DC and the file">
+        <Technical version={version} a={a} />
+      </Group>
     </>
+  )
+}
+
+/**
+ * A fold of the bridge: a card whose header (an icon tile, its name, a one-line summary, a chevron) opens and closes
+ * it, its body growing in place. Each opens on its own; Readings starts open.
+ */
+function Group({ icon, title, summary, open: initially = false, children }: { icon: ReactNode; title: string; summary: string; open?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(initially)
+  const id = `${useId()}-body`
+  return (
+    <section className="surface-item rounded-2xl border border-line/40">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={id} className="press flex min-h-16 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left">
+        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-dim text-accent">{icon}</span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="font-display text-[15px] font-semibold text-ink">{title}</span>
+          <span data-numeric className="truncate text-[13px] text-ink-muted">{summary}</span>
+        </span>
+        <ChevronDown size={18} aria-hidden="true" className={cn('shrink-0 text-ink-muted transition-transform duration-200', open && 'rotate-180')} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div id={id} initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1, transition: SPRINGS.GLIDE }} exit={{ height: 0, opacity: 0, transition: TWEENS.FADE }} className="overflow-hidden">
+            <div className="border-t border-line/40 px-4 pt-5 pb-5">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
   )
 }
 
@@ -156,7 +177,7 @@ function Instrument({ name, tip, value, unit, digits = 1, signed, empty = '—',
         <span className="sr-only">{said}</span>
       </p>
       <div className="h-5">{children}</div>
-      <div className="min-h-4">{delta}</div>
+      <div className="min-h-4 empty:hidden">{delta}</div>
     </div>
   )
 }
@@ -228,28 +249,39 @@ function CrestSpan({ lufs, dbtp }: { lufs: number; dbtp: number }) {
   )
 }
 
-function Normalization({ a, platforms }: { a: Measured; platforms: readonly (typeof PLATFORMS)[number][] }) {
+/** What each platform's normalization does to its level at default settings: every platform a row, its logo, where
+ *  it plays, and the change in dB: a fact, never a verdict. */
+function Penalty({ a }: { a: Measured }) {
+  const bys = PLATFORMS.map((p) => normalizationOf(a, p) ?? 0)
+  const [low, high] = [Math.min(...bys), Math.max(...bys)]
+  const summary = low === high ? (low === 0 ? 'Played as it is' : `${reading(low, 1, true)} dB everywhere`) : `${reading(low, 1, true)} to ${reading(high, 1, true)} dB`
   return (
-    <ul className="flex flex-wrap gap-x-5 gap-y-2">
-      {platforms.map((p) => {
-        const by = normalizationOf(a, p) ?? 0
-        const Icon = by < 0 ? ArrowDown : by > 0 ? ArrowUp : Equal
-        const said = by === 0 ? `${p.name} leaves it as it is` : `${p.name} turns it ${by < 0 ? 'down' : 'up'} ${Math.abs(by).toFixed(1)} dB`
-        return (
-          <li key={p.name}>
-            <Tip label={`${p.name} plays at ${reading(p.target, 0)} LUFS`} side="bottom">
-              <span tabIndex={0} className="readout flex items-center gap-1.5 rounded text-ink-soft">
+    <Group icon={<Volume2 size={16} />} title="Penalty" summary={summary} open>
+      <ul className="-my-2 flex flex-col divide-y divide-line/40">
+        {PLATFORMS.map((p, i) => {
+          const by = bys[i]
+          const Icon = by < 0 ? ArrowDown : by > 0 ? ArrowUp : Equal
+          const said = by === 0 ? `${p.name} leaves it as it is` : `${p.name} turns it ${by < 0 ? 'down' : 'up'} ${Math.abs(by).toFixed(1)} dB`
+          return (
+            <li key={p.name} className="flex min-h-14 items-center gap-3 py-2">
+              <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-dim text-ink-soft">
                 <Logo icon={LOGO[p.name]} />
-                <span aria-hidden="true" className="normal-case tracking-normal font-sans text-[13px] font-medium">{p.name}</span>
-                <Icon size={12} aria-hidden="true" className="text-accent" />
-                {by !== 0 && <span aria-hidden="true" data-numeric>{Math.abs(by).toFixed(1)}</span>}
-                <span className="sr-only">{said}</span>
               </span>
-            </Tip>
-          </li>
-        )
-      })}
-    </ul>
+              <span aria-hidden="true" className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-[14px] font-medium text-ink">{p.name}</span>
+                <span data-numeric className="text-[12.5px] text-ink-muted">Plays at {reading(p.target, 0)} LUFS</span>
+              </span>
+              <span aria-hidden="true" className="flex items-baseline gap-1 text-ink">
+                <Icon size={13} className="self-center text-accent" />
+                <span data-numeric className="font-display text-lg font-semibold">{by === 0 ? '0.0' : Math.abs(by).toFixed(1)}</span>
+                <span className="readout text-ink-muted">dB</span>
+              </span>
+              <span className="sr-only">{said}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </Group>
   )
 }
 
@@ -267,30 +299,30 @@ function Logo({ icon }: { icon: SimpleIcon | undefined }) {
 
 /** The technical layer: every other reading, an icon, a label and a value each, no deltas; two across, four when wide. */
 function Technical({ version, a }: { version: Version; a: Measured }) {
-  const rows: [ReactNode, string, string][] = [
-    [<MoveVertical size={14} />, 'Sample peak', `${reading(a.samplePeak, 1, true)} dBFS`],
-    [<OctagonAlert size={14} />, 'Clips', `${a.clipped}`],
-    [<Gauge size={14} />, 'Momentary max', a.momentaryMax === null ? '—' : `${reading(a.momentaryMax)} LUFS`],
-    [<TrendingUp size={14} />, 'Short-term max', a.shortTermMax === null ? '—' : `${reading(a.shortTermMax)} LUFS`],
-    [<AudioWaveform size={14} />, 'LRA', a.lra === null ? '—' : `${reading(a.lra)} LU`],
-    [<Scale size={14} />, 'DR', a.dr === null ? '—' : `${a.dr}`],
-    [<Waves size={14} />, 'DC', a.dc.map((d) => reading(d)).join(' · ') + ' dB'],
-    ...(a.correlation ? [[<Spline size={14} />, 'Phase low', `${reading(a.correlation.min, 2, true)} at ${clock(a.correlation.minAtMs / 1000)}`] as [ReactNode, string, string]] : []),
-    ...(a.lufs === null ? [] : PLATFORMS.slice(3).map((p): [ReactNode, string, string] => {
-      const by = normalizationOf(a, p) ?? 0
-      return [<Logo icon={LOGO[p.name]} />, p.name, by === 0 ? '±0.0' : `${by < 0 ? '↓' : '↑'} ${Math.abs(by).toFixed(1)}`]
-    })),
-    [<FileAudio size={14} />, 'File', [formatOf(version.filename), a.format.bits && `${a.format.bits}-bit`, `${Math.round(a.format.rate / 100) / 10} kHz`, a.format.kbps && `${a.format.kbps} kbps`, a.format.channels === 1 ? 'mono' : a.format.channels === 2 ? 'stereo' : `${a.format.channels} ch`].filter(Boolean).join(' · ')],
-    [<Activity size={14} />, 'Meter', `${a.meter} · ${a.source === 'device' ? 'Device' : 'Overnight'}`],
+  const db = (v: number | null, unit: string, digits = 1, signed = false): [string, string] => (v === null ? ['—', ''] : [reading(v, digits, signed), unit])
+  const rows: [ReactNode, string, [string, string], boolean?][] = [
+    [<MoveVertical size={15} />, 'Sample peak', db(a.samplePeak, 'dBFS', 1, true)],
+    [<OctagonAlert size={15} />, 'Clips', [`${a.clipped}`, '']],
+    [<Gauge size={15} />, 'Momentary max', db(a.momentaryMax, 'LUFS')],
+    [<TrendingUp size={15} />, 'Short-term max', db(a.shortTermMax, 'LUFS')],
+    [<AudioWaveform size={15} />, 'LRA', db(a.lra, 'LU')],
+    [<Scale size={15} />, 'DR', [a.dr === null ? '—' : `${a.dr}`, '']],
+    [<Waves size={15} />, 'DC', [a.dc.map((d) => reading(d)).join(' · '), 'dB']],
+    ...(a.correlation ? [[<Spline size={15} />, 'Phase low', [reading(a.correlation.min, 2, true), `at ${clock(a.correlation.minAtMs / 1000)}`]] as [ReactNode, string, [string, string]]] : []),
+    [<FileAudio size={15} />, 'File', [[formatOf(version.filename), a.format.bits && `${a.format.bits}-bit`, `${Math.round(a.format.rate / 100) / 10} kHz`, a.format.kbps && `${a.format.kbps} kbps`, a.format.channels === 1 ? 'mono' : a.format.channels === 2 ? 'stereo' : `${a.format.channels} ch`].filter(Boolean).join(' · '), ''], true],
+    [<Activity size={15} />, 'Meter', [`${a.meter}`, a.source === 'device' ? 'on this device' : 'overnight'], true],
   ]
   return (
-    <dl className="grid grid-cols-2 gap-x-4 gap-y-4 pt-3 @2xl:grid-cols-4">
-      {rows.map(([icon, k, v]) => (
-        <div key={k} className={cn('flex min-w-0 gap-2.5', k === 'File' && 'col-span-2')}>
-          <span aria-hidden="true" className="mt-px flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-dim text-accent">{icon}</span>
-          <div className="flex min-w-0 flex-col gap-0.5">
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-6 @2xl:grid-cols-4">
+      {rows.map(([icon, k, [v, unit], wide]) => (
+        <div key={k} className={cn('flex min-w-0 items-start gap-2.5', wide && 'col-span-2')}>
+          <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent-dim text-accent">{icon}</span>
+          <div className="flex min-w-0 flex-col gap-1">
             <dt className="readout truncate text-ink-muted">{k}</dt>
-            <dd data-numeric className="text-[13.5px] text-ink">{v}</dd>
+            <dd className="flex min-w-0 items-baseline gap-1.5">
+              <span data-numeric className={cn('text-ink', wide ? 'text-[14px]' : 'font-display text-lg leading-none font-semibold')}>{v}</span>
+              {unit && <span className="readout text-ink-muted">{unit}</span>}
+            </dd>
           </div>
         </div>
       ))}
