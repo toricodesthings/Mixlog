@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-04
+
 ### Changed
 
 - On a wide screen the meters dock at the right edge, wired to the row they read, which lights up.
