@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Pause, Play } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 
 import { isFinal } from '#/server/files'
 import { playOf } from '#/server/lanes'
@@ -10,6 +10,7 @@ import { cn } from '../../lib/utils'
 import { Fetching } from '../player/controls'
 import { usePlayer, usePlayhead, type Playable } from '../player/Player'
 import { Led, Meter, useHoverSlide } from '../primitives'
+import { sceneOf, ZONES } from '../scene/generate'
 import { Land } from '../scene/Land'
 import { Sky } from '../scene/Sky'
 import { MetaLine } from '../shared/MetaLine'
@@ -47,12 +48,16 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
     section === 'released' ? dateLabel(section, release, zone) : release.release_date ? `Out ${formatDay(release.release_date, today)}` : null
 
   const stations = stationsOf(section, release, tracks, versions)
+  // A single's Summary and its listening room share one night: its own track's. An EP or album keeps the release's.
+  const sceneId = release.format === 'single' ? (tracks[0]?.id ?? release.id) : release.id
+  const scene = release.format === 'single' ? (tracks[0]?.scene ?? null) : release.scene
+  const moonZone = isDesktop ? ZONES.summaryDesktop : ZONES.summaryCompact
 
   return (
     <>
       <section aria-labelledby="release-title" className={cn('art-scene @container relative isolate flex shrink-0 flex-col overflow-hidden', isCompact ? 'min-h-full' : release.format === 'single' ? 'h-full min-h-[42.25rem]' : 'h-full min-h-[43.5rem]')}>
         {/* Upper left when the signal path sits right; under it, above the ridges, when it spans the sky */}
-        <Sky moon={isDesktop ? 'top-[16%] left-[12%]' : 'top-[44%] left-[20%]'} />
+        <Sky sceneId={sceneId} fp={scene} zone={moonZone} />
 
         {/* The signal path floats in the sky on its own glass, so it reads the same over any artwork (under the part tabs, when they float here). */}
         {/* Clear of the header (and the part tabs on compact) floating over the top of the sky */}
@@ -65,13 +70,17 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
             cropped) before the page would scroll, so a scene that fits never scrolls, player bar or not. Below the scene at its
             smallest (42.25rem, 43.5rem with an EP's strip) it stops giving way and scrolls instead */}
         <div className={cn('scene-horizon relative', isCompact ? 'h-[max(15.625cqw,30dvh)] shrink-0' : 'h-[max(15.625cqw,24dvh)] min-h-28 shrink')}>
-          <Land className="relative block h-full w-full" />
+          <Land sceneId={sceneId} fp={scene} zone={moonZone} className="relative block h-full w-full" />
         </div>
 
         {/* Now playing: the cover, the title, its facts once, Play, and (for an EP or album) a strip with a segment per
             track. As much room above as below; the title lines up with the cover's top and Play with its bottom (an EP's strip
-            runs taller, so its cover is centred on them). */}
-        <div className={cn('scene-ground relative flex items-stretch gap-4 px-4 sm:gap-8 sm:px-10', isCompact ? 'py-8' : 'py-10')}>
+            runs taller, so its cover is centred on them). A lit horizon line (its glow's x from the land's hamlet) joins the
+            land to the ground with no seam. */}
+        <div
+          className={cn('scene-ground relative -mt-px flex items-stretch gap-4 px-4 sm:gap-8 sm:px-10', isCompact ? 'py-8' : 'py-10')}
+          style={{ '--scene-glow-x': `${(sceneOf(sceneId, scene, moonZone).land.glowX / 1920) * 100}%` } as CSSProperties}
+        >
           <div className="flex shrink-0 items-center">
             <ArtworkButton releaseId={release.id} title={release.title} artworkId={release.artwork_id} onFailure={setArtFailure} size="stage" />
           </div>

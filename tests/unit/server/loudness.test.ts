@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { reading } from '../../support/analysis'
-import { PLATFORMS, analysisInput, deltaOf, normalizationOf, previousOf } from '#/server/loudness'
+import { DEFAULT_FINGERPRINT, PLATFORMS, analysisInput, deltaOf, fingerprint, fingerprintOf, normalizationOf, previousOf } from '#/server/loudness'
 
 const platform = (name: string) => PLATFORMS.find((p) => p.name === name)!
 
@@ -36,6 +36,38 @@ describe('previousOf', () => {
   })
   it('moves with a lane move', () => expect(previousOf({ ...all[2], kind: 'master' }, all)?.id).toBe('m2'))
   it('is null for the first in its lane', () => expect(previousOf(all[1], all)).toBeNull())
+})
+
+describe('fingerprintOf', () => {
+  it('maps the ends and never throws on extremes', () => {
+    expect(fingerprintOf(reading({ lufs: -30, plr: 4, correlation: { mean: 1, min: 1, minAtMs: 0 }, lra: 2, loudest: { atMs: 0, lufs: -9 }, ms: 90_000 }))).toMatchObject({
+      loud: 0, dyn: 0, width: 0, weather: 0, peak: 0, length: 0,
+    })
+    expect(
+      fingerprintOf(reading({ lufs: -6, plr: 20, correlation: { mean: 0.2, min: 0.2, minAtMs: 0 }, lra: 16, loudest: { atMs: 360_000, lufs: -9 }, ms: 360_000 })),
+    ).toMatchObject({ loud: 1, dyn: 1, width: 1, weather: 1, peak: 1, length: 1 })
+    expect(() => fingerprintOf(reading({ lufs: 10, plr: 100, lra: 60, ms: 1 }))).not.toThrow()
+  })
+  it('falls back to the default when a reading is null', () => {
+    const fp = fingerprintOf(reading({ lufs: null, plr: null, lra: null, dr: null, correlation: null, loudest: null }))
+    expect(fp).toMatchObject({ loud: DEFAULT_FINGERPRINT.loud, dyn: DEFAULT_FINGERPRINT.dyn, width: DEFAULT_FINGERPRINT.width, weather: DEFAULT_FINGERPRINT.weather, peak: DEFAULT_FINGERPRINT.peak })
+  })
+  it('falls back dyn to lra, then dr, when plr is null', () => {
+    expect(fingerprintOf(reading({ plr: null, lra: 9 })).dyn).toBeCloseTo((9 - 2) / 14, 2)
+    expect(fingerprintOf(reading({ plr: null, lra: null, dr: 9 })).dyn).toBeCloseTo((9 - 3) / 13, 2)
+  })
+  it('rounds to 0.01 and normalises env by its own max, so a quiet song keeps its shape', () => {
+    const quiet = fingerprintOf(reading({ wave: Array(256).fill(-40) }))
+    const loud = fingerprintOf(reading({ wave: Array(256).fill(-10) }))
+    expect(quiet.env).toEqual(loud.env)
+    expect(Math.max(...quiet.env)).toBe(1)
+    for (const v of quiet.env) expect(Math.round(v * 100) / 100).toBe(v)
+  })
+  it('parses with the fingerprint schema', () => expect(fingerprint.safeParse(fingerprintOf(reading())).success).toBe(true))
+})
+
+describe('DEFAULT_FINGERPRINT', () => {
+  it('is a valid fingerprint at the midpoints', () => expect(fingerprint.safeParse(DEFAULT_FINGERPRINT).success).toBe(true))
 })
 
 describe('deltaOf', () => {

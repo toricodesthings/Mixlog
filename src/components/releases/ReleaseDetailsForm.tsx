@@ -11,11 +11,8 @@ import { SegmentedControl } from '../primitives/SegmentedControl'
 import { LicenseControl, LicenseDialog } from './LicenseControl'
 import type { ReleaseData } from './loaders'
 import { LyricsPanel } from './LyricsPanel'
-import { FORMAT_LABEL, SECTIONS, sectionOf } from './sections'
+import { DETAILS_FORM, FORMAT_LABEL, SECTIONS, sectionOf } from './sections'
 import { licensesOf } from './stacks'
-
-/** The form's id, so Save and exit (in the release's panel) can submit it from outside. */
-export const DETAILS_FORM = 'release-details'
 
 const FORMATS: { value: ReleaseFormat; icon: LucideIcon; size: string }[] = [
   { value: 'single', icon: Music, size: 'One track' },

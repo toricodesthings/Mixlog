@@ -1,4 +1,4 @@
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { Disc3 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -10,19 +10,7 @@ import { Button, Input, Tuning } from '../primitives'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../primitives/Dialog'
 import { Lane, useTrack } from './Lane'
 import type { ReleaseData } from './loaders'
-import { releaseLink } from './sections'
-
-type Search = { move?: true }
-
-/** `?move` opens Move to Releases over the release, so Back closes it. */
-export function useMoveParam() {
-  const navigate = useNavigate()
-  return {
-    open: useSearch({ strict: false }).move === true,
-    show: () => navigate({ to: '.', search: (prev: Search) => ({ ...prev, move: true as const }), resetScroll: false }),
-    close: () => navigate({ to: '.', search: ({ move: _, ...rest }: Search) => rest, resetScroll: false }),
-  }
-}
+import { releaseLink, useMoveParam } from './sections'
 
 /**
  * Move to Releases: every track's Final lane (the same as on Tracks, so a missing final is dropped, picked or sent right

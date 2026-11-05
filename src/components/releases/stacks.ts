@@ -48,6 +48,9 @@ export function versionLabel(version: Pick<VersionRow, 'kind' | 'number' | 'is_f
   return section === 'released' ? name : `${name} v${version.number}`
 }
 
+/** What a version's row and its meters call it: what changed (its note), else its filename without the extension. */
+export const nameOf = (version: Pick<VersionRow, 'note' | 'filename'>) => version.note || version.filename.replace(/\.[^.]+$/, '')
+
 /** A version as the player names it: "Night Drive", "Final v4 · WAV", and the day it was bounced or went out. */
 export function playableOf(release: ReleaseRow, track: TrackRow, version: VersionRow, zone: Zone): Playable {
   const section = sectionOf(release)
@@ -58,9 +61,12 @@ export function playableOf(release: ReleaseRow, track: TrackRow, version: Versio
     day: section === 'released' ? dateLabel(section, release, zone) : `Uploaded ${formatMoment(version.created_at, zone, todayIn(zone))}`,
     released: section === 'released',
     release: release.title,
+    releaseId: release.id,
     artworkId: release.artwork_id,
     link: releaseLink(section, release.id),
     wave: isMeasured(version.analysis) ? { bars: version.analysis.wave, ms: version.analysis.ms, loudestMs: version.analysis.loudest?.atMs ?? null } : null,
+    sceneId: track.id,
+    scene: track.scene,
   }
 }
 

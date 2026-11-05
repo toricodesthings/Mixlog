@@ -862,8 +862,8 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 /* `--sweep-delay` on a group staggers its clips, so the light travels a grid in reading order */
 @keyframes skeleton-sweep { 0% { translate: -100% 0; } 70%, 100% { translate: 100% 0; } }
 
-/* A release without artwork: a monogram pressed from its title (ReleaseArt). --art-hue comes from the title,
-   so each release keeps its own colour; the grooves are a record's, the sheen a sleeve's. */
+/* A release without artwork: a monogram pressed from its title (ReleaseArt). --art-hue comes from the release's id,
+   so each release keeps its own colour even through a rename; the grooves are a record's, the sheen a sleeve's. */
 .art-monogram {
   color: oklch(0.97 0.03 var(--art-hue));
   text-shadow: 0 2px 12px oklch(0.2 0.1 var(--art-hue) / 0.6);
@@ -875,9 +875,10 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 
 /* ══ A RELEASE'S ROOM (releases/ReleaseLayout): its artwork's colours retint everything inside the release, the
    grounds and the accent alike, while the rail and dock keep the studio's Signal. --art-h is the artwork's dominant
-   hue (the accent, the glow), --art-h2 a second one (the grounds, the sky), --art-k how colourful it is
-   (releases/art-palette.ts; the title's hue stands in). Only hue and chroma come from the artwork: every lightness
-   is the studio's own, so each token keeps its contrast floor whatever the cover. ══ */
+   hue (the accent, the glow), --art-h2 a second one (the grounds, the sky), --art-k how colourful it is, continuous
+   and with no floor (scene/palette.ts: a grey cover gives a grey room; the release's id stands in only when there's
+   no artwork at all). Only hue and chroma come from the artwork: every lightness is the studio's own, so each token
+   keeps its contrast floor whatever the cover. ══ */
 .art-room {
   --room-k: min(var(--art-k), 1);
   --color-room-void: oklch(0.146 calc(0.023 * var(--room-k)) var(--art-h2));
@@ -889,7 +890,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --color-room-elevated: oklch(0.283 calc(0.062 * var(--room-k)) var(--art-h2));
   --color-panel: var(--color-room-void);
   --color-panel-raised: var(--color-room-base);
-  --accent: oklch(0.76 clamp(0.09, calc(0.13 * var(--art-k)), 0.16) var(--art-h));
+  --accent: oklch(0.76 clamp(0.012, calc(0.13 * var(--art-k)), 0.16) var(--art-h));
   --accent-soft: color-mix(in oklab, var(--accent) 12%, transparent);
   --accent-dim: color-mix(in oklab, var(--accent) 6%, transparent);
   --accent-glow: color-mix(in oklab, var(--accent) 18%, transparent);
@@ -911,7 +912,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --color-room-surface-muted: oklch(0.936 calc(0.014 * var(--room-k)) var(--art-h2));
   --color-room-surface-hover: oklch(0.882 calc(0.018 * var(--room-k)) var(--art-h2));
   --color-room-elevated: oklch(0.864 calc(0.02 * var(--room-k)) var(--art-h2));
-  --accent: oklch(0.46 clamp(0.12, calc(0.17 * var(--art-k)), 0.19) var(--art-h));
+  --accent: oklch(0.46 clamp(0.015, calc(0.17 * var(--art-k)), 0.19) var(--art-h));
   --accent-soft: color-mix(in oklab, var(--accent) 8%, transparent);
   --accent-dim: color-mix(in oklab, var(--accent) 4%, transparent);
   --accent-glow: color-mix(in oklab, var(--accent) 14%, transparent);
@@ -933,21 +934,31 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
    as the room's own ground, so the header above it has no seam; the land darkens toward the viewer (aerial
    perspective), and the ground the facts stand on fades into the room. */
 .art-scene {
+  /* A small strong colour the cover carries even when it's otherwise grey (a red coat, a neon sign: palette.ts's
+     `--art-spot-h`/`-k`), for the night's lights alone; a colourful cover's own hue otherwise. */
+  --light-h: var(--art-spot-h, var(--art-h));
+  --light-k: var(--art-spot-k, var(--art-k));
   --scene-mid: oklch(0.215 calc(0.06 * var(--room-k)) var(--art-h2));
   --scene-horizon: oklch(0.33 calc(0.09 * var(--room-k)) var(--art-h));
   --scene-bloom: oklch(0.62 calc(0.14 * var(--room-k)) var(--art-h) / 0.3);
-  --scene-moon: oklch(0.95 0.02 var(--art-h2));
-  --scene-moon-halo: oklch(0.86 0.05 var(--art-h2));
-  --scene-star-cool: oklch(0.95 0.03 var(--art-h2));
+  --scene-moon: oklch(0.95 calc(0.025 + 0.025 * var(--room-k)) var(--art-h));
+  --scene-moon-halo: oklch(0.86 calc(0.05 + 0.04 * var(--room-k)) var(--art-h));
+  --scene-star-cool: oklch(0.95 calc(0.01 + 0.02 * var(--room-k)) var(--art-h2));
   --scene-star-warm: oklch(0.93 0.06 80);
   --land-distant: oklch(0.34 calc(0.05 * var(--room-k)) var(--art-h2));
   --land-far: oklch(0.28 calc(0.05 * var(--room-k)) var(--art-h2));
-  --land-signal: oklch(0.215 calc(0.045 * var(--room-k)) var(--art-h2));
-  --land-near: oklch(0.158 calc(0.03 * var(--room-k)) var(--art-h2));
+  --land-signal: oklch(0.245 calc(0.05 * var(--room-k)) var(--art-h2));
+  --land-valley: oklch(0.215 calc(0.045 * var(--room-k)) var(--art-h2));
+  --land-near: oklch(0.185 calc(0.04 * var(--room-k)) var(--art-h2));
   --land-haze: oklch(0.36 calc(0.07 * var(--room-k)) var(--art-h));
   --land-rim: oklch(0.88 calc(0.1 * var(--room-k)) var(--art-h));
-  --scene-trace: oklch(0.8 clamp(0.08, calc(0.14 * var(--art-k)), 0.16) var(--art-h));
-  --scene-spark: oklch(0.97 0.04 var(--art-h));
+  --scene-trace: oklch(0.74 clamp(0.012, calc(0.14 * var(--art-k)), 0.12) var(--art-h));
+  --scene-spark: oklch(0.97 calc(0.04 * var(--room-k)) var(--art-h));
+  --scene-water: oklch(0.3 calc(0.06 * var(--room-k)) var(--art-h));
+  --scene-lamp: oklch(0.86 clamp(0.03, calc(0.14 * var(--light-k)), 0.17) var(--light-h));
+  --scene-beacon: oklch(0.9 clamp(0.03, calc(0.16 * var(--light-k)), 0.18) var(--light-h));
+  --scene-cloud: oklch(0.5 calc(0.05 * var(--room-k)) var(--art-h2) / 0.2);
+  --scene-cloud-lit: oklch(0.82 calc(0.05 * var(--room-k)) var(--art-h) / 0.42);
   color: var(--color-ink);
   background: linear-gradient(180deg, var(--color-room-deep), var(--scene-mid));
 }
@@ -958,18 +969,23 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --land-distant: oklch(0.9 calc(0.03 * var(--room-k)) var(--art-h2));
   --land-far: oklch(0.86 calc(0.035 * var(--room-k)) var(--art-h2));
   --land-signal: oklch(0.82 calc(0.04 * var(--room-k)) var(--art-h2));
+  --land-valley: oklch(0.8 calc(0.04 * var(--room-k)) var(--art-h2));
   --land-near: oklch(0.78 calc(0.04 * var(--room-k)) var(--art-h2));
   --land-haze: oklch(0.93 calc(0.04 * var(--room-k)) var(--art-h));
-  --land-rim: oklch(0.99 0.01 var(--art-h));
-  --scene-trace: oklch(0.48 clamp(0.1, calc(0.15 * var(--art-k)), 0.18) var(--art-h));
+  --land-rim: oklch(0.99 calc(0.01 * var(--room-k)) var(--art-h));
+  --scene-trace: oklch(0.48 clamp(0.015, calc(0.15 * var(--art-k)), 0.14) var(--art-h));
   --scene-spark: color-mix(in oklab, var(--accent) 50%, transparent);
-  --scene-moon: oklch(0.99 0.02 90);
-  --scene-moon-halo: oklch(0.97 0.07 85);
+  --scene-moon: oklch(0.99 0.03 var(--art-h));
+  --scene-moon-halo: oklch(0.97 0.06 var(--art-h));
+  --scene-water: oklch(0.88 calc(0.04 * var(--room-k)) var(--art-h));
+  --scene-cloud: oklch(0.97 0.01 var(--art-h2) / 0.7);
+  --scene-cloud-lit: oklch(1 0 0 / 0.8);
 }
 /* The glow behind the hills, like a town beyond them, rising from the land band into the sky */
 .scene-horizon::before {
   content: "";
   position: absolute;
+  z-index: -10;
   inset: -90% 0 35%;
   pointer-events: none;
   background:
@@ -978,16 +994,49 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 /* The ground the facts stand on: the near hills' own colour, fading into the room's ground, which the tracklist
    below stands on too, so there's no seam (quickly by day, so text sits on cream) */
-.scene-ground { background: linear-gradient(180deg, var(--land-near), var(--color-room-deep)); }
+.scene-ground { background: linear-gradient(180deg, var(--land-near), var(--color-room-deep) 9rem); }
 [data-theme="daylight"] .scene-ground { background: linear-gradient(180deg, var(--land-near), var(--color-room-deep) 5rem); }
+/* The join at the ground: a lit horizon line centred on the hamlet's x (--scene-glow-x, from the generator), and its
+   glow radiating up behind the cover and title, so the land never meets a seam. */
+.scene-ground::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto 0;
+  height: 7rem;
+  pointer-events: none;
+  background: radial-gradient(42% 7rem at var(--scene-glow-x, 50%) 0, color-mix(in oklab, var(--scene-lamp) 9%, transparent), transparent);
+}
+.scene-ground::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 auto 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 15%, color-mix(in oklab, var(--scene-lamp) 22%, transparent) var(--scene-glow-x, 50%), transparent 85%);
+}
+[data-theme="daylight"] .scene-ground::before { background: none; }
+[data-theme="daylight"] .scene-ground::after { background: linear-gradient(90deg, transparent 15%, color-mix(in oklab, var(--color-line) 50%, transparent) var(--scene-glow-x, 50%), transparent 85%); }
+/* The listening room's own join, at half strength: the room is meant to stay calm */
+.scene-calm + .scene-ground::before { opacity: 0.5; }
+.scene-calm + .scene-ground::after { opacity: 0.5; }
 .scene-trace { stroke: var(--scene-trace); }
-/* A spark of signal travelling the envelope: a bright round head (6 units) with a soft 40-unit tail just behind it,
-   sized in the band's own units (--len is the ridge's length, from ReleaseLand), so it reads as a spark at every width.
-   The tail's offset runs 34 ahead, so their fronts move together; both rest off the line, so a still frame is just the trace */
-.scene-pulse { stroke: var(--scene-spark); stroke-dasharray: 6 100000; stroke-dashoffset: 12px; filter: drop-shadow(0 0 4px var(--scene-trace)); animation: scene-pulse 4.2s ease-in-out 1.4s infinite; }
-.scene-pulse-tail { stroke: var(--scene-spark); stroke-dasharray: 40 100000; stroke-dashoffset: 46px; opacity: 0.28; filter: blur(2px); animation: scene-pulse-tail 4.2s ease-in-out 1.4s infinite; }
-@keyframes scene-pulse { from { stroke-dashoffset: 12px; } to { stroke-dashoffset: calc(-1 * var(--len) - 12px); } }
-@keyframes scene-pulse-tail { from { stroke-dashoffset: 46px; } to { stroke-dashoffset: calc(22px - var(--len)); } }
+/* A spark of signal travelling the envelope: a bright round head (4 units) with a wider, quieter tail (28 units) just
+   behind it, sized in the band's own units (--len is the ridge's length, from generate.ts). It travels over the first
+   4.2s of a 7.2s cycle, then rests 3s off the line, so a still frame is mostly just the trace. No filters: 1.3.0 keeps
+   the neon quiet (§4). */
+/* The spark: a window 1/40 of the land wide slides along it while the bright trace inside slides back by as much, so the
+   spark runs the ridge's own curve with `translate` alone (composited: no frame repaints the land). Its mask is the tail. */
+.scene-pulse {
+  translate: -100% 0;
+  stroke: var(--scene-spark);
+  mask-image: linear-gradient(90deg, transparent, rgb(0 0 0 / 0.3) 55%, #000 92%);
+  animation: scene-pulse 7.2s ease-in-out infinite;
+}
+.scene-pulse > div { translate: 2.5% 0; animation: scene-pulse-back 7.2s ease-in-out infinite; }
+@keyframes scene-pulse { 0% { translate: -100% 0; } 58%, 100% { translate: 4000% 0; } }
+@keyframes scene-pulse-back { 0% { translate: 2.5% 0; } 58%, 100% { translate: -100% 0; } }
 .scene-star { position: absolute; border-radius: 9999px; background: var(--scene-star-cool); box-shadow: 0 0 4px var(--scene-star-cool); }
 .scene-star-warm { background: var(--scene-star-warm); box-shadow: 0 0 4px var(--scene-star-warm); }
 /* The brightest four wear Cadence's 4-point sparkle */
@@ -1010,13 +1059,65 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 [data-theme="daylight"] .scene-star { opacity: 0; }
 /* By day the moon is a pale sun: full, no craters */
 [data-theme="daylight"] .scene-moon path { display: none; }
-/* The Phantom on the mast blooms, slowly */
-.scene-phantom { animation: scene-bloom 5s ease-in-out infinite; }
+/* The beacon, in the artwork's own light, blooms slowly rather than flickering like a window */
+.scene-beacon-light { animation: scene-bloom 5s ease-in-out infinite; }
 @keyframes scene-bloom { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
 /* The hamlet's windows breathe slowly, a little out of step; by day they're out */
 .scene-lamp { animation: scene-flicker 4.3s ease-in-out infinite alternate; }
 @keyframes scene-flicker { from { opacity: 1; } to { opacity: 0.6; } }
 [data-theme="daylight"] .scene-lamps { display: none; }
+/* Lanterns: a small core with a soft glow, rising very slowly from the valley and swaying, resting mid-air under
+   reduced motion. Transform/opacity only, so they composite without repainting the static terrain beneath them. */
+.scene-lantern {
+  width: 3px;
+  height: 3px;
+  background: var(--scene-lamp);
+  box-shadow: 0 0 8px 3px color-mix(in oklab, var(--scene-lamp) 70%, transparent);
+  animation: scene-lantern-rise var(--duration, 60s) linear infinite;
+}
+@keyframes scene-lantern-rise {
+  0%, 100% { translate: 0 0; opacity: 0; }
+  8% { opacity: 0.85; }
+  50% { translate: 3px -65px; opacity: 0.85; }
+  92% { opacity: 0; }
+}
+/* Clouds: high in the sky, drifting sideways over 90s and back; the HTML box drifts, not its SVG, so it composites */
+.scene-cloud-bank {
+  animation: scene-cloud-drift var(--duration, 90s) ease-in-out infinite alternate;
+}
+@keyframes scene-cloud-drift { from { translate: 0 0; } to { translate: var(--drift, 24px) 0; } }
+/* The waterfall's threads: short dashes falling down its face */
+.scene-fall { stroke: var(--land-rim); stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 5 9; opacity: 0.35; animation: scene-fall 1.6s linear infinite; }
+/* Its threads are twice the fall's height, a whole number of dashes, so sliding down by half loops without a seam */
+@keyframes scene-fall { from { translate: 0 -50%; } to { translate: 0 0; } }
+/* A shooting star: a thin tail that streaks along its own angle and fades, then waits out the rest of its cycle */
+.scene-shooting {
+  width: 110px;
+  height: 1.5px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, var(--scene-star-cool));
+  opacity: 0;
+  pointer-events: none;
+  animation: scene-shooting var(--every, 24s) ease-in infinite;
+}
+@keyframes scene-shooting {
+  0% { transform: rotate(var(--angle)) translateX(0); opacity: 0; }
+  1% { opacity: 1; }
+  5%, 100% { transform: rotate(var(--angle)) translateX(260px); opacity: 0; }
+}
+[data-theme="daylight"] .scene-shooting { display: none; }
+/* At rest each lantern hangs mid-air at its own height (`--rest`), never on the water */
+@media (prefers-reduced-motion: reduce) {
+  .scene-lantern, .scene-cloud-bank, .scene-fall { animation: none; }
+  .scene-lantern { translate: 0 var(--rest, -40px); opacity: 0.85; }
+  .scene-shooting, .scene-pulse { display: none; }
+}
+:root[data-motion="reduced"] :is(.scene-lantern, .scene-cloud-bank, .scene-fall) { animation: none; }
+:root[data-motion="reduced"] .scene-pulse { display: none; }
+:root[data-motion="reduced"] .scene-lantern { translate: 0 var(--rest, -40px); opacity: 0.85; }
+:root[data-motion="reduced"] .scene-shooting { display: none; }
+/* What moves on the land is HTML laid over it, never SVG inside it: in Chrome, transform and opacity composite only on
+   an HTML box, and anything animated in an SVG makes every frame restyle and repaint it */
 /* The signal path's glass: light enough to take the sky's colour, dense enough under its text whatever the sky */
 .scene-glass {
   background: color-mix(in oklab, var(--color-room-void) 42%, transparent);
@@ -1102,6 +1203,9 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   .scrubber::-moz-range-thumb { scale: 1; }
 }
 
+/* While the listening room is open, the Summary underneath keeps no loop running: nothing to see, nothing to pay for */
+body:has([data-listening-room]) .art-scene:not([data-room-scene]) * { animation-play-state: paused; }
+
 /* The listening room's focus: a soft pool of the room's light behind the record, and a night that dims toward its edges */
 .vinyl-halo { background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 14%, transparent), color-mix(in oklab, var(--accent) 5%, transparent) 55%, transparent); }
 .room-vignette { background: radial-gradient(ellipse 75% 70% at 50% 38%, transparent 45%, rgb(0 0 0 / 0.38)); }
@@ -1123,9 +1227,11 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 :root:not([data-theme="daylight"]) .scene-calm {
   --land-distant: oklch(0.27 calc(0.04 * var(--room-k)) var(--art-h2));
   --land-far: oklch(0.235 calc(0.04 * var(--room-k)) var(--art-h2));
+  --land-valley: oklch(0.16 calc(0.035 * var(--room-k)) var(--art-h2));
   --land-haze: oklch(0.28 calc(0.05 * var(--room-k)) var(--art-h));
   --land-rim: oklch(0.7 calc(0.06 * var(--room-k)) var(--art-h));
-  --scene-trace: oklch(0.66 clamp(0.05, calc(0.1 * var(--art-k)), 0.11) var(--art-h));
+  --scene-cloud: oklch(0.26 calc(0.035 * var(--room-k)) var(--art-h2) / 0.4);
+  --scene-trace: oklch(0.66 clamp(0.01, calc(0.1 * var(--art-k)), 0.08) var(--art-h));
 }
 
 /* The record. Vinyl is black in every theme, so these are its own colours, not the room's tokens. */

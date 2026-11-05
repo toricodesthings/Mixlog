@@ -16,6 +16,7 @@ const release = (over: Partial<ReleaseRow>): ReleaseRow => ({
   duration_ms: null,
   artwork_id: null,
   upc: null,
+  scene: null,
   ...over,
 })
 

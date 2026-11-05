@@ -1,6 +1,6 @@
 import { notFound } from '@tanstack/react-router'
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
-import { and, desc, eq, inArray, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { isZone, todayIn, type Instant, type LocalDate } from '#/lib/time'
@@ -8,7 +8,7 @@ import { Format, LocalDay, Title, detailsInput, type ReleaseFormat, type TrackOr
 import { db } from '#/server/db'
 import { AUDIO_KINDS } from '#/server/files'
 import { Id, idInput, readWith, Refusal } from '#/server/input'
-import { analysisInput, type Analysis } from '#/server/loudness'
+import { analysisInput, fingerprintOf, isMeasured, type Analysis, type Fingerprint, type Measured } from '#/server/loudness'
 import { currentPins, releases, stampNow, tracks, versions } from '#/server/schema'
 import { keepDays } from '#/server/settings'
 import { LANES, lanesOf, moveProblem } from '#/server/lanes'
@@ -31,8 +31,10 @@ export type ReleaseRow = {
   /** The current artwork version, or null (the UI draws a monogram). */
   artwork_id: string | null
   upc: string | null
+  /** Its night (1.3.0): its first measured song's fingerprint; null before anything's measured. An EP or album's own. */
+  scene: Fingerprint | null
 }
-export type TrackRow = { id: string; title: string; isrc: string | null; lyrics: string | null; origin: TrackOrigin; duration_ms: number | null }
+export type TrackRow = { id: string; title: string; isrc: string | null; lyrics: string | null; origin: TrackOrigin; duration_ms: number | null; scene: Fingerprint | null }
 
 /** One file in a stack, for the log and the summary. Track versions carry `track_id`; the artwork carries neither. */
 export type VersionRow = {
@@ -83,6 +85,7 @@ export const releaseQuery = createServerOnlyFn(() =>
       released_at: releases.releasedAt,
       created_at: releases.createdAt,
       upc: releases.upc,
+      scene: releases.scene,
       track_count: sql<number>`(SELECT COUNT(*) FROM ${tracks} t WHERE t.release_id = ${outer('releases', 'id')})`,
       duration_ms: sql<number | null>`(SELECT SUM(${playLength(sql`t.id`)}) FROM ${tracks} t WHERE t.release_id = ${outer('releases', 'id')})`,
       artwork_id: sql<string | null>`${current('release_id', outer('releases', 'id'), 'artwork')}`,
@@ -138,7 +141,7 @@ export const getRelease = createServerFn()
     const [[trackRows, versionRows, [{ pruned }]], keep] = await Promise.all([
       db.batch([
         db
-          .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, duration_ms: sql<number | null>`${playLength(outer('tracks', 'id'))}` })
+          .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, scene: tracks.scene, duration_ms: sql<number | null>`${playLength(outer('tracks', 'id'))}` })
           .from(tracks)
           .where(eq(tracks.releaseId, id))
           .orderBy(tracks.position, tracks.createdAt),
@@ -147,6 +150,13 @@ export const getRelease = createServerFn()
       ]),
       keepDays(),
     ])
+    // A song measured before 1.3.0 gets its night the first time its release opens, not the next night's cron.
+    if (trackRows.some((t) => !t.scene) && (await stampScenes(trackRows.length, id)) > 0) {
+      const stamped = await db.select({ id: tracks.id, scene: tracks.scene }).from(tracks).where(eq(tracks.releaseId, id))
+      for (const t of trackRows) t.scene = stamped.find((s) => s.id === t.id)?.scene ?? null
+      const [own] = await db.select({ scene: releases.scene }).from(releases).where(eq(releases.id, id))
+      release.scene = own?.scene ?? null
+    }
     return {
       release: release as ReleaseRow,
       tracks: trackRows as TrackRow[],
@@ -287,8 +297,19 @@ export const unshipRelease = createServerOnlyFn(async (id: string, now = Date.no
   ])
 })
 
+/** A song's first measured mix or master stamps its track's and its release's night (1.3.0), each `WHERE scene IS
+ *  NULL` so a later bounce, a meter bump or a move never redraws it. One batch; a no-op once both are set. */
+const stampScene = (trackId: string, analysis: Measured) => {
+  const fp = fingerprintOf(analysis)
+  return [
+    db.update(tracks).set({ scene: fp }).where(and(eq(tracks.id, trackId), isNull(tracks.scene))),
+    db.update(releases).set({ scene: fp }).where(and(isNull(releases.scene), sql`${releases.id} = (SELECT ${tracks.releaseId} FROM ${tracks} WHERE ${tracks.id} = ${trackId})`)),
+  ] as const
+}
+
 /** Writes a version's analysis when it has none, or only one from an older meter: a late upload result, Measure, the
- *  cron. Never on a pruned version or one that isn't audio. True when it wrote. */
+ *  cron. Never on a pruned version or one that isn't audio. A measured mix or master also stamps its scene (above).
+ *  True when it wrote. */
 export const storeAnalysis = createServerOnlyFn(async (versionId: string, analysis: Analysis): Promise<boolean> => {
   const written = await db
     .update(versions)
@@ -297,7 +318,9 @@ export const storeAnalysis = createServerOnlyFn(async (versionId: string, analys
       eq(versions.id, versionId), isNull(versions.prunedAt), inArray(versions.kind, AUDIO_KINDS),
       sql`(${versions.analysis} IS NULL OR json_extract(${versions.analysis}, '$.meter') < ${analysis.meter})`,
     ))
-    .returning({ id: versions.id })
+    .returning({ id: versions.id, trackId: versions.trackId, kind: versions.kind })
+  const row = written[0]
+  if (row?.trackId && isMeasured(analysis) && (row.kind === 'mix' || row.kind === 'master')) await db.batch([...stampScene(row.trackId, analysis)])
   return written.length > 0
 })
 
@@ -306,6 +329,37 @@ export const saveAnalysis = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await storeAnalysis(data.versionId, data.analysis)
   })
+
+/** Backfills nights for tracks from before 1.3.0 (the cron, after measuring): for each with no scene yet but a
+ *  measured mix or master, stamps it (and its release) from the oldest one still in D1 — pruned included, since
+ *  those keep their `analysis` until erased. Same rule as `storeAnalysis`, just later. Up to `limit` tracks a run, or
+ *  only `releaseId`'s (opening a release stamps its own, so nobody waits for the night); returns how many it stamped. */
+export const stampScenes = createServerOnlyFn(async (limit = 20, releaseId?: string): Promise<number> => {
+  const due = await db
+    .select({ id: tracks.id })
+    .from(tracks)
+    .where(and(
+      isNull(tracks.scene),
+      releaseId ? eq(tracks.releaseId, releaseId) : undefined,
+      sql`EXISTS (SELECT 1 FROM ${versions} v WHERE v.track_id = ${tracks.id} AND v.kind IN ('mix', 'master') AND v.analysis IS NOT NULL)`,
+    ))
+    .orderBy(asc(tracks.createdAt))
+    .limit(limit)
+  let stamped = 0
+  for (const { id } of due) {
+    const [oldest] = await db
+      .select({ analysis: versions.analysis })
+      .from(versions)
+      .where(and(eq(versions.trackId, id), inArray(versions.kind, ['mix', 'master']), isNotNull(versions.analysis)))
+      .orderBy(asc(versions.createdAt))
+      .limit(1)
+    if (oldest?.analysis && isMeasured(oldest.analysis)) {
+      await db.batch([...stampScene(id, oldest.analysis)])
+      stamped++
+    }
+  }
+  return stamped
+})
 
 /** Move to Releases, from the release's Move dialog: the day it went out, no later than today in the artist's `zone`. */
 export const moveToReleases = createServerFn({ method: 'POST' })

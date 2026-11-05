@@ -158,7 +158,7 @@ function SortMenu({ section, sort, onSort }: { section: Section; sort: string; o
 function ReleaseRowLink({ section, release }: { section: Section; release: ReleaseRow }) {
   return (
     <Link {...releaseLink(section, release.id)} className="group playhead-sweep press flex min-h-18 items-center gap-4 rounded-2xl p-2 pr-3">
-      <ReleaseArt title={release.title} artworkId={release.artwork_id} size="row" />
+      <ReleaseArt title={release.title} id={release.id} artworkId={release.artwork_id} size="row" />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate font-display text-lg font-semibold tracking-tight text-ink">{release.title}</span>
         <MetaLine facts={[dateLabel(section, release, deviceZone()), ...releaseFacts(release, FORMAT_LABEL[release.format])]} className="text-sm" />
@@ -200,7 +200,7 @@ function ReleasePanel({ section, release }: { section: Section; release: Release
       className="surface-card glass-edge glass-card group relative flex flex-col gap-2.5 rounded-[1.5rem] p-2.5"
     >
       <span className="relative block overflow-hidden rounded-[1.4rem]">
-        <ReleaseArt title={release.title} artworkId={release.artwork_id} size="panel" className="glass-card-art" />
+        <ReleaseArt title={release.title} id={release.id} artworkId={release.artwork_id} size="panel" className="glass-card-art" />
         <span aria-hidden="true" className="glass absolute right-3 bottom-3 flex items-center rounded-full px-2.5 py-2 opacity-0 transition-opacity duration-(--duration-normal) group-hover:opacity-100 group-focus-visible:opacity-100">
           <Meter className="h-3.5" />
         </span>

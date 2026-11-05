@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { fileUrl, previewUrl } from '../../lib/files'
-import { titleHue } from '../scene/palette'
+import { idHue } from '../scene/palette'
 import { cn } from '../../lib/utils'
 
 const SIZES = {
@@ -18,7 +18,7 @@ const monogramOf = (title: string) => (title.match(/[\p{L}\p{N}]/u)?.[0] ?? '♪
 /** A release's cover: its current artwork, or a monogram pressed from its title (grooves and all) until it has one. Decorative; the title sits beside it.
  *  Its artwork on its way is a clip-shaped skeleton, fading into the image once it's here.
  *  Its preview by default; `full` loads the original (the Artwork part). `src` shows a picked image before it's uploaded. */
-export function ReleaseArt({ title, artworkId, src, full, size, className }: { title: string; artworkId: string | null; src?: string; full?: boolean; size: keyof typeof SIZES; className?: string }) {
+export function ReleaseArt({ title, id, artworkId, src, full, size, className }: { title: string; id?: string; artworkId: string | null; src?: string; full?: boolean; size: keyof typeof SIZES; className?: string }) {
   const [broken, setBroken] = useState<string | null>(null)
   const [loaded, setLoaded] = useState<string | null>(null)
   const url = src ?? (artworkId && (full ? fileUrl : previewUrl)(artworkId))
@@ -27,7 +27,7 @@ export function ReleaseArt({ title, artworkId, src, full, size, className }: { t
     <span
       aria-hidden="true"
       className={cn('relative block shrink-0 overflow-hidden shadow-[0_8px_24px_-10px_rgb(0_0_0/0.6)]', SIZES[size], showImage && loaded !== url && 'skeleton', className)}
-      style={{ '--art-hue': titleHue(title) } as React.CSSProperties}
+      style={{ '--art-hue': idHue(id ?? title) } as React.CSSProperties}
     >
       {showImage ? (
         <img
@@ -35,7 +35,9 @@ export function ReleaseArt({ title, artworkId, src, full, size, className }: { t
           ref={(img) => void (img?.complete && img.naturalWidth && setLoaded(url))}
           src={url}
           alt=""
-          loading="lazy"
+          // Only a list's rows wait to scroll in; every other cover is on screen at once, the Summary's the page's largest paint
+          loading={size === 'row' ? 'lazy' : 'eager'}
+          fetchPriority={size === 'stage' ? 'high' : 'auto'}
           decoding="async"
           onLoad={() => setLoaded(url)}
           onError={() => setBroken(url)}

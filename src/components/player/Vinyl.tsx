@@ -7,14 +7,14 @@ import { ReleaseArt } from '../releases/ReleaseArt'
  * stays put while the grooves turn under it. The tonearm swings onto the record when it plays and back to its rest
  * when it stops. Decorative: what's playing is said in words beside it. Sized by `className`.
  */
-export function Vinyl({ title, artworkId, spinning, className }: { title: string; artworkId: string | null; spinning: boolean; className?: string }) {
+export function Vinyl({ title, releaseId, artworkId, spinning, className }: { title: string; releaseId: string; artworkId: string | null; spinning: boolean; className?: string }) {
   return (
     <div aria-hidden="true" className={cn('relative aspect-square', className)}>
       <div className="vinyl-halo absolute -inset-[22%] rounded-full" />
       <div className="vinyl-platter absolute -inset-[3.5%] rounded-full" />
       <div className="vinyl-disc absolute inset-0 rounded-full" data-spinning={spinning || undefined}>
         <div className="absolute inset-[31%] overflow-hidden rounded-full shadow-[0_0_0_2px_rgb(0_0_0/0.5)]">
-          <ReleaseArt title={title} artworkId={artworkId} size="panel" className="rounded-full shadow-none" />
+          <ReleaseArt title={title} id={releaseId} artworkId={artworkId} size="panel" className="rounded-full shadow-none" />
         </div>
         <div className="vinyl-spindle absolute inset-[48.6%] rounded-full" />
       </div>

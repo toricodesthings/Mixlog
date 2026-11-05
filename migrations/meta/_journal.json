@@ -57,6 +57,13 @@
       "when": 1793815514951,
       "tag": "0008_version_analysis",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793825381971,
+      "tag": "0009_gifted_inhumans",
+      "breakpoints": true
     }
   ]
 }

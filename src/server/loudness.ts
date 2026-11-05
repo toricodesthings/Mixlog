@@ -101,3 +101,69 @@ export function deltaOf(now: Analysis | null, before: Analysis | null): Partial<
 }
 
 const round1 = (v: number) => Math.round(v * 10) / 10
+
+// --- The fingerprint (1.3.0): a song's first measured bounce, read once into ~30 numbers that shape its night
+// (scene/generate.ts). Stored on `tracks.scene`/`releases.scene`, stamped only `WHERE scene IS NULL`, never rewritten.
+
+/** `wave` (256 readings) as `bars` bars, each the loudest reading in its share (never averaged away: a peak stays a
+ *  peak). With more bars than readings, neighbours repeat. Shared with the browser (LoudnessWave draws the same way). */
+export function pool(wave: number[], bars: number): number[] {
+  const n = wave.length
+  return Array.from({ length: Math.max(0, bars) }, (_, i) => {
+    const from = Math.floor((i * n) / bars)
+    const to = Math.max(from + 1, Math.floor(((i + 1) * n) / bars))
+    let max = -Infinity
+    for (let j = from; j < to; j++) max = Math.max(max, wave[j])
+    return max
+  })
+}
+
+/** Drawn as amplitude, not decibels: a bar is 10^((LUFS − TOP) / 20), so 6 dB quieter is half as tall and a chorus
+ *  stands clear of its verse. One fixed scale, never per song, so a louder master looks louder beside its mix. */
+const WAVE_TOP = -3
+/** Silence keeps a stub, so the song's shape still reads. */
+const WAVE_STUB = 0.04
+
+/** A bar's height, 0–1, for a short-term loudness reading. */
+export const heightOf = (lufs: number) => Math.min(1, Math.max(WAVE_STUB, 10 ** ((lufs - WAVE_TOP) / 20)))
+
+const unit01 = z.number().min(0).max(1).transform((v) => Math.round(v * 100) / 100)
+const clamp01 = (v: number) => Math.round(Math.min(1, Math.max(0, v)) * 100) / 100
+/** `v` mapped linearly so `from` lands at 0 and `to` lands at 1, clamped to 0–1. */
+const lerp01 = (v: number, from: number, to: number) => clamp01((v - from) / (to - from))
+
+export const fingerprint = z.object({
+  v: z.literal(1),
+  loud: unit01, // lufs: −30 → 0, −6 → 1
+  dyn: unit01, // plr: 4 → 0, 20 → 1 (else lra 2 → 16, else dr 3 → 16)
+  width: unit01, // 1 − correlation.mean: 0 → 0, .8 → 1
+  weather: unit01, // lra: 2 → 0, 16 → 1
+  peak: unit01, // loudest.atMs / ms
+  length: unit01, // ms: 90s → 0, 360s → 1
+  env: z.array(unit01).length(24), // wave pooled to 24 (pool, max), each heightOf(), then ÷ its max
+})
+export type Fingerprint = z.infer<typeof fingerprint>
+
+/** The envelope today's fixed `SIGNAL` ridge would read as an `env`, for a song with no reading yet. Thirteen keys'
+ *  y-values (138–224, higher is louder) turned back into 24 amplitudes 0–1. */
+const DEFAULT_ENV = [0.58, 0.72, 0.84, 0.95, 1, 0.9, 0.78, 0.66, 0.56, 0.52, 0.58, 0.68, 0.8, 0.9, 0.98, 0.94, 0.84, 0.74, 0.7, 0.66, 0.6, 0.54, 0.62, 0.52]
+
+/** Every value at its midpoint, env the default contour: the night before any bounce is measured, still unique by
+ *  its seed (the track's id). */
+export const DEFAULT_FINGERPRINT: Fingerprint = { v: 1, loud: 0.5, dyn: 0.5, width: 0.4, weather: 0.4, peak: 0.62, length: 0.4, env: DEFAULT_ENV }
+
+/** The fingerprint read from a song's first measured mix or master. Pure, clamped, never throws: a measurement at the
+ *  edge of its range still gives a fingerprint rather than failing the stamp. */
+export function fingerprintOf(a: Measured): Fingerprint {
+  const loud = a.lufs === null ? DEFAULT_FINGERPRINT.loud : lerp01(a.lufs, -30, -6)
+  const dyn =
+    a.plr !== null ? lerp01(a.plr, 4, 20) : a.lra !== null ? lerp01(a.lra, 2, 16) : a.dr !== null ? lerp01(a.dr, 3, 16) : DEFAULT_FINGERPRINT.dyn
+  const width = a.correlation ? lerp01(1 - a.correlation.mean, 0, 0.8) : DEFAULT_FINGERPRINT.width
+  const weather = a.lra === null ? DEFAULT_FINGERPRINT.weather : lerp01(a.lra, 2, 16)
+  const peak = a.loudest && a.ms > 0 ? clamp01(a.loudest.atMs / a.ms) : DEFAULT_FINGERPRINT.peak
+  const length = lerp01(a.ms / 1000, 90, 360)
+  const bars = pool(a.wave, 24).map(heightOf)
+  const max = Math.max(...bars, 1e-6)
+  const env = bars.map((v) => clamp01(v / max))
+  return fingerprint.parse({ v: 1, loud, dyn, width, weather, peak, length, env })
+}

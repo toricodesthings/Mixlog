@@ -18,7 +18,7 @@ import type { TrackState } from '../releases/Lane'
 
 /** What the bridge reads from its track: a row's `TrackState`, or the wide panel's own. */
 export type BridgeTrack = Pick<TrackState, 'data' | 'release' | 'track' | 'section'>
-import { formatOf, playableOf, versionLabel } from '../releases/stacks'
+import { formatOf, nameOf, playableOf, versionLabel } from '../releases/stacks'
 import { sizeOf } from '../uploads/progress'
 import { measureAndSave } from './save'
 
@@ -26,13 +26,6 @@ import { measureAndSave } from './save'
 export const reading = (v: number, digits = 1, signed = false) => `${v < 0 ? '−' : signed && v > 0 ? '+' : ''}${Math.abs(v).toFixed(digits)}`
 const spoken = (v: number, digits = 1) => `${v < 0 ? 'minus ' : ''}${Math.abs(v).toFixed(digits)}`
 const along = (v: number, from: number, to: number) => `${Math.min(100, Math.max(0, ((v - from) / (to - from)) * 100))}%`
-
-/** "WAV 24/48", "MP3 320", "FLAC 16/44.1": the file as an engineer names it. */
-export function resolutionOf(version: Version, a: Measured) {
-  const { bits, rate, kbps } = a.format
-  const khz = `${Math.round(rate / 100) / 10}`
-  return `${formatOf(version.filename)} ${bits ? `${bits}/${khz}` : kbps ? `${kbps}` : khz}`
-}
 
 /**
  * A version's meters, read from the whole song: its loudness over time (a playhead too), then three folds, each a card
@@ -59,8 +52,8 @@ export function MeterBridge({ t, version, headingRef, onClose, docked }: {
           <Activity size={18} aria-hidden="true" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h4 ref={headingRef} tabIndex={-1} className="truncate font-display text-xl font-semibold leading-tight tracking-tight text-ink outline-none">{label}</h4>
-          {isMeasured(a) && <p className="readout truncate text-ink-muted">{resolutionOf(version, a)} · {clock(a.ms / 1000)}</p>}
+          <h4 ref={headingRef} tabIndex={-1} className="truncate font-display text-xl font-semibold leading-tight tracking-tight text-ink outline-none">{nameOf(version)}</h4>
+          <p className="readout truncate text-ink-muted">{label}{isMeasured(a) ? ` · ${clock(a.ms / 1000)}` : ''}</p>
         </div>
         {onClose && (
           <Tip label="Close" side="left">

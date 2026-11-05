@@ -26,7 +26,7 @@ export function PlayerBar() {
       <div className="flex min-w-0 items-center gap-3">
         <Tip label="Open the listening room">
           <button type="button" onClick={listen.show} aria-label="Open the listening room" className="group press relative shrink-0 rounded-xl">
-            <ReleaseArt title={item.release} artworkId={item.artworkId} size="row" />
+            <ReleaseArt title={item.release} id={item.releaseId} artworkId={item.artworkId} size="row" />
             <span className="absolute inset-0 flex items-center justify-center rounded-[inherit] bg-room-void/55 text-ink opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
               <Maximize2 size={16} aria-hidden="true" />
             </span>
@@ -85,7 +85,7 @@ export function MiniPlayer({ tucked }: { tucked: boolean }) {
       className={cn('mobile-dock glass glass-edge relative flex min-w-0 touch-none items-center gap-3 overflow-hidden p-1.5 pr-2', tucked && 'flex-1')}
     >
       <button type="button" onClick={listen.show} aria-label={`Open the listening room: ${item.title}, ${item.label}`} className="press flex min-w-0 flex-1 items-center gap-3 text-left">
-        <ReleaseArt title={item.release} artworkId={item.artworkId} size="row" className={cn('rounded-[18px]', tucked ? 'size-9' : 'size-11')} />
+        <ReleaseArt title={item.release} id={item.releaseId} artworkId={item.artworkId} size="row" className={cn('rounded-[18px]', tucked ? 'size-9' : 'size-11')} />
         <span className="min-w-0">
           <span className="block truncate font-display text-[15px] font-semibold text-ink">{item.title}</span>
           {!tucked && <span className="readout mt-0.5 block truncate text-ink-muted">{item.label}</span>}

@@ -6,6 +6,7 @@ import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { cn } from '../../lib/utils'
 import { Tip } from '../primitives'
 import { Dialog, DialogStage, DialogTitle } from '../primitives/Dialog'
+import { ZONES } from '../scene/generate'
 import { Land } from '../scene/Land'
 import { useRoomStyle } from '../scene/palette'
 import { Sky } from '../scene/Sky'
@@ -44,20 +45,21 @@ function Room({ decks, onLower }: { decks: Deck[]; onLower: () => void }) {
   const { playing, item } = usePlayer()
   const { isDesktop } = useShellMode()
   const lead = decks[0].playable
-  const room = useRoomStyle(lead.release, lead.artworkId)
+  const room = useRoomStyle(lead.releaseId, lead.artworkId)
   const pair = decks.length > 1
   return (
     // Focus lands on Play, the room's one action, rather than on the way out
     <DialogStage onOpenAutoFocus={(event) => (event.preventDefault(), document.querySelector<HTMLElement>('[data-room-play]')?.focus())}>
       <motion.div
+        data-listening-room
         className="layer-fullscreen-surface fixed inset-0 overflow-hidden outline-none"
         initial={{ y: '100%' }}
         animate={{ y: 0, transition: RISE }}
         exit={{ y: '100%', transition: FALL }}
       >
         <div className="art-room h-full" style={room}>
-          <div data-signal className="art-scene @container relative isolate flex h-full flex-col overflow-hidden">
-            <Sky moon={isDesktop ? 'top-[18%] left-[12%]' : 'top-[12%] left-[16%]'} />
+          <div data-signal className="art-scene @container relative isolate flex h-full flex-col overflow-hidden" data-room-scene>
+            <Sky sceneId={lead.sceneId} fp={lead.scene} zone={isDesktop ? ZONES.roomDesktop : ZONES.roomCompact} />
             {/* The night dims toward the edges, so the eye lands on the record */}
             <div aria-hidden="true" className="room-vignette pointer-events-none absolute inset-0" />
 
@@ -87,6 +89,7 @@ function Room({ decks, onLower }: { decks: Deck[]; onLower: () => void }) {
                 <figure key={playable.versionId} className="flex flex-col items-center gap-4">
                   <Vinyl
                     title={playable.release}
+                    releaseId={playable.releaseId}
                     artworkId={playable.artworkId}
                     spinning={playing && playable.versionId === item?.versionId}
                     className={pair ? 'size-[min(calc(90cqh-2.5rem),38cqw)]' : 'size-[min(90cqh,76cqw)]'}
@@ -97,7 +100,7 @@ function Room({ decks, onLower }: { decks: Deck[]; onLower: () => void }) {
             </div>
 
             {/* Low and quiet under the record (scene-calm), and melting into the ground the transport stands on */}
-            <Land className="scene-calm relative block h-[clamp(8rem,10.5cqw,13.5rem)] w-full shrink-0" />
+            <Land sceneId={lead.sceneId} fp={lead.scene} zone={isDesktop ? ZONES.roomDesktop : ZONES.roomCompact} className="scene-calm relative block h-[clamp(8rem,10.5cqw,13.5rem)] w-full shrink-0" />
             <div className="scene-ground relative shrink-0 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-10 sm:pb-7">
               <div className="mx-auto -mt-6 flex w-full max-w-3xl flex-col items-center gap-3 text-center">
                 <div className="min-w-0 max-w-full">

@@ -1,163 +1,22 @@
-import { useId, type CSSProperties } from 'react'
+import { memo, useId, type CSSProperties } from 'react'
+
+import type { Fingerprint } from '#/server/loudness'
+import { sceneOf, TOP, VIEW_BOX, type MoonZone } from './generate'
 
 /*
- * The ground under a release's sky, in Cadence's landscape language (its landing hero), on a 1920×300 band that
- * sits on the release's facts (`xMidYMax slice`, at its natural height on wide screens, so nothing is cropped there;
- * phones keep the middle). Back to front: hazy spires, the far ridge with a broadcast mast carrying the one Phantom
- * light, mist, the signal ridge, valley fog, then the near hills with their woods and a hamlet whose windows are the
- * warm lights. Aerial perspective does the depth: each nearer layer is darker and crisper (`.art-room` in
- * app.css sets every colour from the artwork). Mixlog draws sound where Cadence draws hills, so the signal ridge is an
- * envelope (a swell, then attack, decay, sustain and release, then a peak) with a scope trace along it.
+ * The ground under a release's sky (1.3.0): a painted night valley drawn from the song's own fingerprint
+ * (`generate.ts`), in Cadence's landscape language. Back to front: rounded peaks rising into the sky, the cliffs with
+ * the beacon and the waterfall, the signal ridge (the song's own loudness, left to right, with a scope trace), wooded
+ * banks running down to a still lake, the near banks with the village and its farmhouses, the framing tree. Every
+ * ridge takes its own colour, nearer ones darker and crisper (`.art-scene` in app.css sets every colour from the
+ * artwork), the moon rims only the slopes turned toward it, and wisps of mist lie between the planes. The land stands
+ * `-TOP` units taller than its box, so the peaks rise into the sky above the band. The terrain is drawn once and never
+ * moves; everything that does (the lights, the waterfall, the spark, the lanterns) is an HTML layer over it animated
+ * with `opacity` and `translate` alone, which the compositor runs without repainting a frame (§9).
  */
-
-type Pt = readonly [number, number]
 
 const W = 1920
 const H = 300
-
-/** Seeded, so the woods are the same on every visit. */
-function rng(seed: number) {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = Math.imul(a ^ (a >>> 15), a | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-const n1 = (v: number) => Math.round(v * 10) / 10
-const pt = (x: number, y: number) => `${n1(x)},${n1(y)}`
-const polyline = (points: readonly Pt[]) => points.map(([x, y], i) => `${i ? 'L' : 'M'}${pt(x, y)}`).join('')
-
-/**
- * A ridge through `keys` (x rising): a centripetal Catmull–Rom curve, sampled every 6 units. It rounds through each key
- * the way a hill does, carrying its slope over the summit instead of stopping flat, and the centripetal form never
- * loops or cusps however close two keys sit.
- */
-function curve(keys: readonly Pt[]): Pt[] {
-  const [first, second, last, before] = [keys[0], keys[1], keys[keys.length - 1], keys[keys.length - 2]]
-  const pad: Pt[] = [[2 * first[0] - second[0], 2 * first[1] - second[1]], ...keys, [2 * last[0] - before[0], 2 * last[1] - before[1]]]
-  const out: Pt[] = [first]
-  for (let i = 1; i < pad.length - 2; i++) {
-    const [p0, p1, p2, p3] = [pad[i - 1], pad[i], pad[i + 1], pad[i + 2]]
-    const knot = (a: Pt, b: Pt) => Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])) || 1e-6
-    const [t1, t2, t3] = [knot(p0, p1), knot(p0, p1) + knot(p1, p2), knot(p0, p1) + knot(p1, p2) + knot(p2, p3)]
-    const mix = (a: Pt, b: Pt, ta: number, tb: number, t: number): Pt => [((tb - t) * a[0] + (t - ta) * b[0]) / (tb - ta), ((tb - t) * a[1] + (t - ta) * b[1]) / (tb - ta)]
-    const steps = Math.max(2, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 6))
-    for (let k = 1; k <= steps; k++) {
-      const t = t1 + ((t2 - t1) * k) / steps
-      const [a1, a2, a3] = [mix(p0, p1, 0, t1, t), mix(p1, p2, t1, t2, t), mix(p2, p3, t2, t3, t)]
-      out.push(mix(mix(a1, a2, 0, t2, t), mix(a2, a3, t1, t3, t), t1, t2, t))
-    }
-  }
-  return out
-}
-
-/**
- * Natural unevenness on a ridge: seeded value noise, smoothly interpolated, in a few octaves of [wavelength,
- * amplitude], so a far slope has the small rises and dips a real one does instead of a drawn curve's regularity.
- */
-function roughen(line: readonly Pt[], octaves: readonly (readonly [number, number])[], seed: number): Pt[] {
-  const rand = rng(seed)
-  const lattices = octaves.map(([wavelength]) => Array.from({ length: Math.ceil(W / wavelength) + 2 }, () => rand() * 2 - 1))
-  const noise = (x: number) =>
-    octaves.reduce((sum, [wavelength, amplitude], o) => {
-      const u = x / wavelength
-      const i = Math.floor(u)
-      const f = (1 - Math.cos((u - i) * Math.PI)) / 2
-      return sum + amplitude * (lattices[o][i] * (1 - f) + lattices[o][i + 1] * f)
-    }, 0)
-  return line.map(([x, y]) => [x, y + noise(Math.max(0, x))] as Pt)
-}
-
-/** A hill line: through its keys, then roughened. */
-const ridge = (keys: readonly Pt[], octaves: readonly (readonly [number, number])[] = [], seed = 1) => roughen(curve(keys), octaves, seed)
-
-/** y on a ridge at x. */
-function yAt(line: readonly Pt[], x: number) {
-  const i = line.findIndex(([px]) => px >= x)
-  if (i <= 0) return line[i === 0 ? 0 : line.length - 1][1]
-  const [[ax, ay], [bx, by]] = [line[i - 1], line[i]]
-  return ay + ((by - ay) * (x - ax)) / (bx - ax || 1)
-}
-
-/** A ridge filled down past the band's bottom, so no hairline of sky shows under it. */
-const fill = (line: readonly Pt[]) => `${polyline(line)}L${W},${H + 2}L0,${H + 2}Z`
-
-/** A soft spruce: two gentle bulges and a rounded tip. */
-const spruce = (x: number, b: number, h: number, w: number) =>
-  `M${pt(x - w, b)}Q${pt(x - w * 0.62, b - h * 0.3)} ${pt(x - w * 0.4, b - h * 0.55)}` +
-  `Q${pt(x - w * 0.26, b - h * 0.86)} ${pt(x, b - h)}Q${pt(x + w * 0.26, b - h * 0.86)} ${pt(x + w * 0.4, b - h * 0.55)}` +
-  `Q${pt(x + w * 0.62, b - h * 0.3)} ${pt(x + w, b)}Z`
-
-/** A broadleaf crown: three overlapping discs, drawn the same way round so overlaps never cut holes. */
-function canopy(x: number, b: number, h: number) {
-  const disc = (cx: number, cy: number, r: number) => `M${pt(cx - r, cy)}a${n1(r)},${n1(r)} 0 1,1 ${n1(2 * r)},0a${n1(r)},${n1(r)} 0 1,1 ${n1(-2 * r)},0Z`
-  const r = h * 0.34
-  return disc(x, b - h + r, r) + disc(x - r * 0.7, b - r * 0.8, r * 0.8) + disc(x + r * 0.75, b - r * 0.75, r * 0.78)
-}
-
-/** A wood on a ridge: a low canopy mound with spruces and crowns rising out of it, tallest in the middle. */
-function grove(line: readonly Pt[], cx: number, count: number, spread: number, hMax: number, seed: number) {
-  const rand = rng(seed)
-  const [x0, x1] = [cx - spread * 0.6, cx + spread * 0.6]
-  const under = line.filter(([x]) => x > x0 && x < x1).reverse()
-  let d = `M${pt(x0, yAt(line, x0) + 6)}Q${pt(cx, yAt(line, cx) - hMax * 0.6)} ${pt(x1, yAt(line, x1) + 6)}` + under.map(([x, y]) => `L${pt(x, y + 6)}`).join('') + 'Z'
-  for (let i = 0; i < count; i++) {
-    const u = (i + 0.5) / count - 0.5 + (rand() - 0.5) * 0.18
-    const x = cx + u * spread
-    const bell = 1 - Math.abs(u) * 1.3
-    const h = hMax * (0.45 + 0.55 * bell) * (0.85 + rand() * 0.3)
-    const b = yAt(line, x) + 4 - hMax * 0.18 * bell
-    d += rand() < 0.45 ? canopy(x, b, h * 0.8) : spruce(x, b, h, h * (0.36 + rand() * 0.08))
-  }
-  return d
-}
-
-const DISTANT = ridge(
-  [
-    [0, 118], [150, 98], [300, 64], [430, 88], [600, 112], [800, 100], [980, 76], [1080, 54], [1180, 38], [1290, 60], [1440, 98],
-    [1600, 78], [1760, 102], [1920, 90],
-  ],
-  [[110, 6], [38, 2.2], [14, 0.7]],
-  3,
-)
-const FAR = ridge([[0, 142], [250, 128], [520, 146], [760, 134], [960, 148], [1180, 122], [1430, 146], [1700, 130], [1920, 142]], [[160, 4], [55, 1.6], [18, 0.5]], 5)
-/** The signal ridge: a swell, an envelope (attack, decay, sustain, release), then a peak. */
-const SIGNAL = ridge([
-  [0, 214], [170, 172], [330, 150], [490, 160], [650, 196], [800, 216], [930, 146], [1070, 160], [1350, 164], [1470, 214], [1580, 218],
-  [1720, 138], [1920, 200],
-])
-/** The signal ridge's length, so the travelling spark is sized in the band's own units, not as a share of the path. */
-const SIGNAL_LENGTH = Math.round(SIGNAL.slice(1).reduce((sum, [x, y], i) => sum + Math.hypot(x - SIGNAL[i][0], y - SIGNAL[i][1]), 0))
-const NEAR = ridge([[0, 252], [230, 242], [450, 256], [680, 246], [880, 260], [1100, 250], [1320, 262], [1540, 248], [1760, 258], [1920, 251]], [[140, 3], [45, 1], [16, 0.35]], 11)
-/** A low knoll in front of the hamlet, hiding the cottages' footings. */
-const KNOLL = ridge([[600, 304], [690, 276], [770, 268], [860, 267], [950, 276], [1030, 304]])
-
-const WOODS = grove(NEAR, 230, 18, 260, 30, 23) + grove(NEAR, 1560, 18, 250, 32, 29) + grove(NEAR, 1860, 8, 120, 22, 37) + grove(NEAR, 1060, 5, 54, 18, 31)
-
-/** Cottages in the valley under the swell, a little left of centre (inside a phone's crop): [x, width, wall height, sink]. */
-const COTTAGES: readonly (readonly [number, number, number, number])[] = [
-  [716, 18, 8, 2], [742, 24, 11, 5], [776, 16, 8, 0], [810, 26, 12, 4], [846, 18, 9, 1], [874, 14, 7, 3],
-]
-const HAMLET = COTTAGES.map(([x, w, h, sink], i) => {
-  const b = yAt(NEAR, x) + 6 + sink
-  const top = b - h
-  const roof = top - h * 0.6
-  const chimney = i === 3 ? `M${pt(x + w * 0.22, top - h * 0.3)}L${pt(x + w * 0.22, roof)}L${pt(x + w * 0.32, roof)}L${pt(x + w * 0.32, top - h * 0.42)}Z` : ''
-  return {
-    body: `M${pt(x - w / 2, b)}L${pt(x - w / 2, top)}L${pt(x - w / 2 - 2.5, top)}L${pt(x, roof)}L${pt(x + w / 2 + 2.5, top)}L${pt(x + w / 2, top)}L${pt(x + w / 2, b)}Z${chimney}`,
-    window: [x + (i % 2 ? -w * 0.2 : w * 0.15), top + h * 0.34] as Pt,
-  }
-})
-
-/** The broadcast mast on the far ridge's summit: a thin lattice, the one Phantom light on top. */
-const MAST_FOOT: Pt = [1180, yAt(FAR, 1180) + 2]
-const MAST_TOP: Pt = [1180, MAST_FOOT[1] - 38]
-const MAST =
-  `M${pt(MAST_FOOT[0] - 6, MAST_FOOT[1])}L${pt(...MAST_TOP)}L${pt(MAST_FOOT[0] + 6, MAST_FOOT[1])}` +
-  [12, 22, 31].map((up) => { const half = 6 * (1 - up / 38); return `M${pt(MAST_FOOT[0] - half, MAST_FOOT[1] - up)}L${pt(MAST_FOOT[0] + half, MAST_FOOT[1] - up)}` }).join('')
 
 function Grad({ id, top, base }: { id: string; top: string; base: string }) {
   return (
@@ -179,88 +38,272 @@ function Mist({ id, color }: { id: string; color: string }) {
   )
 }
 
-/** A light: a soft glow (`<id>glow-<tone>`) and a bright core. The Phantom blooms slowly instead of flickering. */
-function Light({ id, at: [x, y], r, tone, delay }: { id: string; at: Pt; r: number; tone: 'tube' | 'phantom'; delay?: number }) {
+/** A light: a soft glow and a bright core, warm (`--scene-lamp`) or the beacon's own. */
+function Light({ id, at: [x, y], r, tone }: { id: string; at: readonly [number, number]; r: number; tone: 'lamp' | 'beacon' }) {
   return (
-    <g className={tone === 'phantom' ? 'scene-phantom' : 'scene-lamp'} style={delay === undefined ? undefined : { animationDelay: `${delay}s` }}>
-      <circle cx={x} cy={y} r={r * 4.5} fill={`url(#${id}glow-${tone})`} />
-      <circle cx={x} cy={y} r={r} fill={`var(--color-${tone})`} />
-    </g>
+    <>
+      <circle cx={x} cy={y} r={r * 5.5} fill={`url(#${id}glow-${tone})`} />
+      <circle cx={x} cy={y} r={r} fill={`var(--scene-${tone})`} />
+    </>
   )
 }
 
-export function Land({ className }: { className?: string }) {
-  // Its own ids: two lands can share a screen (the listening room over a release), each in its own room's colours.
-  const id = useId().replace(/[^\w-]/g, '')
+type LandProps = { sceneId: string; fp: Fingerprint | null; zone: MoonZone; className?: string }
+/** `sig` names the one signal path (in `Trace`) that the bloom, the pulse and its tail all draw with `<use>`. */
+type LayerProps = LandProps & { sig: string }
+
+const svgProps = { viewBox: VIEW_BOX, preserveAspectRatio: 'xMidYMax slice', 'aria-hidden': true, focusable: false, className: 'absolute inset-0 size-full' } as const
+const sameScene = (a: LandProps, b: LandProps) => a.sceneId === b.sceneId && a.fp === b.fp && a.zone === b.zone
+
+/** The static terrain: everything that never moves, so it carries every filter and gradient without repainting a
+ *  frame. Memoised by the scene's own key, so a playhead tick or a parent re-render never rebuilds it. */
+const Terrain = memo(function Terrain({ sceneId, fp, zone, sig }: LayerProps) {
+  const { land } = sceneOf(sceneId, fp, zone)
+  const uid = useId().replace(/[^\w-]/g, '')
+  const u = (name: string) => `url(#${uid}${name})`
+  const { lake } = land
+  // The song sets how bright the night is: every moonlit touch below is scaled by it
+  const lit = (o: number) => Math.min(1, o * land.light)
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false" className={className}>
+    <svg {...svgProps} style={{ contain: 'strict' }}>
       <defs>
-        <Grad id={`${id}distant`} top="var(--land-distant)" base="var(--land-haze)" />
-        <Grad id={`${id}far`} top="var(--land-far)" base="var(--land-haze)" />
-        <Grad id={`${id}signal`} top="var(--land-signal)" base="var(--land-far)" />
-        <Grad id={`${id}knoll`} top="var(--land-signal)" base="var(--land-near)" />
-        {/* Dusk settling into the valley: the ground's own dark rising over the far slopes, so the near ridge has no cut */}
-        <linearGradient id={`${id}dusk`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--land-near)" stopOpacity="0" />
-          <stop offset=".35" stopColor="var(--land-near)" stopOpacity=".5" />
-          <stop offset=".62" stopColor="var(--land-near)" />
+        {/* The back range: opaque (nothing in the sky shows through a mountain), just paler, nearer the haze */}
+        <Grad id={`${uid}back`} top="color-mix(in oklab, var(--land-distant) 55%, var(--land-haze))" base="var(--land-haze)" />
+        <Grad id={`${uid}distant`} top="var(--land-distant)" base="var(--land-haze)" />
+        <Grad id={`${uid}far`} top="var(--land-far)" base="var(--land-haze)" />
+        <Grad id={`${uid}signal`} top="var(--land-signal)" base="var(--land-far)" />
+        <Grad id={`${uid}bank`} top="var(--land-valley)" base="var(--land-signal)" />
+        {/* Ends on the ground's own first colour (`.scene-ground`), so the banks run into the page with no seam */}
+        <Grad id={`${uid}near`} top="var(--land-valley)" base="var(--land-near)" />
+        <linearGradient id={`${uid}lake`} gradientUnits="userSpaceOnUse" x1="0" y1={lake.y} x2="0" y2={H}>
+          <stop offset="0" stopColor="color-mix(in oklab, var(--land-haze) 50%, var(--land-far))" />
+          <stop offset="1" stopColor="var(--land-near)" />
         </linearGradient>
-        <Mist id={`${id}mist`} color="var(--land-haze)" />
-        <Mist id={`${id}fog`} color="var(--land-signal)" />
-        <radialGradient id={`${id}hamlet`}>
-          <stop offset="0" stopColor="var(--color-tube)" stopOpacity=".22" />
-          <stop offset="1" stopColor="var(--color-tube)" stopOpacity="0" />
+        <linearGradient id={`${uid}fall`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="var(--land-rim)" stopOpacity=".4" />
+          <stop offset="1" stopColor="var(--land-rim)" stopOpacity=".1" />
+        </linearGradient>
+        <Mist id={`${uid}mist`} color="var(--land-haze)" />
+        {/* A wisp: clear at both ends, densest in the middle, so it has no edges */}
+        <linearGradient id={`${uid}wisp`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="var(--land-haze)" stopOpacity="0" />
+          <stop offset=".5" stopColor="var(--land-haze)" stopOpacity=".7" />
+          <stop offset="1" stopColor="var(--land-haze)" stopOpacity="0" />
+        </linearGradient>
+        <radialGradient id={`${uid}moonpool`}>
+          <stop offset="0" stopColor="var(--scene-moon)" stopOpacity=".22" />
+          <stop offset="1" stopColor="var(--scene-moon)" stopOpacity="0" />
         </radialGradient>
-        {(['tube', 'phantom'] as const).map((tone) => (
-          <radialGradient key={tone} id={`${id}glow-${tone}`}>
-            <stop offset="0" stopColor={`var(--color-${tone})`} stopOpacity=".6" />
-            <stop offset="1" stopColor={`var(--color-${tone})`} stopOpacity="0" />
-          </radialGradient>
-        ))}
-        <filter id={`${id}soft`} x="-5%" y="-20%" width="110%" height="140%">
-          <feGaussianBlur stdDeviation="1.4" />
+        <radialGradient id={`${uid}hearth`}>
+          <stop offset="0" stopColor="var(--scene-lamp)" stopOpacity=".16" />
+          <stop offset="1" stopColor="var(--scene-lamp)" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={`${uid}streak`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="var(--scene-lamp)" stopOpacity=".45" />
+          <stop offset="1" stopColor="var(--scene-lamp)" stopOpacity="0" />
+        </linearGradient>
+        <filter id={`${uid}soft`} x="-5%" y="-20%" width="110%" height="140%">
+          <feGaussianBlur stdDeviation="1.3" />
         </filter>
-        <filter id={`${id}rim`} x="-5%" y="-50%" width="110%" height="200%">
-          <feGaussianBlur stdDeviation="2" />
-        </filter>
-        <filter id={`${id}glow`} x="-5%" y="-50%" width="110%" height="200%">
-          <feGaussianBlur stdDeviation="5" />
+        <filter id={`${uid}haze`} x="-10%" y="-60%" width="120%" height="220%">
+          <feGaussianBlur stdDeviation="4" />
         </filter>
       </defs>
 
-      {/* Spires: softest and palest, moonlight caught along their whole crest (a soft glow, so it has no ends) */}
-      <g filter={`url(#${id}soft)`}>
-        <path d={fill(DISTANT)} fill={`url(#${id}distant)`} />
+      {/* Peaks, two ranges deep: the back one palest and half lost in the sky's haze, moonlight along the slopes
+          turned toward it */}
+      <g filter={u('soft')}>
+        <path d={land.back} fill={u('back')} />
+        <path d={land.backRim} fill="none" stroke="var(--land-rim)" strokeWidth="1.4" strokeLinecap="round" opacity={lit(0.25)} />
       </g>
-      <path d={polyline(DISTANT)} fill="none" stroke="var(--land-rim)" strokeWidth="2.5" opacity=".14" filter={`url(#${id}rim)`} />
-      <path d={fill(FAR)} fill={`url(#${id}far)`} />
-      <path d={polyline(FAR)} fill="none" stroke="var(--land-rim)" strokeWidth="2" opacity=".08" filter={`url(#${id}rim)`} />
-      <path d={MAST} fill="none" stroke="var(--land-signal)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      <rect y="128" width={W} height="70" fill={`url(#${id}mist)`} />
-
-      <path d={fill(SIGNAL)} fill={`url(#${id}signal)`} />
-      {/* The scope trace along the envelope: a soft bloom under a crisp line that draws in, then a spark of signal travels it */}
-      <path d={polyline(SIGNAL)} fill="none" strokeWidth="6" className="scene-trace" opacity=".35" filter={`url(#${id}glow)`} />
-      <path d={polyline(SIGNAL)} pathLength={1} fill="none" strokeWidth="1.6" strokeLinejoin="round" className="scope-trace scene-trace" vectorEffect="non-scaling-stroke" />
-      <g style={{ '--len': `${SIGNAL_LENGTH}px` } as CSSProperties}>
-        <path d={polyline(SIGNAL)} fill="none" strokeWidth="7" strokeLinecap="round" className="scene-pulse-tail" />
-        <path d={polyline(SIGNAL)} fill="none" strokeWidth="4" strokeLinecap="round" className="scene-pulse" />
+      <g filter={u('soft')}>
+        <path d={land.distant} fill={u('distant')} />
+        <path d={land.distantRim} fill="none" stroke="var(--land-rim)" strokeWidth="1.4" strokeLinecap="round" opacity={lit(0.22)} />
       </g>
-      <rect y="196" width={W} height="60" fill={`url(#${id}fog)`} opacity=".55" />
-      {/* Solid from 242 down, below the near ridge's lowest dip (~266), so no lighter fog shows between them */}
-      <rect y="200" width={W} height="68" fill={`url(#${id}dusk)`} />
+      <rect y="40" width={W} height="90" fill={u('mist')} opacity=".8" />
 
-      {/* The hamlet's light spills over the valley behind it, backlighting the roofs */}
-      <ellipse className="scene-lamps" cx="800" cy="246" rx="190" ry="44" fill={`url(#${id}hamlet)`} />
-      <path d={fill(NEAR) + WOODS + HAMLET.map((c) => c.body).join('')} fill="var(--land-near)" />
-      <path d={fill(KNOLL)} fill={`url(#${id}knoll)`} />
+      {/* The cliffs: wooded along their crest, the beacon's mast, the waterfall down their face */}
+      <path d={land.far} fill={u('far')} />
+      <path d={land.farRim} fill="none" stroke="var(--land-rim)" strokeWidth="1.2" strokeLinecap="round" opacity={lit(0.2)} />
+      {land.fall && (
+        <path
+          d={`M${land.fall.x - land.fall.width / 2},${land.fall.top}L${land.fall.x + land.fall.width / 2},${land.fall.top}L${land.fall.x + land.fall.width * 0.7},${land.fall.bottom}L${land.fall.x - land.fall.width * 0.7},${land.fall.bottom}Z`}
+          fill={u('fall')}
+        />
+      )}
+      <path d={land.mast} fill="none" stroke="var(--land-signal)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <g filter={u('haze')}>
+        <path d={land.mists.back[0]} fill={u('wisp')} />
+        <path d={land.mists.back[1]} fill={u('wisp')} />
+      </g>
 
+      <path d={land.signalFill} fill={u('signal')} />
+      {/* The trace's bloom, static and quiet (§4/§9: no filter on anything that animates) */}
+      <use href={`#${sig}`} fill="none" strokeWidth="4" className="scene-trace" opacity=".16" filter={u('haze')} />
+
+      {/* Wooded banks running down to the water, their tree line sinking into a wisp */}
+      <path d={land.banks} fill={u('bank')} />
+      <path d={land.banksRim} fill="none" stroke="var(--land-rim)" strokeWidth="1" strokeLinecap="round" opacity={lit(0.16)} />
+      <g filter={u('haze')}>
+        <path d={land.mists.back[2]} fill={u('wisp')} />
+        <path d={land.mists.back[3]} fill={u('wisp')} />
+      </g>
+
+      {/* The lake: still water from its line down, its only edges the banks; the moon and the shore lamps on it */}
+      <rect y={lake.y} width={W} height={H - lake.y + 2} fill={u('lake')} />
+      <ellipse cx={lake.moonX} cy={lake.y + 10} rx="150" ry="10" fill={u('moonpool')} opacity={lit(0.85)} />
+      <path d={lake.ripples} stroke="var(--land-rim)" strokeWidth=".8" strokeLinecap="round" opacity={lit(0.18)} />
       <g className="scene-lamps">
-        {HAMLET.map(({ window: [x, y] }, i) => (
-          <Light key={x} id={id} at={[x + 1.5, y + 1.5]} r={1.3} tone="tube" delay={i * 0.6} />
-        ))}
-        <Light id={id} at={MAST_TOP} r={2.2} tone="phantom" />
+        {land.shore.map(([x], i) => <rect key={i} x={x - 1.5} y={lake.y + 1} width="3" height="24" rx="1.5" fill={u('streak')} />)}
       </g>
+      <g filter={u('haze')}>
+        <path d={land.mists.front[0]} fill={u('wisp')} opacity=".7" />
+      </g>
+
+      {/* Warm pools of lamplight tie the windows to the ground around them */}
+      <g className="scene-lamps">
+        <ellipse cx={land.glowX} cy={land.hamlet[0]?.ground ?? 240} rx="180" ry="44" fill={u('hearth')} />
+      </g>
+      <path d={land.houses} fill="var(--land-signal)" />
+      <path d={land.roofs} fill="none" stroke="var(--land-rim)" strokeWidth="1" strokeLinecap="round" opacity={lit(0.28)} />
+      <path d={land.near + land.woods} fill={u('near')} />
+      <path d={land.nearRim} fill="none" stroke="var(--land-rim)" strokeWidth="1" strokeLinecap="round" opacity={lit(0.14)} />
     </svg>
+  )
+}, sameScene)
+
+/** The framing tree, nearest of all, so it stands in front of the trace too: lit at its crown, rimmed by the moon. */
+const Foreground = memo(function Foreground({ sceneId, fp, zone }: LandProps) {
+  const { land } = sceneOf(sceneId, fp, zone)
+  const uid = useId().replace(/[^\w-]/g, '')
+  return (
+    <svg {...svgProps} style={{ contain: 'strict' }}>
+      <defs>
+        <linearGradient id={`${uid}tree`} gradientUnits="userSpaceOnUse" x1="0" y1="70" x2="0" y2="300">
+          <stop offset="0" stopColor="var(--land-far)" />
+          <stop offset=".5" stopColor="var(--land-valley)" />
+          <stop offset="1" stopColor="var(--land-near)" />
+        </linearGradient>
+      </defs>
+      <path d={land.treeRim} fill="var(--land-rim)" opacity={Math.min(1, 0.2 * land.light)} />
+      <path d={land.tree} fill={`url(#${uid}tree)`} />
+    </svg>
+  )
+}, sameScene)
+
+/** The lights: the windows in two groups breathing out of step, and the beacon blooming, each group one HTML layer
+ *  over the terrain whose opacity is all that animates, so the compositor runs them and no frame repaints the land. */
+const Lights = memo(function Lights({ sceneId, fp, zone }: LandProps) {
+  const { land } = sceneOf(sceneId, fp, zone)
+  const uid = useId().replace(/[^\w-]/g, '')
+  const lamps = [
+    ...land.hamlet.map(({ window, far }) => ({ at: window, r: far ? 1.2 : 1.6 })),
+    ...land.shore.map((at) => ({ at, r: 1.5 })),
+  ]
+  const layers = [
+    { className: 'scene-lamp', style: undefined, lights: lamps.filter((_, i) => i % 2 === 0), tone: 'lamp' as const },
+    { className: 'scene-lamp', style: { animationDuration: '5.3s', animationDelay: '-2.2s' }, lights: lamps.filter((_, i) => i % 2 === 1), tone: 'lamp' as const },
+    { className: 'scene-beacon-light', style: undefined, lights: [{ at: land.beacon, r: 2.2 }], tone: 'beacon' as const },
+  ]
+  return layers.map(({ className, style, lights, tone }, i) => (
+    <div key={i} className={`scene-lamps ${className} absolute inset-0`} style={style}>
+      <svg {...svgProps}>
+        <defs>
+          <radialGradient id={`${uid}${i}glow-${tone}`}>
+            <stop offset="0" stopColor={`var(--scene-${tone})`} stopOpacity=".55" />
+            <stop offset="1" stopColor={`var(--scene-${tone})`} stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        {lights.map(({ at, r }) => <Light key={`${at}`} id={`${uid}${i}`} at={at} r={r} tone={tone} />)}
+      </svg>
+    </div>
+  ))
+}, sameScene)
+
+/** The scope trace, drawing in once: the only thing in an `<svg>` that moves, and only on arrival. It holds the signal
+ *  path the bloom and the spark draw with `<use>`. */
+function Trace({ sceneId, fp, zone, sig }: LayerProps) {
+  const { land } = sceneOf(sceneId, fp, zone)
+  return (
+    <svg {...svgProps}>
+      <defs>
+        <path id={sig} d={land.signal} />
+      </defs>
+      <path d={land.signal} key={fp ? 'f' : 'd'} pathLength={1} fill="none" strokeWidth="1.25" strokeLinejoin="round" className="scope-trace scene-trace" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
+const pct = (v: number) => `${v * 100}%`
+/** A waterfall thread's dash period, in land units. */
+const DASH = 14
+
+/** What moves on the land, as HTML over it (§9): a box laid exactly over the land's drawing (the `xMidYMax slice` of its
+ *  viewBox, through container units), so anything inside can sit in land units as percentages and move with
+ *  `translate` alone. The waterfall's threads fall; the spark runs the ridge. */
+function Stage({ sceneId, fp, zone, sig }: LayerProps) {
+  const { land } = sceneOf(sceneId, fp, zone)
+  const { fall } = land
+  const height = H - TOP
+  return (
+    <div className="absolute bottom-0 left-1/2" style={{ width: `max(100cqw, 100cqh * ${W / height})`, aspectRatio: `${W} / ${height}`, transform: 'translateX(-50%)' }}>
+      {fall && (() => {
+        const w = fall.width * 1.4
+        const tall = fall.bottom - 2 - fall.top
+        const run = Math.ceil(tall / DASH) * DASH
+        return (
+          <div className="absolute overflow-hidden" style={{ left: pct((fall.x - w / 2) / W), top: pct((fall.top - TOP) / height), width: pct(w / W), height: pct(tall / height) }}>
+            <div className="scene-fall absolute inset-x-0 top-0" style={{ height: pct((2 * run) / tall), animationDuration: `${(1.6 * run) / 28}s` }}>
+              <svg viewBox={`0 0 ${w} ${2 * run}`} preserveAspectRatio="none" className="size-full">
+                {[-0.25, 0.1, 0.32].map((f) => <line key={f} x1={w / 2 + f * fall.width} y1={0} x2={w / 2 + f * fall.width} y2={2 * run} />)}
+              </svg>
+            </div>
+          </div>
+        )
+      })()}
+      <div className="scene-pulse absolute inset-y-0 left-0 w-[2.5%] overflow-hidden">
+        <div className="absolute inset-y-0 left-0 w-[4000%]">
+          <svg viewBox={VIEW_BOX} preserveAspectRatio="none" className="size-full" fill="none" strokeLinecap="round">
+            <use href={`#${sig}`} strokeWidth="5" opacity=".2" />
+            <use href={`#${sig}`} strokeWidth="2.5" opacity=".85" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Sky lanterns rising slowly from the valley, warm, in front of the land; night-only, with the rest of `.scene-lamps`. */
+function Lanterns({ sceneId, fp, zone }: LandProps) {
+  const { land } = sceneOf(sceneId, fp, zone)
+  return (
+    <div aria-hidden="true" className="scene-lamps pointer-events-none absolute inset-0 overflow-hidden">
+      {land.lanterns.map((l, i) => (
+        <span
+          key={i}
+          className="scene-lantern absolute"
+          style={{ left: `${(l.x / W) * 100}%`, bottom: `${((H - 236) / (H - TOP)) * 100}%`, '--duration': `${l.duration}s`, '--rest': `${-25 - (l.delay % 40)}px`, animationDelay: `${-l.delay}s` } as CSSProperties}
+        />
+      ))}
+    </div>
+  )
+}
+
+/** The land fills its box's width and stands taller than it, bottom-aligned, so its peaks reach into the sky above;
+ *  behind whatever floats there (the signal path), in front of the sky and the horizon's glow. */
+export function Land({ sceneId, fp, zone, className }: LandProps) {
+  const sig = `${useId().replace(/[^\w-]/g, '')}sig`
+  return (
+    <div className={className}>
+      {/* A size container, so the stage can match the land's drawing in container units */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 overflow-hidden [container-type:size]" style={{ height: `${((H - TOP) / H) * 100}%` }}>
+        <Terrain sceneId={sceneId} fp={fp} zone={zone} sig={sig} />
+        <Lights sceneId={sceneId} fp={fp} zone={zone} />
+        <Trace sceneId={sceneId} fp={fp} zone={zone} sig={sig} />
+        <Stage sceneId={sceneId} fp={fp} zone={zone} sig={sig} />
+        <Foreground sceneId={sceneId} fp={fp} zone={zone} />
+        <Lanterns sceneId={sceneId} fp={fp} zone={zone} />
+      </div>
+    </div>
   )
 }

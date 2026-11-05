@@ -2,6 +2,7 @@ import type { LinkOptions } from '@tanstack/react-router'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { createContext, use, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 
+import type { Fingerprint } from '#/server/loudness'
 import { fileUrl } from '../../lib/files'
 import { drive, tap } from './signal'
 
@@ -16,10 +17,14 @@ export type Playable = {
   day: string
   released: boolean
   release: string
+  releaseId: string
   artworkId: string | null
   link: LinkOptions
   /** The song's loudness for its LoudnessWave (the meter's 256 bars, its length, where it's loudest); null until measured. */
   wave: Wave | null
+  /** Its own night (1.3.0): the track's id as the scene's seed, and its fingerprint (null before anything's measured). */
+  sceneId: string
+  scene: Fingerprint | null
 }
 
 export type Wave = { bars: number[]; ms: number; loudestMs: number | null }

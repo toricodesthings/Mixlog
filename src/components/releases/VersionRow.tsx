@@ -23,9 +23,8 @@ import { UploadRow } from '../uploads/UploadRow'
 import type { Target } from '../uploads/use-lane-upload'
 import type { TrackState } from './Lane'
 import { LaneMenu } from './LaneMenu'
-import { FINAL_ICON, KIND_ICON, formatOf, playableOf, versionLabel } from './stacks'
+import { FINAL_ICON, KIND_ICON, formatOf, nameOf, playableOf, versionLabel } from './stacks'
 
-const ext = /\.[^.]+$/
 
 /**
  * One version, read left to right in the order you'd ask: Play, which one, what changed, then quiet columns (a test's
@@ -47,7 +46,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
   const live = player.item?.versionId === version.id
   const label = versionLabel(version, section)
   // A mix or master is named by what changed; an alternate by its kind (and number, in Upcoming).
-  const name = lane ? version.note || version.filename.replace(ext, '') : label
+  const name = lane ? nameOf(version) : label
   const Mark = version.is_final ? FINAL_ICON : (KIND_ICON[version.kind] ?? File)
   const target = (version.is_final ? 'final' : version.kind) as Target
   const metersOpen = audio && !compact && meters.open === version.id

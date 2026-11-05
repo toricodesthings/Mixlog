@@ -8,7 +8,7 @@ import wasm from '../../meter/pkg/mixlog_meter_bg.wasm?module'
 import { db } from '#/server/db'
 import { AUDIO_KINDS } from '#/server/files'
 import { report } from '#/server/log'
-import { storeAnalysis } from '#/server/releases'
+import { stampScenes, storeAnalysis } from '#/server/releases'
 import { METER, analysisInput, type Analysis } from '#/server/loudness'
 import { versions } from '#/server/schema'
 
@@ -80,6 +80,12 @@ export async function measureMissing(limit = 10): Promise<number> {
     } catch (error) {
       report('warn', 'measuring failed', error, { versionId: id })
     }
+  }
+  // A night for every track from before 1.3.0 (and one measured tonight whose track still has none).
+  try {
+    await stampScenes()
+  } catch (error) {
+    report('warn', 'stamping scenes failed', error)
   }
   return measured
 }

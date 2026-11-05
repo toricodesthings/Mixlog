@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { CalendarClock, Disc3, Images, ListMusic, LogOut, ScrollText, Sparkles, type LucideIcon } from 'lucide-react'
-import { useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useState, type CSSProperties } from 'react'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { moveToUpcoming } from '#/server/releases'
@@ -17,9 +17,10 @@ import { MetaLine } from '../shared/MetaLine'
 import { ArtworkButton } from './ArtworkButton'
 import { dateLabel, releaseFacts } from './browse'
 import type { ReleaseData } from './loaders'
-import { MoveToReleasesDialog, useMoveParam } from './MoveToReleasesDialog'
-import { DETAILS_FORM } from './ReleaseDetailsForm'
-import { FORMAT_LABEL, releaseLink, SECTIONS, sectionCrumb, sectionOf, type Part, type Section } from './sections'
+import { DETAILS_FORM, FORMAT_LABEL, releaseLink, SECTIONS, sectionCrumb, sectionOf, useMoveParam, type Part, type Section } from './sections'
+
+// Its code (and the Lane it shows) loads after the page, not before it
+const MoveToReleasesDialog = lazy(() => import('./MoveToReleasesDialog').then((m) => ({ default: m.MoveToReleasesDialog })))
 
 const PARTS: { part: Part; label: string; icon: LucideIcon }[] = [
   { part: 'summary', label: 'Summary', icon: Sparkles },
@@ -46,7 +47,7 @@ export function ReleaseLayout(data: ReleaseData) {
   const oneTrack = section === 'upcoming' && (/\/tracks\/[^/]+$/.test(path) || (release.format === 'single' && path.endsWith('/tracks')))
   const count = release.format === 'single' ? null : tracks.length
   const slide = useHoverSlide('rounded-xl bg-accent-dim')
-  const room = useRoomStyle(release.title, release.artwork_id)
+  const room = useRoomStyle(release.id, release.artwork_id)
   const cover = <ArtworkButton releaseId={release.id} title={release.title} artworkId={release.artwork_id} onFailure={setArtFailure} />
   const facts = artFailure ? (
     <p role="alert" className="truncate text-[13px] text-feedback-error">
@@ -149,7 +150,11 @@ export function ReleaseLayout(data: ReleaseData) {
         <Outlet />
       </Page>
       <div id={DOCK} className="contents" />
-      {section === 'upcoming' && <MoveToReleasesDialog {...data} />}
+      {section === 'upcoming' && (
+        <Suspense>
+          <MoveToReleasesDialog {...data} />
+        </Suspense>
+      )}
     </div>
   )
 }

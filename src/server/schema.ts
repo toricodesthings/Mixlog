@@ -2,7 +2,7 @@
 // here; never hand-write one. The product model from the manifesto: Release, Track, Version, Note, plus Details.
 // Times are ISO-8601 UTC text, days `YYYY-MM-DD` (see lib/time.ts). IDs are crypto.randomUUID().
 import { sql } from 'drizzle-orm'
-import type { Analysis } from '#/server/loudness'
+import type { Analysis, Fingerprint } from '#/server/loudness'
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 /** The one way an Instant is written (ISO 8601 UTC with milliseconds, `2026-11-03T02:14:09.512Z`): now, or `days`
@@ -23,6 +23,9 @@ export const releases = sqliteTable(
     createdAt: createdAt(),
     // Released is a stamp: set when a release goes out, it moves from Upcoming to Releases.
     releasedAt: text('released_at'),
+    // The release's night (1.3.0): its first measured song's fingerprint (loudness.ts), stamped once by storeAnalysis
+    // or the cron's stampScenes, WHERE scene IS NULL. An EP or album's Summary reads this; a single reads its track's.
+    scene: text('scene', { mode: 'json' }).$type<Fingerprint>(),
   },
   (t) => [check('releases_format', sql`${t.format} IN ('single', 'ep', 'album')`)],
 )
@@ -42,6 +45,8 @@ export const tracks = sqliteTable('tracks', {
   credits: text('credits'), // JSON: [{ "role": "Producer", "name": "…" }]
   createdAt: createdAt(),
   updatedAt: text('updated_at').notNull().default(stampNow),
+  // The track's night (1.3.0): its own first measured mix or master's fingerprint. See `releases.scene`.
+  scene: text('scene', { mode: 'json' }).$type<Fingerprint>(),
 })
 
 export const VERSION_KINDS = ['mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'license', 'other'] as const

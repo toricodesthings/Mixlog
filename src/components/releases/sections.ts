@@ -1,6 +1,20 @@
-import type { LinkOptions } from '@tanstack/react-router'
+import { useNavigate, useSearch, type LinkOptions } from '@tanstack/react-router'
 
 import type { Crumb } from '../layout/Page'
+
+/** The details form's id, so Save and exit (in the release's panel) can submit it from outside. */
+export const DETAILS_FORM = 'release-details'
+
+/** `?move` opens Move to Releases over the release, so Back closes it. Here, not in the dialog, so the release's panel
+ *  can open it without loading the dialog's code before it's needed. */
+export function useMoveParam() {
+  const navigate = useNavigate()
+  return {
+    open: useSearch({ strict: false }).move === true,
+    show: () => navigate({ to: '.', search: (prev: { move?: true }) => ({ ...prev, move: true as const }), resetScroll: false }),
+    close: () => navigate({ to: '.', search: ({ move: _, ...rest }: { move?: true }) => rest, resetScroll: false }),
+  }
+}
 
 /** A release is upcoming until it's stamped released; then it's a done deal under Releases. */
 export type Section = 'upcoming' | 'released'

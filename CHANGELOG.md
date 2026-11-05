@@ -6,6 +6,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- Every song has its own night: a moonlit valley drawn from how it sounds, the same on every visit.
+- Songs measured before this update get their night the first time their release opens.
+
+### Changed
+
+- The listening room shows the playing song's own night.
+
+### Fixed
+
+- The hamlet's windows, the beacon and the moon take the artwork's colour instead of a fixed one.
+- A release's land now blends into the page below it, lit along the horizon.
+- A grey cover makes a grey room; a release's colours follow how colourful its artwork really is.
+
 ## [1.2.1] - 2026-11-04
 
 ### Changed
