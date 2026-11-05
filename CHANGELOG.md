@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-05
+
 ### Added
 
 - Every song has its own night: a moonlit valley drawn from how it sounds, the same on every visit.
