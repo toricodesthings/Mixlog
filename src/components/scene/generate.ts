@@ -1,10 +1,10 @@
 import { DEFAULT_FINGERPRINT, type Fingerprint } from '#/server/loudness'
 
 /*
- * A song's night, as plain data (1.3.0): `sceneOf(id, fingerprint, zone)` reads two stable inputs — the id (an FNV-1a
- * hash seeds everything random: the peaks, the woods, the village, the stars, the clouds, the moon's spot and phase,
- * the lanterns) and the fingerprint (the song's first measured mix or master, `server/loudness.ts`: shapes the
- * character — the land's height and relief, how wide the lake is, the weather, the ridge's own contour) — and returns
+ * A song's night, as plain data (1.3.0): `sceneOf(id, fingerprint, zone)` reads two stable inputs — the fingerprint
+ * (the song's first measured mix or master, `server/loudness.ts`: it seeds and shapes the whole land, from where the
+ * lake, the village, the tree and the woods sit to the land's height, the lake's width and the ridge's own contour) and
+ * the id (an FNV-1a hash seeding only the sky's detail: the stars, the clouds' slots, the lanterns) — and returns
  * the land and sky as strings and numbers. `Land` and `Sky` only render this; nothing here imports React, so it's
  * unit-testable and memoisable.
  *
@@ -18,7 +18,7 @@ import { DEFAULT_FINGERPRINT, type Fingerprint } from '#/server/loudness'
  * Bump `SCENE` with any change that moves a pixel; every night redraws once, on purpose.
  */
 
-export const SCENE = 4
+export const SCENE = 5
 
 export type Pt = readonly [number, number]
 export type MoonZone = { x: [number, number]; y: [number, number] }
@@ -331,19 +331,22 @@ function buildScene(id: string, fp: Fingerprint | null, zone: MoonZone): SceneMo
     phase: dyn > 0.55 ? 'full' : dyn > 0.3 ? 'gibbous' : 'crescent',
   }
 
-  // Peaks: rounded summits rising into the headroom, taller the louder the song, in a V that frames the valley
-  // (tallest toward the edges, lowest behind the middle); a dynamic song gives each a shoulder, a compressed one
+  // Peaks: rounded summits rising into the headroom, taller the louder the song, in the song's profile (a V that
+  // frames the valley, a slope climbing toward one side, or between); a dynamic song gives each a shoulder, a compressed one
   // broad single domes. Keys stay well apart, so the curve rounds every top.
   // Each summit leans (its saddles off-centre) and most carry a shoulder on one flank, so no two read alike.
+  // The range's profile is the song's own: anywhere from a V framing the valley to a slope climbing toward one side
+  const [vee, climb] = [rand(), rand() < 0.5 ? -1 : 1]
+  const profile = (u: number) => vee * Math.abs(u - 0.5) * 2 + (1 - vee) * (climb === 1 ? u : 1 - u)
   const range = (count: number, lift: number, scale: number, offset: number) => {
     const keys: Pt[] = [[-40, 78 + rand() * 16]]
     for (let i = 0; i < count; i++) {
       const u = (i + 0.5 + offset) / count
       // Clear of the last key by enough that a left shoulder still falls after the saddle: keys always run left to right
       const x = Math.max(keys[keys.length - 1][0] + 220, (u + (rand() - 0.5) * 0.1) * W)
-      // The V that frames the valley, plus a crown over the song's loudest moment
+      // The song's profile, plus a crown over its loudest moment
       const crown = 40 * Math.exp(-(((u - peak) / 0.16) ** 2))
-      const rise = (lift + 62 * Math.abs(u - 0.5) * 2 + crown + (rand() - 0.5) * 26 * rough) * relief * scale
+      const rise = (lift + 62 * profile(u) + crown + (rand() - 0.5) * 26 * rough) * relief * scale
       if (i > 0) keys.push([keys[keys.length - 1][0] + (x - keys[keys.length - 1][0]) * (0.38 + rand() * 0.24), 62 + rand() * 24])
       const shoulder = rand() < 0.35 + dyn * 0.5 ? (rand() < 0.5 ? -1 : 1) : 0
       if (shoulder === -1) keys.push([x - 95, 40 - rise * (0.45 + rand() * 0.2)])
@@ -362,7 +365,7 @@ function buildScene(id: string, fp: Fingerprint | null, zone: MoonZone): SceneMo
   // The cliffs: the far range, wooded in a few runs along its crest; key spacing grows with length, its swell with
   // dynamics. The beacon stands on it inside the phone-safe core; most nights a waterfall leaves a raised stretch on
   // the side away from it.
-  const beaconX = Math.max(760, Math.min(1160, 760 + 400 * peak))
+  const beaconX = 760 + 400 * Math.max(0, Math.min(1, peak + (rand() - 0.5) * 0.6))
   const beaconSide: -1 | 1 = beaconX < 960 ? -1 : 1
   const fallX = 960 - beaconSide * (130 + rand() * 110)
   const hasFall = rand() < 0.75
@@ -379,9 +382,11 @@ function buildScene(id: string, fp: Fingerprint | null, zone: MoonZone): SceneMo
     `M${pt(beaconFoot[0] - 6, beaconFoot[1])}L${pt(...beaconTop)}L${pt(beaconFoot[0] + 6, beaconFoot[1])}` +
     [0.3, 0.55, 0.8].map((f) => { const up = beaconHeight * f; const half = 6 * (1 - f); return `M${pt(beaconFoot[0] - half, beaconFoot[1] - up)}L${pt(beaconFoot[0] + half, beaconFoot[1] - up)}` }).join('')
   let far = fill(FAR)
-  for (const centre of [480, 1440]) {
-    const cx = centre + (rand() - 0.5) * 200
-    if (Math.abs(cx - beaconX) > 120 && (!hasFall || Math.abs(cx - fallX) > 160)) far += grove(FAR, cx, 12, 200, 11, seed ^ Math.round(cx))
+  // One to three woods along the crest, each its own size, wherever the song puts them
+  for (let k = 0, n = 1 + Math.floor(rand() * 3); k < n; k++) {
+    const cx = ((k + 0.2 + rand() * 0.6) / n) * W
+    const spread = 140 + rand() * 140
+    if (Math.abs(cx - beaconX) > 120 && (!hasFall || Math.abs(cx - fallX) > 160)) far += grove(FAR, cx, Math.round(spread / 17), spread, 9 + rand() * 5, seed ^ Math.round(cx))
   }
 
   // The signal ridge: the song's own loudness, 24 points → 13 keys, its range stretched over y 142–210, but never
@@ -394,30 +399,38 @@ function buildScene(id: string, fp: Fingerprint | null, zone: MoonZone): SceneMo
   const SIGNAL = ridge(signalKeys, [[300, 10], [110, 2]], seed ^ 0x33, 2, 6).map(([x, y]) => [x, Math.min(y, WATER - 8)] as Pt)
   const fall: Fall | null = hasFall ? { x: fallX, top: yAt(FAR, fallX) + 3, bottom: yAt(SIGNAL, fallX), width: 6 + width * 8 } : null
 
-  // The lake fills the valley's floor between the near banks, wider the wider the mix.
+  // The village takes a bank of its own, and the valley (the lake and everything framing it) slides away from it,
+  // giving the village room and keeping its heart inside a phone's crop. The lake is wider the wider the mix.
+  const hamletSide: -1 | 1 = rand() < 0.5 ? -1 : 1
+  const vx = 960 - hamletSide * rand() * 180
   const half = 120 + 170 * width
-  const [lx0, lx1] = [960 - half, 960 + half]
+  const [lx0, lx1] = [vx - half, vx + half]
+  /** The outermost key of a bank always reaches past the band's edge, wherever the valley sits. */
+  const edge = (dir: -1 | 1) => (dir === -1 ? -60 : W + 60)
 
   // Mid banks: wooded hills in front of the ridge, following it from below (never hiding its line) and running down
   // to the water either side of the lake.
   const bank = (dir: -1 | 1) => {
-    const edge = 960 + dir * (half - 40)
-    const keys: Pt[] = [[960 + dir * 1000, 200], [960 + dir * 640, 196], [960 + dir * 380, 206], [edge + dir * 60, WATER - 8], [edge - dir * 40, WATER + 14]]
-      .map(([x, y]) => [x, Math.max(y + (rand() - 0.5) * 4, Math.min(yAt(SIGNAL, x) + 22, WATER + 14))] as Pt)
+    const shore = vx + dir * (half - 40)
+    // The crest echoes the light's path a step below it (deep enough that the woods' tips stay under the trace), then
+    // runs down to the water
+    const echo: Pt[] = []
+    for (let x = edge(dir); dir * (x - shore - dir * 200) > 0; x -= dir * 70) echo.push([x, Math.min(yAt(SIGNAL, x) + 24 + (rand() - 0.5) * 3, WATER - 8)])
+    const keys: Pt[] = [...echo, [shore + dir * 60, Math.max(WATER - 8, echo[echo.length - 1][1])], [shore - dir * 40, WATER + 14]]
     const line = ridge(dir === -1 ? keys : [...keys].reverse(), [[120, 1.5]], seed ^ (0x4b + dir), 1.5)
     const [x0, x1] = [line[0][0], line[line.length - 1][0]]
     return { line, d: `${polyline(line)}L${pt(x1, H + 2)}L${pt(x0, H + 2)}Z` }
   }
   const banksWE = [bank(-1), bank(1)]
-  const banks = banksWE.map((b) => b.d).join('') + banksWE.flatMap(({ line }, i) => [0.3, 0.68].map((f) => {
+  const banks = banksWE.map((b) => b.d).join('') + banksWE.flatMap(({ line }, i) => [0.18 + rand() * 0.22, 0.56 + rand() * 0.24].map((f) => {
     const x = line[0][0] + (line[line.length - 1][0] - line[0][0]) * (i === 0 ? f : 1 - f)
     return grove(line, x, 8 + Math.floor(rand() * 4), 130 + rand() * 40, 15 + rand() * 4, seed ^ Math.round(x * 3))
   })).join('')
 
   // The near banks frame the lake in a matched V, the same rise either side.
   const nearBank = (dir: -1 | 1) => {
-    const keys: Pt[] = [[960 + dir * 1000, 222], [960 + dir * 760, 214], [960 + dir * (half + 260), 220], [960 + dir * (half + 120), 238], [960 + dir * (half + 30), 262], [960 + dir * (half - 20), H + 4]]
-      .map(([x, y]) => [x, y + (rand() - 0.5) * 3] as Pt)
+    const keys: Pt[] = [[edge(dir), 222], [vx + dir * (680 + rand() * 160), 214], [vx + dir * (half + 230 + rand() * 60), 220], [vx + dir * (half + 120), 238], [vx + dir * (half + 30), 262], [vx + dir * (half - 20), H + 4]]
+      .map(([x, y], i) => [x, y + (rand() - 0.5) * (i < 2 ? 14 : 3)] as Pt)
     return ridge(dir === -1 ? keys : [...keys].reverse(), [[140, 1.5]], seed ^ (0x77 + dir), 1.5)
   }
   const [NEAR_W, NEAR_E] = [nearBank(-1), nearBank(1)]
@@ -425,21 +438,33 @@ function buildScene(id: string, fp: Fingerprint | null, zone: MoonZone): SceneMo
 
   // Houses: a village on the hamlet's bank, loosely spread down its slope toward the water; a farmhouse or two on the
   // other bank; one far cottage on a mid bank. Each stands on its ground, its base just under the slope's lower edge.
-  const hamletSide = -beaconSide as -1 | 1
   const villageLine = hamletSide === -1 ? NEAR_W : NEAR_E
   const otherLine = hamletSide === -1 ? NEAR_E : NEAR_W
   const spots: [readonly Pt[], number, boolean][] = []
-  let u = half + 70 + rand() * 20
-  for (let k = 0, n = 3 + Math.round(loud * 3); k < n; k++) {
-    spots.push([villageLine, 960 + hamletSide * u, false])
-    u += 38 + rand() * 46 + (k === 2 ? 60 : 0)
+  // The village's own shape: tight or loose, its gap (a lane, a green) after any house
+  let u = half + 60 + rand() * 40
+  const [pitch, gapAt] = [30 + rand() * 30, 1 + Math.floor(rand() * 4)]
+  for (let k = 0, n = 3 + Math.round(loud * 2 + rand() * 2); k < n; k++) {
+    spots.push([villageLine, vx + hamletSide * u, false])
+    u += pitch + rand() * 40 + (k === gapAt ? 50 + rand() * 40 : 0)
   }
-  spots.push([otherLine, 960 - hamletSide * (half + 150 + rand() * 120), false])
-  if (rand() < 0.6) spots.push([otherLine, 960 - hamletSide * (half + 420 + rand() * 120), false])
-  const midBank = banksWE[hamletSide === -1 ? 1 : 0].line
-  spots.push([midBank, 960 - hamletSide * (half + 120 + rand() * 80), true])
-  // The beacon keeper's hut at its foot: always inside the phone-safe core, so a phone sees a lit window too
-  spots.push([FAR, beaconX + hamletSide * 30, true])
+  const villageEnd = u
+  // One to three farmhouses scattered on the other bank, a cottage or two up on the mid banks
+  for (let k = 0, n = 1 + Math.floor(rand() * 3), at = half + 110; k < n; k++) {
+    at += rand() * 140
+    spots.push([otherLine, vx - hamletSide * at, false])
+    at += 120 + rand() * 120
+  }
+  // Each cottage keeps clear of every house below it, so none reads as perched on another's roof
+  for (let k = 0, n = rand() < 0.4 ? 2 : 1; k < n; k++) {
+    const dir = k ? hamletSide : -hamletSide
+    let x = vx + dir * (half + 100 + rand() * 160)
+    for (let guard = 0; guard < 8 && spots.some(([, sx]) => Math.abs(sx - x) < 50); guard++) x += dir * 50
+    spots.push([banksWE[dir === -1 ? 0 : 1].line, x, true])
+  }
+  // The beacon keeper's hut at its foot, on the side toward the middle: always inside the phone-safe core, so a phone
+  // sees a lit window too
+  spots.push([FAR, beaconX - beaconSide * 30, true])
   let houses = ''
   let roofs = ''
   const hamlet: House[] = spots.map(([line, x, isFar], i) => {
@@ -457,17 +482,24 @@ function buildScene(id: string, fp: Fingerprint | null, zone: MoonZone): SceneMo
   })
 
   // Lanterns on posts at the water's edge either side, their light laid on the lake.
-  const shore: Pt[] = [[lx0 + 30, WATER - 6], [lx1 - 30, WATER - 6]]
+  // Each end has its lamp most nights, never neither; a long lake sometimes a jetty lamp between.
+  const ends = rand()
+  const shore: Pt[] = [...(ends < 0.8 ? [[lx0 + 30, WATER - 6] as Pt] : []), ...(ends > 0.2 ? [[lx1 - 30, WATER - 6] as Pt] : [])]
+  if (half > 200 && rand() < 0.5) shore.push([vx + (rand() - 0.5) * half, WATER - 3])
 
   // Woods on both near banks, matched, kept off the village; the framing tree across from it.
+  // Woods beyond the village's last house on its bank, and wherever the song puts them on the other.
+  const woodsAt = (dir: -1 | 1) => vx + dir * (dir === hamletSide ? villageEnd + 100 + rand() * 80 : half + 220 + rand() * 200)
   const woods = [
-    grove(NEAR_W, 960 - (half + (hamletSide === -1 ? 560 : 300)), 14, 220, 28, seed ^ 0x2f),
-    grove(NEAR_E, 960 + (half + (hamletSide === 1 ? 560 : 300)), 14, 220, 28, seed ^ 0x5e),
+    grove(NEAR_W, woodsAt(-1), 10 + Math.floor(rand() * 7), 170 + rand() * 100, 24 + rand() * 8, seed ^ 0x2f),
+    grove(NEAR_E, woodsAt(1), 10 + Math.floor(rand() * 7), 170 + rand() * 100, 24 + rand() * 8, seed ^ 0x5e),
   ].join('')
-  const tx = 960 - hamletSide * (720 + rand() * 50)
+  // The tree across from the village, kept on the band; its own size and spread
+  const tx = Math.max(160, Math.min(W - 160, vx - hamletSide * (620 + rand() * 160)))
   const lean = hamletSide
-  const crownX = tx + lean * 34
-  const crownY = 104 + rand() * 16
+  const crownX = tx + lean * (20 + rand() * 30)
+  const crownY = 96 + rand() * 30
+  const [crownW, crownH] = [56 + rand() * 30, 26 + rand() * 12]
   const trunk =
     `M${pt(tx - 9, H + 4)}Q${pt(tx - 4, 220)} ${pt(crownX - 3, crownY + 30)}L${pt(crownX + 3, crownY + 30)}Q${pt(tx + 6, 220)} ${pt(tx + 9, H + 4)}Z` +
     `M${pt(tx + lean * 6, 200)}Q${pt(tx + lean * 40, 180)} ${pt(tx + lean * 70, 168)}L${pt(tx + lean * 70, 172)}Q${pt(tx + lean * 40, 186)} ${pt(tx + lean * 5, 208)}Z`
@@ -477,7 +509,7 @@ function buildScene(id: string, fp: Fingerprint | null, zone: MoonZone): SceneMo
       const d = Math.sqrt(rand())
       return [cx + Math.cos(a) * rx * d, cy + Math.sin(a) * ry * d * (Math.sin(a) > 0 ? 0.6 : 1), r * (1.15 - d * 0.6) * (0.8 + rand() * 0.4)] as [number, number, number]
     })
-  const masses = [...clump(crownX, crownY, 70, 32, 26, 30), ...clump(tx + lean * 80, 162, 30, 12, 9, 16)]
+  const masses = [...clump(crownX, crownY, crownW, crownH, Math.round(crownW * 0.37), 24 + rand() * 10), ...clump(tx + lean * 80, 162, 30, 12, 9, 16)]
   const tree = trunk + masses.map(([x, y, r]) => disc(x, y, r)).join('')
   const treeRim = masses.map(([x, y, r]) => disc(x + side * 2.5, y - 2, r)).join('')
 
@@ -487,8 +519,8 @@ function buildScene(id: string, fp: Fingerprint | null, zone: MoonZone): SceneMo
     back: [
       ribbon(-40, 820 + rand() * 120, 150 + rand() * 8, 10 + 14 * weather, rand),
       ribbon(1100 - rand() * 120, W + 40, 152 + rand() * 8, 10 + 14 * weather, rand),
-      ribbon(100, 900, WATER - 16, 8 + 10 * weather, rand),
-      ribbon(1020, 1820, WATER - 14, 8 + 10 * weather, rand),
+      ribbon(40 + rand() * 160, vx - 60 - rand() * 80, WATER - 16, 8 + 10 * weather, rand),
+      ribbon(vx + 60 + rand() * 80, W - 40 - rand() * 160, WATER - 14, 8 + 10 * weather, rand),
     ],
     front: [ribbon(lx0 - 60, lx1 + 60, WATER + 10, 5 + 8 * weather, rand)],
   }

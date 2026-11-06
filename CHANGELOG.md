@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Changed
+
+- Each song lays out its own valley: where the lake, village, tree, woods, lamps and peaks sit is the song's.
+- The wooded hills nearest the glowing trace now follow its path, a step below it.
+
 ## [1.3.0] - 2026-11-05
 
 ### Added

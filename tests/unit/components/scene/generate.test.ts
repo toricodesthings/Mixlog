@@ -123,6 +123,9 @@ describe('sceneOf', () => {
         expect(house.base - house.ground).toBeLessThanOrEqual(2)
         expect(house.window[1]).toBeLessThan(house.ground)
       }
+      // A cottage up on a mid bank never stands on a near house's roof (the beacon's hut, last, is on the cliffs)
+      const near = land.hamlet.filter((h) => !h.far)
+      for (const cottage of land.hamlet.slice(0, -1).filter((h) => h.far)) for (const h of near) expect(Math.abs(cottage.x - h.x)).toBeGreaterThanOrEqual(40)
     }
   })
 
@@ -135,7 +138,7 @@ describe('sceneOf', () => {
 
   it('is pinned for three fixtures, so no change moves a pixel by accident (bump SCENE and these on purpose)', () => {
     const pin = (id: string, fp: Fingerprint | null) => hash32(JSON.stringify(sceneOf(id, fp, ZONES.summaryDesktop)))
-    expect([pin('pin-1', null), pin('pin-2', FINGERPRINTS.loud), pin('pin-3', FINGERPRINTS.quiet)]).toEqual([547468855, 1270851311, 2421181133])
+    expect([pin('pin-1', null), pin('pin-2', FINGERPRINTS.loud), pin('pin-3', FINGERPRINTS.quiet)]).toEqual([3353591344, 3154139558, 1022282046])
   })
 
   // 500 songs, each measured differently, on every screen's zone
@@ -175,6 +178,27 @@ describe('sceneOf', () => {
     }
   })
 
+  it('lays the nearest banks along the light’s path for 500 songs: a step below the trace, never over it', () => {
+    for (const [id, fp, zone] of SWEEP) {
+      const { land } = sceneOf(id, fp, zone)
+      const signal = ridgeOf(land.signal)
+      const yAt = (x: number) => {
+        const found = signal.findIndex(([px]) => px >= x)
+        const i = found === -1 ? signal.length - 1 : Math.max(1, found)
+        const [[ax, ay], [bx, by]] = [signal[i - 1], signal[i]]
+        return ay + ((by - ay) * (x - ax)) / (bx - ax || 1)
+      }
+      for (const bank of land.banks.split('Z').slice(0, 2).map(ridgeOf)) {
+        // On the band, away from the lake, where the crest runs down to the water
+        for (const [x, y] of bank.filter(([x]) => x >= 0 && x <= 1920 && (x < land.lake.x0 - 260 || x > land.lake.x1 + 260))) {
+          // 24 below the trace, or the water's edge where the trace runs that low
+          expect(Math.abs(y - Math.min(yAt(x) + 24, land.lake.y - 8)), id).toBeLessThanOrEqual(10)
+          expect(y, id).toBeGreaterThan(yAt(x))
+        }
+      }
+    }
+  })
+
   it('keeps the whole night under 60 KB for 500 songs (the markup is the model’s strings plus a few tags)', () => {
     for (const [id, fp, zone] of SWEEP) expect(JSON.stringify(sceneOf(id, fp, zone)).length).toBeLessThanOrEqual(60 * 1024)
   })
@@ -201,6 +225,15 @@ describe('sceneOf', () => {
         }),
       )
     }
+  })
+
+  it('lets the song lay out the valley: the lake, the village’s bank, the tree and the lamps move from song to song', () => {
+    const nights = SWEEP.slice(0, 60).map(([id, fp, zone]) => sceneOf(id, fp, zone).land)
+    const distinct = (f: (l: (typeof nights)[number]) => unknown) => new Set(nights.map((l) => JSON.stringify(f(l)))).size
+    expect(distinct((l) => Math.sign(l.glowX - (l.lake.x0 + l.lake.x1) / 2))).toBe(2)
+    expect(distinct((l) => Math.round((l.lake.x0 + l.lake.x1) / 40))).toBeGreaterThanOrEqual(6)
+    expect(distinct((l) => l.hamlet.length)).toBeGreaterThanOrEqual(3)
+    expect(distinct((l) => l.shore.length)).toBeGreaterThanOrEqual(2)
   })
 
   it('keeps the hamlet’s heart inside a phone’s crop of the valley', () => {
