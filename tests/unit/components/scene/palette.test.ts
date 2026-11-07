@@ -16,6 +16,40 @@ describe('paletteOf', () => {
     expect(num(palette, '--art-h2')).toBeLessThan(40)
   })
 
+  it('gives a two-tone cover a mixed night: its second hue lights the lamps and deepens the hills', () => {
+    const palette = paletteOf(image([[200, 40, 40], 55], [[40, 170, 60], 45]))
+    expect(num(palette, '--art-h')).toBeLessThan(40)
+    expect(num(palette, '--art-mix')).toBeGreaterThanOrEqual(0.5)
+    expect(num(palette, '--art-light-h')).toBeGreaterThan(120)
+    expect(num(palette, '--art-light-h')).toBeLessThan(160)
+  })
+
+  it('keeps a cover with one colour and a faint second unmixed, its lights in the first', () => {
+    const faint = paletteOf(image([[30, 70, 220], 92], [[220, 40, 40], 8]))
+    expect(faint['--art-light-h']).toBeUndefined()
+    expect(paletteOf(image([[200, 30, 30], 100]))['--art-mix']).toBeUndefined()
+  })
+
+  /** How far apart two hues are, the short way round. */
+  const arc = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b))
+
+  it('gives a three-tone cover’s sky the tone nearest the accent and its lamps the farthest', () => {
+    const palette = paletteOf(image([[210, 40, 40], 45], [[220, 130, 30], 30], [[40, 80, 220], 25]))
+    const h = num(palette, '--art-h')
+    expect(arc(h, 29)).toBeLessThan(20)
+    expect(arc(num(palette, '--art-h2'), h)).toBeLessThan(arc(num(palette, '--art-light-h'), h))
+    expect(arc(num(palette, '--art-light-h'), 265)).toBeLessThan(25)
+  })
+
+  it('reads five even swatches as five tones, not a rainbow: every role filled, the hills drifting from the accent', () => {
+    const swatches: [number[], number][] = [[[210, 40, 40], 20], [[220, 200, 40], 20], [[40, 170, 60], 20], [[40, 80, 220], 20], [[200, 50, 200], 20]]
+    const palette = paletteOf(image(...swatches))
+    const h = num(palette, '--art-h')
+    for (const name of ['--art-h2', '--art-h3', '--art-light-h', '--art-beacon-h']) expect(palette[name]).toBeDefined()
+    const reach = ['--art-h2', '--art-h3', '--art-beacon-h', '--art-light-h'].map((name) => arc(num(palette, name), h))
+    expect(reach).toEqual([...reach].sort((a, b) => a - b))
+  })
+
   it('reads a blue cover with a red stripe as blue, not purple', () => {
     const palette = paletteOf(image([[30, 70, 220], 90], [[220, 40, 40], 10]))
     expect(num(palette, '--art-h')).toBeGreaterThan(250)

@@ -10,6 +10,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 - Each song lays out its own valley: where the lake, village, tree, woods, lamps and peaks sit is the song's.
 - The wooded hills nearest the glowing trace now follow its path, a step below it.
+- Covers of two to five colours blend into one night: sky and hills drift from the trace, lamps take the contrast.
+
+### Fixed
+
+- A release's lights now take its cover's colour truly: red stays red, violet stays violet, yellow glows gold.
 
 ## [1.3.0] - 2026-11-05
 

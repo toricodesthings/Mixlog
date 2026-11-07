@@ -38,7 +38,9 @@ function spotOf(count: number[], sx: number[], sy: number[], seen: number): numb
 /**
  * An artwork's colours, as the room's custom properties: `--art-h` (its dominant hue: the accent and the glow),
  * `--art-h2` (a second strong hue, or a neighbour of the first: the sky and the grounds), `--art-k` (how colourful it
- * is, continuous, 0–1.25) and, when the cover is otherwise grey, `--art-spot-h`/`--art-spot-k` (a small strong colour
+ * is, continuous, 0–1.25), and for a cover of two to five tones `--art-h3` (the near hills, which fade from the
+ * sky's hue into it), `--art-light-h` (the lamps), `--art-beacon-h` and `--art-mix` (how strong the other tones are
+ * beside the first, 0–1: the hills and sky carry them more) and, when the cover is otherwise grey, `--art-spot-h`/`--art-spot-k` (a small strong colour
  * for the night's lights alone). Hue comes from OKLCH hue bins weighted by chroma, so a blue cover with a red stripe
  * reads blue, not purple; `--art-k` follows how much of the cover is actually colourful (`cover`, a smoothstep of its
  * share) and the cover's overall tint (`cast`, the mean OKLab a/b over every opaque pixel), so a grey cover gives a
@@ -94,11 +96,23 @@ export function paletteOf(pixels: Uint8ClampedArray): Record<string, string> {
   const spot = spotOf(spotCount, spotX, spotY, seen)
 
   const smooth = weight.map((w, i) => weight[ring(i - 1)] * 0.25 + w * 0.5 + weight[ring(i + 1)] * 0.25)
-  const mean = smooth.reduce((sum, w) => sum + w, 0) / BINS
+  const total = smooth.reduce((sum, w) => sum + w, 0)
+  const mean = total / BINS
   const top = smooth.indexOf(Math.max(...smooth))
+  const gap = (a: number, b: number) => Math.min(Math.abs(a - b), BINS - Math.abs(a - b)) * BIN
+  // The cover's tones: peaks standing well above the mean (a rainbow's even spread has none), strongest first, each
+  // at least 40° from a stronger one, up to five
+  const peaks: number[] = []
+  for (const i of smooth.map((_, i) => i).sort((a, b) => smooth[b] - smooth[a])) {
+    if (peaks.length === 5 || smooth[i] < Math.max(mean * 1.5, smooth[top] * 0.25)) break
+    if (smooth[i] >= smooth[ring(i - 1)] && smooth[i] >= smooth[ring(i + 1)] && peaks.every((p) => gap(p, i) >= 40)) peaks.push(i)
+  }
+  // A few clear tones (red and green, five swatches) can cancel out like a rainbow, but most of the colour sits in them
+  const held = peaks.reduce((sum, p) => sum + weight[ring(p - 1)] + weight[p] + weight[ring(p + 1)], 0)
+  const tonal = peaks.length >= 2 && held >= total * 0.6
   // Hues all the way round (noise, a rainbow) cancel out; two strong ones don't, they stand far above the mean.
-  const spread = mean ? Math.hypot(x.reduce((a, b) => a + b, 0), y.reduce((a, b) => a + b, 0)) / (mean * BINS) : 0
-  const noDominant = !mean || smooth[top] < mean * 1.5 || (spread < 0.2 && smooth[top] < mean * 2.5)
+  const spread = mean ? Math.hypot(x.reduce((a, b) => a + b, 0), y.reduce((a, b) => a + b, 0)) / total : 0
+  const noDominant = !mean || (!tonal && (smooth[top] < mean * 1.5 || (spread < 0.2 && smooth[top] < mean * 2.5)))
 
   const withSpot = (props: Record<string, string>, k: number) =>
     k < 0.35 && spot !== null ? { ...props, '--art-spot-h': spot.toFixed(1), '--art-spot-k': '0.75' } : props
@@ -117,15 +131,31 @@ export function paletteOf(pixels: Uint8ClampedArray): Record<string, string> {
     return ((Math.atan2(sum(y), sum(x)) * 180) / Math.PI + 360) % 360
   }
   const h = hueAround(top)
-  const apart = (i: number) => Math.min(Math.abs(i - top), BINS - Math.abs(i - top)) * BIN >= 40
-  const second = smooth.reduce((best, w, i) => (apart(i) && w >= smooth[top] * 0.25 && (best < 0 || w > smooth[best]) ? i : best), -1)
   const near = [ring(top - 1), top, ring(top + 1)]
   const c = near.reduce((sum, i) => sum + chroma[i], 0) / near.reduce((sum, i) => sum + weight[i], 0)
   const k = clampK(Math.max((c / 0.12) * cover, castC / 0.05))
-  return withSpot(
-    { '--art-h': h.toFixed(1), '--art-h2': (second < 0 ? (h + 340) % 360 : hueAround(second)).toFixed(1), '--art-k': k.toFixed(2) },
-    k,
-  )
+  const base = { '--art-h': h.toFixed(1), '--art-k': k.toFixed(2) }
+  if (peaks.length < 2) return withSpot({ ...base, '--art-h2': ((h + 340) % 360).toFixed(1) }, k)
+
+  // The other tones, nearest the accent's hue first. The big quiet areas take the near ones, so the sky and hills drift
+  // from the accent instead of clashing with it; the farthest, the accent's counterpoint, is kept to the small lights
+  // (echoed in the clouds' lit edges, so it belongs to the sky too), and a middle one to the beacon.
+  const arc = (a: number) => Math.min(Math.abs(a - h), 360 - Math.abs(a - h))
+  const tones = peaks
+    .slice(1)
+    .map((p) => ({ h: hueAround(p), r: smooth[p] / smooth[top] }))
+    .sort((a, b) => arc(a.h) - arc(b.h))
+  const hue = (i: number) => tones[i].h.toFixed(1)
+  const last = tones.length - 1
+  const props: Record<string, string> = {
+    ...base,
+    '--art-h2': hue(0),
+    '--art-mix': smoothstep(0.25, 0.6, Math.max(...tones.map((t) => t.r))).toFixed(2),
+  }
+  if (tones.length >= 2) props['--art-h3'] = hue(1)
+  if (tones[last].r >= 0.4) props['--art-light-h'] = hue(last)
+  if (tones.length >= 3) props['--art-beacon-h'] = hue(last - 1)
+  return withSpot(props, k)
 }
 
 /** The artwork's colours (above); none until it has loaded, so the title's colours stand in. */

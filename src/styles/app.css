@@ -881,6 +881,10 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
    keeps its contrast floor whatever the cover. ══ */
 .art-room {
   --room-k: min(var(--art-k), 1);
+  /* The lightness at which the hue is most vivid in sRGB (its cusp: red 0.63, violet 0.5, yellow 0.9), fitted to a
+     short cosine series. Each light sits at its own hue's cusp, held inside the band where it keeps 4.5:1 on every
+     ground, so a red cover lights red, not salmon, a violet one violet, not lavender, a yellow one gold, not murk */
+  --art-cusp: calc(0.741 - 0.127 * cos(var(--art-h) * 1deg) + 0.124 * sin(var(--art-h) * 1deg) + 0.036 * cos(var(--art-h) * 2deg) - 0.012 * sin(var(--art-h) * 2deg) + 0.015 * cos(var(--art-h) * 3deg) - 0.063 * sin(var(--art-h) * 3deg));
   --color-room-void: oklch(0.146 calc(0.023 * var(--room-k)) var(--art-h2));
   --color-room-deep: oklch(0.176 calc(0.035 * var(--room-k)) var(--art-h2));
   --color-room-base: oklch(0.204 calc(0.042 * var(--room-k)) var(--art-h2));
@@ -890,7 +894,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --color-room-elevated: oklch(0.283 calc(0.062 * var(--room-k)) var(--art-h2));
   --color-panel: var(--color-room-void);
   --color-panel-raised: var(--color-room-base);
-  --accent: oklch(0.76 clamp(0.012, calc(0.13 * var(--art-k)), 0.16) var(--art-h));
+  --accent: oklch(clamp(0.68, var(--art-cusp), 0.82) clamp(0.012, calc(0.15 * var(--art-k)), 0.19) var(--art-h));
   --accent-soft: color-mix(in oklab, var(--accent) 12%, transparent);
   --accent-dim: color-mix(in oklab, var(--accent) 6%, transparent);
   --accent-glow: color-mix(in oklab, var(--accent) 18%, transparent);
@@ -912,7 +916,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --color-room-surface-muted: oklch(0.936 calc(0.014 * var(--room-k)) var(--art-h2));
   --color-room-surface-hover: oklch(0.882 calc(0.018 * var(--room-k)) var(--art-h2));
   --color-room-elevated: oklch(0.864 calc(0.02 * var(--room-k)) var(--art-h2));
-  --accent: oklch(0.46 clamp(0.015, calc(0.17 * var(--art-k)), 0.19) var(--art-h));
+  --accent: oklch(clamp(0.4, calc(var(--art-cusp) - 0.3), 0.46) clamp(0.015, calc(0.17 * var(--art-k)), 0.19) var(--art-h));
   --accent-soft: color-mix(in oklab, var(--accent) 8%, transparent);
   --accent-dim: color-mix(in oklab, var(--accent) 4%, transparent);
   --accent-glow: color-mix(in oklab, var(--accent) 14%, transparent);
@@ -934,46 +938,53 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
    as the room's own ground, so the header above it has no seam; the land darkens toward the viewer (aerial
    perspective), and the ground the facts stand on fades into the room. */
 .art-scene {
-  /* A small strong colour the cover carries even when it's otherwise grey (a red coat, a neon sign: palette.ts's
-     `--art-spot-h`/`-k`), for the night's lights alone; a colourful cover's own hue otherwise. */
-  --light-h: var(--art-spot-h, var(--art-h));
+  /* A cover of two to five tones (palette.ts) shares the night out so they blend, never clash: the accent's hue lights
+     the trace and the horizon; the tone nearest it in hue, the sky and the room; the hills fade from the sky's tone
+     into the next (`--art-h3`), the ridge under the trace leaning toward the trace; the farthest tone, the accent's
+     counterpoint, lights the lamps (`--art-light-h`) and the clouds' edges; a middle one the beacon. Every blend is in
+     OKLCH, so red into green passes through amber, not mud, and the tones deepen with their strength (`--art-mix`).
+     A grey cover's small strong colour (a red coat, a neon sign: `--art-spot-h`/`-k`) lights the lamps instead. */
+  --light-h: var(--art-spot-h, var(--art-light-h, var(--art-h)));
   --light-k: var(--art-spot-k, var(--art-k));
-  --scene-mid: oklch(0.215 calc(0.06 * var(--room-k)) var(--art-h2));
-  --scene-horizon: oklch(0.33 calc(0.09 * var(--room-k)) var(--art-h));
-  --scene-bloom: oklch(0.62 calc(0.14 * var(--room-k)) var(--art-h) / 0.3);
+  --light-cusp: calc(0.741 - 0.127 * cos(var(--light-h) * 1deg) + 0.124 * sin(var(--light-h) * 1deg) + 0.036 * cos(var(--light-h) * 2deg) - 0.012 * sin(var(--light-h) * 2deg) + 0.015 * cos(var(--light-h) * 3deg) - 0.063 * sin(var(--light-h) * 3deg));
+  --beacon-h: var(--art-beacon-h, var(--light-h));
+  --beacon-cusp: calc(0.741 - 0.127 * cos(var(--beacon-h) * 1deg) + 0.124 * sin(var(--beacon-h) * 1deg) + 0.036 * cos(var(--beacon-h) * 2deg) - 0.012 * sin(var(--beacon-h) * 2deg) + 0.015 * cos(var(--beacon-h) * 3deg) - 0.063 * sin(var(--beacon-h) * 3deg));
+  --scene-mid: oklch(0.215 calc(0.06 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
+  --scene-horizon: color-mix(in oklch, oklch(0.33 calc(0.09 * var(--room-k)) var(--art-h)), oklch(0.33 calc(0.09 * var(--room-k)) var(--art-h2)) 30%);
+  --scene-bloom: color-mix(in oklch, oklch(0.62 calc(0.14 * var(--room-k)) var(--art-h) / 0.3), oklch(0.62 calc(0.14 * var(--room-k)) var(--art-h2) / 0.3) 20%);
   --scene-moon: oklch(0.95 calc(0.025 + 0.025 * var(--room-k)) var(--art-h));
   --scene-moon-halo: oklch(0.86 calc(0.05 + 0.04 * var(--room-k)) var(--art-h));
   --scene-star-cool: oklch(0.95 calc(0.01 + 0.02 * var(--room-k)) var(--art-h2));
   --scene-star-warm: oklch(0.93 0.06 80);
-  --land-distant: oklch(0.34 calc(0.05 * var(--room-k)) var(--art-h2));
-  --land-far: oklch(0.28 calc(0.05 * var(--room-k)) var(--art-h2));
-  --land-signal: oklch(0.245 calc(0.05 * var(--room-k)) var(--art-h2));
-  --land-valley: oklch(0.215 calc(0.045 * var(--room-k)) var(--art-h2));
-  --land-near: oklch(0.185 calc(0.04 * var(--room-k)) var(--art-h2));
+  --land-distant: oklch(0.34 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
+  --land-far: color-mix(in oklch, oklch(0.28 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.28 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 25%);
+  --land-signal: color-mix(in oklch, color-mix(in oklch, oklch(0.245 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.245 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 50%), oklch(0.245 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h)) 25%);
+  --land-valley: color-mix(in oklch, oklch(0.215 calc(0.045 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.215 calc(0.045 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 75%);
+  --land-near: oklch(0.185 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2)));
   --land-haze: oklch(0.36 calc(0.07 * var(--room-k)) var(--art-h));
   --land-rim: oklch(0.88 calc(0.1 * var(--room-k)) var(--art-h));
-  --scene-trace: oklch(0.74 clamp(0.012, calc(0.14 * var(--art-k)), 0.12) var(--art-h));
+  --scene-trace: oklch(clamp(0.66, var(--art-cusp), 0.8) clamp(0.012, calc(0.14 * var(--art-k)), 0.17) var(--art-h));
   --scene-spark: oklch(0.97 calc(0.04 * var(--room-k)) var(--art-h));
   --scene-water: oklch(0.3 calc(0.06 * var(--room-k)) var(--art-h));
-  --scene-lamp: oklch(0.86 clamp(0.03, calc(0.14 * var(--light-k)), 0.17) var(--light-h));
-  --scene-beacon: oklch(0.9 clamp(0.03, calc(0.16 * var(--light-k)), 0.18) var(--light-h));
+  --scene-lamp: oklch(clamp(0.74, calc(var(--light-cusp) + 0.1), 0.9) clamp(0.03, calc(0.15 * var(--light-k)), 0.19) var(--light-h));
+  --scene-beacon: oklch(clamp(0.78, calc(var(--beacon-cusp) + 0.14), 0.92) clamp(0.03, calc(0.16 * var(--light-k)), 0.19) var(--beacon-h));
   --scene-cloud: oklch(0.5 calc(0.05 * var(--room-k)) var(--art-h2) / 0.2);
-  --scene-cloud-lit: oklch(0.82 calc(0.05 * var(--room-k)) var(--art-h) / 0.42);
+  --scene-cloud-lit: color-mix(in oklch, oklch(0.82 calc(0.05 * var(--room-k)) var(--art-h) / 0.42), oklch(0.82 calc(0.05 * var(--room-k)) var(--light-h) / 0.42) 50%);
   color: var(--color-ink);
-  background: linear-gradient(180deg, var(--color-room-deep), var(--scene-mid));
+  background: linear-gradient(180deg in oklch, var(--color-room-deep), var(--scene-mid));
 }
 [data-theme="daylight"] .art-scene {
-  --scene-mid: oklch(0.91 calc(0.035 * var(--room-k)) var(--art-h2));
-  --scene-horizon: oklch(0.94 calc(0.022 * var(--room-k)) var(--art-h));
+  --scene-mid: oklch(0.91 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
+  --scene-horizon: color-mix(in oklch, oklch(0.94 calc(0.022 * var(--room-k)) var(--art-h)), oklch(0.94 calc(0.022 * var(--room-k)) var(--art-h2)) 30%);
   --scene-bloom: oklch(0.93 calc(0.04 * var(--room-k)) var(--art-h) / 0.45);
-  --land-distant: oklch(0.9 calc(0.03 * var(--room-k)) var(--art-h2));
-  --land-far: oklch(0.86 calc(0.035 * var(--room-k)) var(--art-h2));
-  --land-signal: oklch(0.82 calc(0.04 * var(--room-k)) var(--art-h2));
-  --land-valley: oklch(0.8 calc(0.04 * var(--room-k)) var(--art-h2));
-  --land-near: oklch(0.78 calc(0.04 * var(--room-k)) var(--art-h2));
+  --land-distant: oklch(0.9 calc(0.03 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
+  --land-far: color-mix(in oklch, oklch(0.86 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.86 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 25%);
+  --land-signal: color-mix(in oklch, color-mix(in oklch, oklch(0.82 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.82 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 50%), oklch(0.82 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h)) 25%);
+  --land-valley: color-mix(in oklch, oklch(0.8 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.8 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 75%);
+  --land-near: oklch(0.78 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2)));
   --land-haze: oklch(0.93 calc(0.04 * var(--room-k)) var(--art-h));
   --land-rim: oklch(0.99 calc(0.01 * var(--room-k)) var(--art-h));
-  --scene-trace: oklch(0.48 clamp(0.015, calc(0.15 * var(--art-k)), 0.14) var(--art-h));
+  --scene-trace: oklch(clamp(0.42, calc(var(--art-cusp) - 0.28), 0.48) clamp(0.015, calc(0.15 * var(--art-k)), 0.16) var(--art-h));
   --scene-spark: color-mix(in oklab, var(--accent) 50%, transparent);
   --scene-moon: oklch(0.99 0.03 var(--art-h));
   --scene-moon-halo: oklch(0.97 0.06 var(--art-h));
@@ -994,8 +1005,8 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 /* The ground the facts stand on: the near hills' own colour, fading into the room's ground, which the tracklist
    below stands on too, so there's no seam (quickly by day, so text sits on cream) */
-.scene-ground { background: linear-gradient(180deg, var(--land-near), var(--color-room-deep) 9rem); }
-[data-theme="daylight"] .scene-ground { background: linear-gradient(180deg, var(--land-near), var(--color-room-deep) 5rem); }
+.scene-ground { background: linear-gradient(180deg in oklch, var(--land-near), var(--color-room-deep) 9rem); }
+[data-theme="daylight"] .scene-ground { background: linear-gradient(180deg in oklch, var(--land-near), var(--color-room-deep) 5rem); }
 /* The join at the ground: a lit horizon line centred on the hamlet's x (--scene-glow-x, from the generator), and its
    glow radiating up behind the cover and title, so the land never meets a seam. */
 .scene-ground::before {
@@ -1225,13 +1236,13 @@ body:has([data-listening-room]) .art-scene:not([data-room-scene]) * { animation-
    sit a step darker and the trace is a thread, not a neon */
 .scene-calm { mask-image: linear-gradient(180deg, transparent, #000 45%); }
 :root:not([data-theme="daylight"]) .scene-calm {
-  --land-distant: oklch(0.27 calc(0.04 * var(--room-k)) var(--art-h2));
-  --land-far: oklch(0.235 calc(0.04 * var(--room-k)) var(--art-h2));
-  --land-valley: oklch(0.16 calc(0.035 * var(--room-k)) var(--art-h2));
+  --land-distant: oklch(0.27 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
+  --land-far: color-mix(in oklch, oklch(0.235 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.235 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 25%);
+  --land-valley: color-mix(in oklch, oklch(0.16 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.16 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 75%);
   --land-haze: oklch(0.28 calc(0.05 * var(--room-k)) var(--art-h));
   --land-rim: oklch(0.7 calc(0.06 * var(--room-k)) var(--art-h));
   --scene-cloud: oklch(0.26 calc(0.035 * var(--room-k)) var(--art-h2) / 0.4);
-  --scene-trace: oklch(0.66 clamp(0.01, calc(0.1 * var(--art-k)), 0.08) var(--art-h));
+  --scene-trace: oklch(clamp(0.6, calc(var(--art-cusp) - 0.08), 0.74) clamp(0.01, calc(0.1 * var(--art-k)), 0.08) var(--art-h));
 }
 
 /* The record. Vinyl is black in every theme, so these are its own colours, not the room's tokens. */
