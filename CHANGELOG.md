@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-06
+
 ### Changed
 
 - Each song lays out its own valley: where the lake, village, tree, woods, lamps and peaks sit is the song's.
