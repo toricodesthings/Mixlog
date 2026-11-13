@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-13
+
 Mixlog answers before the server does: every change instant, every page named, every control in reach.
 
 ### Added
