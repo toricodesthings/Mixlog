@@ -3,7 +3,7 @@ import { ChevronDown, Plus } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 
 import { AUDIO_ACCEPT, FINAL_ACCEPT, isFinal } from '#/server/files'
-import { laneOf, lanesOf, moveProblem, type Lane as LaneName } from '#/server/lanes'
+import { laneOf, lanesOf, moveProblem, moved, type Lane as LaneName } from '#/server/lanes'
 import { fileVersion, type TrackRow, type VersionRow as Version } from '#/server/releases'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
@@ -34,12 +34,14 @@ function announce(version: Version, to: LaneName, oldFinal: Version | null) {
 export function useTrack(data: ReleaseData, track: TrackRow) {
   const router = useRouter()
   const section = sectionOf(data.release)
-  const lanes = lanesOf(track.id, data.versions)
+  // Moves not yet confirmed by a reload, applied over the server's rows so a move lands on the same frame.
+  const [afloat, setAfloat] = useState<{ id: string; to: LaneName }[]>([])
+  const queue = useRef<Promise<void>>(Promise.resolve())
+  const lanes = lanesOf(track.id, afloat.reduce((rows, m) => moved(rows, m.id, m.to), data.versions))
   const uploads = useLaneUpload(track.id)
   const [dragged, setDragged] = useState<Version | null>(null)
   const [said, setSaid] = useState('')
   const [message, setMessage] = useState<{ target: Target; text: string; wavOf?: Version } | null>(null)
-  const [moving, setMoving] = useState(false)
   // The version focus follows into its new lane; its row takes focus once it lands there.
   const [follow, setFollow] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
@@ -59,17 +61,21 @@ export function useTrack(data: ReleaseData, track: TrackRow) {
     if (problem) return setMessage({ target: to, text: problem, wavOf: to === 'final' && !isFinal(version.content_type) ? version : undefined })
     if (laneOf(version) === to) return
     setMessage(null)
-    setMoving(true)
-    try {
-      await fileVersion({ data: { versionId: version.id, to } })
-      await router.invalidate()
-      setSaid(announce(version, to, lanes.final))
-      setFollow(version.id)
-    } catch (error) {
-      setMessage({ target: to, text: errorOf(error, 'Couldn’t move it. Nothing changed; try again.') })
-    } finally {
-      setMoving(false)
-    }
+    const pending = { id: version.id, to }
+    setAfloat((m) => [...m, pending])
+    setSaid(announce(version, to, lanes.final))
+    setFollow(version.id)
+    // One at a time, in the order made; the server catches up behind the screen, and a failure puts it back.
+    queue.current = queue.current.then(async () => {
+      try {
+        await fileVersion({ data: { versionId: version.id, to } })
+        await router.invalidate()
+      } catch (error) {
+        setMessage({ target: laneOf(version) ?? to, text: `${errorOf(error, `Couldn’t move v${version.number}.`)} It’s back in ${laneOf(version) === 'final' ? 'the final' : laneOf(version) === 'master' ? 'Masters' : 'Mixes'}; try again.` })
+      } finally {
+        setAfloat((m) => m.filter((x) => x !== pending))
+      }
+    })
   }
 
   return {
@@ -84,7 +90,6 @@ export function useTrack(data: ReleaseData, track: TrackRow) {
     said,
     message,
     setMessage,
-    moving,
     follow,
     send,
     move,
@@ -144,7 +149,6 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
   const drop = useDropTarget({
     onFiles: (files) => t.send(files, lane),
     onVersion: refusal || section === 'released' ? undefined : (id) => void t.move(t.data.versions.find((v) => v.id === id) ?? ({ id } as Version), lane),
-    enabled: !t.moving,
   })
   const over = drop.over ?? (moving && !refusal ? 'version' : filesOver ? 'files' : null)
   const hint = refusal ? refusal : over === 'version' ? LANE[lane].over : over === 'files' ? (lane === 'final' ? 'Drop its WAV to make it the final' : `Drop to add ${lane === 'mix' ? 'a mix' : 'a master'}`) : null
@@ -176,13 +180,13 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
             {lane !== 'final' && rows.length > 0 && <span data-numeric>· {rows.length}</span>}
           </h3>
         )}
-        <span aria-live="polite" className={cn('min-w-0 flex-1 truncate text-[13px]', refusal ? 'text-ink-soft' : 'text-accent')}>
+        <span aria-live="polite" className={cn('min-w-0 flex-1 truncate text-[0.8125rem]', refusal ? 'text-ink-soft' : 'text-accent')}>
           {hint}
         </span>
         {empty && pickable.length > 0 && (
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1" disabled={t.moving}>
+              <Button variant="ghost" size="sm" className="gap-1">
                 Pick
                 <ChevronDown size={13} aria-hidden="true" className="opacity-70" />
               </Button>
@@ -230,11 +234,11 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
           <button
             type="button"
             onClick={() => t.pick('final')}
-            className={cn('press surface-row flex min-h-14 flex-col justify-center gap-0.5 rounded-2xl px-4 text-left text-[15px] text-ink-soft ring-1 ring-line transition-colors hover:text-ink hover:ring-accent/40', size === 'compact' && 'min-h-12 text-sm')}
+            className={cn('press surface-row sink flex min-h-14 flex-col justify-center gap-0.5 rounded-2xl px-4 text-left text-[0.9375rem] text-ink-soft ring-1 ring-line transition-colors hover:text-ink hover:ring-accent/40', size === 'compact' && 'min-h-12 text-sm')}
           >
             {section === 'released' ? RELEASED_EMPTY : LANE.final.empty}
             {section === 'released' && others > 0 && (
-              <span className="text-[13px] text-ink-muted">
+              <span className="text-[0.8125rem] text-ink-muted">
                 Its {others} other {others === 1 ? 'version is' : 'versions are'} set aside{keep ? ` and erased after ${KEEP[keep]}` : ''}.
               </span>
             )}
@@ -243,7 +247,7 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
           <p className="px-3 pb-2 text-sm text-ink-muted">{LANE[lane].empty}</p>
         ))}
       {message && (
-        <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-1 pb-2 text-[13px] text-ink-soft">
+        <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-1 pb-2 text-[0.8125rem] text-ink-soft">
           {message.wavOf ? `v${message.wavOf.number} is a test, so its WAV is the final.` : message.text}
           {message.wavOf && (
             <Button variant="secondary" size="sm" onClick={() => t.pick('final')}>

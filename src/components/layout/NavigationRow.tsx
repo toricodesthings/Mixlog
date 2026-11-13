@@ -5,9 +5,9 @@ import type { CSSProperties, ReactNode } from "react";
 /** The grouped card compact navigation rows sit in (Browse, the workspace menu). */
 export const NAV_GROUP = "overflow-hidden rounded-2xl border border-line/60 bg-room-surface/40 p-1";
 /** Small caps heading above a `NAV_GROUP`, set outside the card like an inset grouped list. */
-export const NAV_GROUP_LABEL = "px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-soft/90";
+export const NAV_GROUP_LABEL = "px-4 text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-ink-soft/90";
 
-const ROW = "flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-[15px] text-ink transition-colors hover:bg-white/[0.04] active:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50";
+const ROW = "flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-[0.9375rem] text-ink transition-colors hover:bg-white/[0.04] active:bg-white/[0.06] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50";
 
 /**
  * One compact navigation row: a link with `link`, else a button. `leading`

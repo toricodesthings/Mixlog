@@ -1,8 +1,10 @@
 import { Link } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useState } from 'react'
 import { AudioLines, ChevronDown, Disc3, Upload } from 'lucide-react'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
+import { useSheetGesture } from '../../hooks/ui/use-sheet-gesture'
 import { cn } from '../../lib/utils'
 import { Tip } from '../primitives'
 import { Dialog, DialogStage, DialogTitle } from '../primitives/Dialog'
@@ -21,9 +23,9 @@ import { Vinyl } from './Vinyl'
  */
 type Deck = { playable: Playable; side?: string }
 
-/** The sheet's own curve: it rises like a sheet and settles without a bounce. */
-const RISE = { duration: 0.5, ease: [0.32, 0.72, 0, 1] } as const
-const FALL = { duration: 0.32, ease: [0.32, 0.72, 0, 1] } as const
+/** Rises like a sheet and settles without a bounce or a tail; a spring, so a hand can catch it mid-flight. */
+const RISE = { type: 'spring', visualDuration: 0.38, bounce: 0 } as const
+const FALL = { duration: 0.25, ease: [0.32, 0.72, 0, 1] } as const
 
 /**
  * The listening room (`?listen`): the player slides up and takes the whole screen, the release's own night around it
@@ -47,15 +49,23 @@ function Room({ decks, onLower }: { decks: Deck[]; onLower: () => void }) {
   const lead = decks[0].playable
   const room = useRoomStyle(lead.releaseId, lead.artworkId)
   const pair = decks.length > 1
+  // A swipe down lowers it, the way it came; the gesture wakes once it has risen (it starts off-screen).
+  const [sheet, setSheet] = useState<HTMLDivElement | null>(null)
+  const [risen, setRisen] = useState(false)
+  const { y } = useSheetGesture({ element: sheet, enabled: risen, onDismiss: onLower })
+  const below = typeof window === 'undefined' ? 800 : window.innerHeight
   return (
     // Focus lands on Play, the room's one action, rather than on the way out
     <DialogStage onOpenAutoFocus={(event) => (event.preventDefault(), document.querySelector<HTMLElement>('[data-room-play]')?.focus())}>
       <motion.div
         data-listening-room
-        className="layer-fullscreen-surface fixed inset-0 overflow-hidden outline-none"
-        initial={{ y: '100%' }}
+        className="layer-fullscreen-surface fixed inset-0 overflow-hidden outline-hidden"
+        ref={setSheet}
+        style={{ y }}
+        initial={{ y: below }}
         animate={{ y: 0, transition: RISE }}
-        exit={{ y: '100%', transition: FALL }}
+        exit={{ y: below, transition: FALL }}
+        onAnimationComplete={(definition) => definition && typeof definition === 'object' && 'y' in definition && definition.y === 0 && setRisen(true)}
       >
         <div className="art-room h-full" style={room}>
           <div data-signal className="art-scene @container relative isolate flex h-full flex-col overflow-hidden" data-room-scene>

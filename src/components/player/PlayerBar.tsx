@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { Maximize2, X } from 'lucide-react'
@@ -33,7 +34,7 @@ export function PlayerBar() {
           </button>
         </Tip>
         <div className="min-w-0">
-          <Link {...item.link} className="block truncate font-display text-[15px] font-semibold text-ink hover:underline hover:underline-offset-4">
+          <Link {...item.link} className="block truncate font-display text-[0.9375rem] font-semibold text-ink hover:underline hover:underline-offset-4">
             {item.title}
           </Link>
           <p className="readout mt-1 truncate text-ink-muted">{item.label}</p>
@@ -87,13 +88,13 @@ export function MiniPlayer({ tucked }: { tucked: boolean }) {
       <button type="button" onClick={listen.show} aria-label={`Open the listening room: ${item.title}, ${item.label}`} className="press flex min-w-0 flex-1 items-center gap-3 text-left">
         <ReleaseArt title={item.release} id={item.releaseId} artworkId={item.artworkId} size="row" className={cn('rounded-[18px]', tucked ? 'size-9' : 'size-11')} />
         <span className="min-w-0">
-          <span className="block truncate font-display text-[15px] font-semibold text-ink">{item.title}</span>
+          <span className="block truncate font-display text-[0.9375rem] font-semibold text-ink">{item.title}</span>
           {!tucked && <span className="readout mt-0.5 block truncate text-ink-muted">{item.label}</span>}
         </span>
       </button>
       {!tucked && <Meter live={playing} bars={4} className="shrink-0" />}
       <PlayToggle size="sm" />
-      <span aria-hidden="true" className="absolute inset-x-5 bottom-0 h-0.5 origin-left rounded-full bg-accent" style={{ scale: `${duration ? time / duration : 0} 1` }} />
+      <span aria-hidden="true" data-playhead className="absolute inset-x-5 bottom-0 h-0.5 origin-left scale-x-(--share) rounded-full bg-accent" style={{ '--share': duration ? time / duration : 0 } as CSSProperties} />
     </motion.section>
   )
 }

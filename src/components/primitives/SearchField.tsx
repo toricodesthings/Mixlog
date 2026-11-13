@@ -38,7 +38,7 @@ export function SearchField({ value, onValueChange, className, disabled, ...inpu
                 disabled={disabled}
                 onChange={(event) => onValueChange(event.target.value)}
                 className={cn(
-                    "min-w-0 flex-1 bg-transparent py-1.5 text-sm text-ink outline-none placeholder:text-ink-muted",
+                    "min-w-0 flex-1 bg-transparent py-1.5 text-sm text-ink outline-hidden placeholder:text-ink-muted",
                     "[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
                 )}
             />
@@ -50,7 +50,7 @@ export function SearchField({ value, onValueChange, className, disabled, ...inpu
                         onValueChange("");
                         inputRef.current?.focus();
                     }}
-                    className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-white/[0.06] hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                    className="relative inline-flex h-8 w-8 shrink-0 cursor-pointer before:absolute before:-inset-1.5 before:content-[''] items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-white/[0.06] hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50"
                 >
                     <X size={14} aria-hidden="true" />
                 </button>

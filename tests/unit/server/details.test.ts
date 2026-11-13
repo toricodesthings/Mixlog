@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { detailsInput, isrcOf, lyricsInput, upcOf } from '#/server/details'
+import { detailsInput, groupIsrc, groupUpc, isrcOf, lyricsInput, upcOf } from '#/server/details'
 
 const base = { id: 'r1', title: ' Night Drive ', format: 'ep', releaseDate: '', upc: '', tracks: [{ id: 't1', title: 'One', isrc: '' }], released: false, zone: 'America/Toronto' }
 
@@ -12,6 +12,14 @@ describe('details', () => {
     expect(upcOf('12345')).toBeNull()
     expect(upcOf('123456789013')).toBeNull() // wrong check digit
     expect(upcOf('4006381333931')).toBe('4006381333931') // an EAN-13
+  })
+
+  it('accepts any grouping, and shows a valid one in short runs', () => {
+    expect(upcOf('1-23456-78901.2')).toBe('123456789012')
+    expect(groupUpc('123456789012')).toBe('1 23456 78901 2')
+    expect(groupUpc('12345')).toBe('12345')
+    expect(groupIsrc('uss1z2600001')).toBe('US-S1Z-26-00001')
+    expect(groupIsrc('nope')).toBe('nope')
   })
 
   it('trims, keeps empty fields empty, and names a single’s track after it', () => {

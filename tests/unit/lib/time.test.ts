@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { dayOf, formatDay, formatMoment, isLocalDate, isZone, todayIn } from '#/lib/time'
+import { dayOf, formatDay, formatMoment, isLocalDate, isZone, parseDay, todayIn } from '#/lib/time'
 
 describe('time', () => {
   it('reads a moment as the day it fell on in a zone', () => {
@@ -27,5 +27,25 @@ describe('time', () => {
     expect(isLocalDate('2026-08-01T00:00:00Z')).toBe(false)
     expect(isZone('America/Toronto')).toBe(true)
     expect(isZone('Mars/Olympus')).toBe(false)
+  })
+})
+
+describe('parseDay', () => {
+  const today = '2026-11-13'
+  it('reads what an artist types', () => {
+    expect(parseDay('2026-10-12', today)).toBe('2026-10-12')
+    expect(parseDay('10/12/2026', today, 'en-US')).toBe('2026-10-12')
+    expect(parseDay('12/10/2026', today, 'en-GB')).toBe('2026-10-12')
+    expect(parseDay('12.10.26', today, 'de-DE')).toBe('2026-10-12')
+    expect(parseDay('Oct 12', today, 'en-US')).toBe('2026-10-12')
+    expect(parseDay('12th October 2025', today, 'en-US')).toBe('2025-10-12')
+    expect(parseDay('oct 12, 2025', today)).toBe('2025-10-12')
+    expect(parseDay('10/12', today, 'en-US')).toBe('2026-10-12')
+    expect(parseDay('Yesterday', today)).toBe('2026-11-12')
+    expect(parseDay('today', '2026-03-01')).toBe('2026-03-01')
+    expect(parseDay('yesterday', '2026-03-01')).toBe('2026-02-28')
+  })
+  it('says no to what isn’t a day', () => {
+    for (const text of ['', 'soon', '13/13/2026', 'Feb 30', '2026-02-31', '1/2/3/4']) expect(parseDay(text, today, 'en-US')).toBeNull()
   })
 })

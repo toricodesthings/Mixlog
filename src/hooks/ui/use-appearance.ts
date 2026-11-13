@@ -6,7 +6,8 @@ const THEME_KEY = 'mixlog.theme'
 const MOTION_KEY = 'mixlog.motion'
 
 /**
- * Sets `data-theme` and `data-motion` on <html> from this device's choices. Self-contained (no outer
+ * Sets `data-theme` and `data-motion` on <html> from this device's choices (motion is reduced when Settings says so or
+ * the OS does), and the browser chrome's `theme-color` and `color-scheme` to match. Self-contained (no outer
  * references) because `APPEARANCE_BOOT` inlines its source into <head>, ahead of the first paint.
  */
 function applyAppearance() {
@@ -17,14 +18,27 @@ function applyAppearance() {
     motion = localStorage.getItem('mixlog.motion') ?? motion
   } catch {}
   const root = document.documentElement
-  if (theme === 'daylight' || (theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches)) root.dataset.theme = 'daylight'
+  const daylight = theme === 'daylight' || (theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches)
+  if (daylight) root.dataset.theme = 'daylight'
   else delete root.dataset.theme
-  if (motion === 'reduced') root.dataset.motion = 'reduced'
+  if (motion === 'reduced' || matchMedia('(prefers-reduced-motion: reduce)').matches) root.dataset.motion = 'reduced'
   else delete root.dataset.motion
+  // The rooms' `deep`: the status bar and the installed app's title bar follow the page.
+  const meta = (name: string, content: string) => {
+    let el = document.head.querySelector('meta[name="' + name + '"]')
+    if (!el) {
+      el = document.createElement('meta')
+      el.setAttribute('name', name)
+      document.head.appendChild(el)
+    }
+    el.setAttribute('content', content)
+  }
+  meta('theme-color', daylight ? '#f3f0ec' : '#0a1020')
+  meta('color-scheme', daylight ? 'light' : 'dark')
 }
 
-/** Runs once in <head>: applies the choices, then follows the system while the theme is "Match system". */
-export const APPEARANCE_BOOT = `var a=${applyAppearance.toString()};a();matchMedia('(prefers-color-scheme: light)').addEventListener('change',a)`
+/** Runs once in <head>: applies the choices, then follows the system, and another tab's choice. */
+export const APPEARANCE_BOOT = `var a=${applyAppearance.toString()};a();matchMedia('(prefers-color-scheme: light)').addEventListener('change',a);matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',a);addEventListener('storage',a)`
 
 function read(key: string) {
   try {
@@ -47,6 +61,9 @@ function save(key: string, value: string) {
   applyAppearance()
   for (const listener of listeners) listener()
 }
+
+// Another tab changed a choice: the boot script re-applied it; tell the hooks.
+if (typeof window !== 'undefined') window.addEventListener('storage', () => { for (const listener of listeners) listener() })
 
 const themeOf = () => (read(THEME_KEY) ?? 'blue-hour') as ThemeChoice
 const reducedOf = () => read(MOTION_KEY) === 'reduced'

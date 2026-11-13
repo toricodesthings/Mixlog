@@ -3,7 +3,7 @@
 // Times are ISO-8601 UTC text, days `YYYY-MM-DD` (see lib/time.ts). IDs are crypto.randomUUID().
 import { sql } from 'drizzle-orm'
 import type { Analysis, Fingerprint } from '#/server/loudness'
-import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 /** The one way an Instant is written (ISO 8601 UTC with milliseconds, `2026-11-03T02:14:09.512Z`): now, or `days`
  *  before it. Every stamp, default and cutoff goes through here, so `lib/time.ts` reads one format everywhere. */
@@ -48,6 +48,33 @@ export const tracks = sqliteTable('tracks', {
   // The track's night (1.3.0): its own first measured mix or master's fingerprint. See `releases.scene`.
   scene: text('scene', { mode: 'json' }).$type<Fingerprint>(),
 })
+
+export const artists = sqliteTable('artists', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  role: text('role'),
+  profileImageKey: text('profile_image_key'),
+  profileImageType: text('profile_image_type'),
+  profileImageSize: integer('profile_image_size'),
+})
+
+export const TRACK_ARTIST_ROLES = ['artist', 'featured'] as const
+
+// A track can have multiple billed artists and separate featured artists, in display order.
+export const trackArtists = sqliteTable(
+  'track_artists',
+  {
+    trackId: text('track_id').notNull().references(() => tracks.id, { onDelete: 'cascade' }),
+    artistId: text('artist_id').notNull().references(() => artists.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: TRACK_ARTIST_ROLES }).notNull().default('artist'),
+    position: integer('position').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.trackId, t.artistId] }),
+    check('track_artists_role', sql`${t.role} IN ('artist', 'featured')`),
+    uniqueIndex('track_artists_position').on(t.trackId, t.position),
+  ],
+)
 
 export const VERSION_KINDS = ['mix', 'master', 'instrumental', 'acapella', 'stems', 'artwork', 'canvas', 'video', 'license', 'other'] as const
 

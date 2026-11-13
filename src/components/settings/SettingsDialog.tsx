@@ -2,7 +2,7 @@ import * as React from 'react'
 import { X } from 'lucide-react'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
-import { cn } from '../../lib/utils'
+import { cn, fold } from '../../lib/utils'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../primitives/Dialog'
 import { useHoverSlide } from '../primitives'
 import { SearchField } from '../primitives/SearchField'
@@ -20,9 +20,9 @@ export function SettingsDialog() {
   const [searchQuery, setSearchQuery] = React.useState('')
   const slide = useHoverSlide('rounded-2xl bg-white/[0.05]')
   // Search matches a tab's name or any of its row titles
-  const needle = searchQuery.trim().toLowerCase()
+  const needle = fold(searchQuery.trim())
   const matches = SETTINGS_CATEGORIES.filter(
-    (item) => !('isHeader' in item) && [item.label, ...item.keywords].some((text) => text.toLowerCase().includes(needle)),
+    (item) => !('isHeader' in item) && [item.label, ...item.keywords].some((text) => fold(text).includes(needle)),
   )
 
   if (shell.isCompact) return <SettingsSheet />
@@ -31,7 +31,7 @@ export function SettingsDialog() {
   return (
     <Dialog open onOpenChange={(isOpen) => !isOpen && void close()}>
       <DialogContent
-        className="block !bg-panel-raised ![backdrop-filter:none] ![-webkit-backdrop-filter:none] h-[calc(100vh-2rem)] w-[min(calc(100vw-2rem),1720px)] max-w-none gap-0 overflow-hidden rounded-[2rem] p-0 outline-none !translate-x-[-50%] !translate-y-[-50%] !left-[50%] !top-[50%]"
+        className="block min-w-0 !bg-panel-raised ![backdrop-filter:none] ![-webkit-backdrop-filter:none] h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] !max-w-[1200px] gap-0 overflow-hidden rounded-[2rem] p-0 outline-hidden !translate-x-[-50%] !translate-y-[-50%] !left-[50%] !top-[50%]"
         hideCloseButton
       >
         <DialogTitle className="sr-only">Settings</DialogTitle>
@@ -69,7 +69,7 @@ export function SettingsDialog() {
                     aria-current={isActive ? 'page' : undefined}
                     {...slide.row}
                     className={cn(
-                      'relative flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-[15px] transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                      'relative flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-[0.9375rem] transition-colors focus-visible:ring-2 focus-visible:ring-accent',
                       isActive
                         ? 'bg-white/[0.08] font-medium text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]'
                         : 'text-ink-soft hover:text-ink',
@@ -84,15 +84,15 @@ export function SettingsDialog() {
           </div>
 
           {/* Main Content Area */}
-          <div className="settings-content-bg relative flex flex-1 flex-col items-stretch overflow-y-auto">
+          <div className="settings-content-bg relative flex min-w-0 flex-1 flex-col items-stretch overflow-y-auto">
             <button type="button" className="group absolute right-6 top-6 z-10 flex cursor-pointer flex-col items-center gap-2" onClick={() => void close()} aria-label="Close settings">
               <div className="btn-icon rounded-full border border-line-light text-ink-soft group-hover:bg-white/[0.06] group-hover:text-ink">
                 <X className="h-5 w-5" aria-hidden="true" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink-muted">ESC</span>
+              <span className="text-[0.625rem] font-bold uppercase tracking-[0.18em] text-ink-muted">ESC</span>
             </button>
 
-            <div className="min-h-full w-full px-8 py-14 md:px-14 xl:px-20">
+            <div className="min-h-full w-full min-w-0 px-8 py-8 md:px-12 md:py-12 xl:px-14 xl:py-14">
               <SettingsContent activeTab={activeTab} />
             </div>
           </div>

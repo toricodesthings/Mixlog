@@ -49,7 +49,7 @@ export function SkipButton({ by, size = 'md' }: { by: number; size?: 'md' | 'lg'
         className={cn('press relative flex shrink-0 items-center justify-center rounded-full text-ink-soft hover:text-ink', size === 'lg' ? 'size-12' : 'size-10')}
       >
         <Icon size={size === 'lg' ? 30 : 24} strokeWidth={1.6} aria-hidden="true" />
-        <span aria-hidden="true" data-numeric className={cn('absolute pt-px font-semibold', size === 'lg' ? 'text-[9.5px]' : 'text-[8px]')}>
+        <span aria-hidden="true" data-numeric className={cn('absolute pt-px font-semibold', size === 'lg' ? 'text-[0.59375rem]' : 'text-[0.5rem]')}>
           {Math.abs(by)}
         </span>
       </button>
@@ -77,6 +77,7 @@ export function Scrubber({ className }: { className?: string }) {
         onChange={(event) => seek(Number(event.target.value) / 1000)}
         aria-label="Playhead"
         aria-valuetext={`${clock(time)} of ${clock(duration)}`}
+        data-playhead
         className="scrubber min-w-0 flex-1"
         style={{ '--fill': `${share * 100}%`, '--buffered': `${duration ? (buffered / duration) * 100 : 0}%` } as CSSProperties}
       />

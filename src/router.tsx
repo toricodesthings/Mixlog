@@ -11,7 +11,7 @@ export function getRouter() {
     // A page on its way shows its skeleton soon (on bad signal, a second of nothing reads as broken), and once shown,
     // long enough not to flicker.
     defaultPendingMs: 200,
-    defaultPendingMinMs: 400,
+    defaultPendingMinMs: 250,
     defaultPendingComponent: PagePending,
   })
 

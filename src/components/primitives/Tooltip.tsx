@@ -47,6 +47,8 @@ export interface TipProps {
     children: ReactNode;
     /** Suppress the preview while keeping the trigger mounted (for example, during a drag). */
     disabled?: boolean;
+    /** The tip carries a fact, not just a name: the trigger (a `<button>`) also opens it on a tap, and a second tap closes it. */
+    toggle?: boolean;
 }
 
 /** Touch screens have no hover: a tip only follows keyboard focus, never a sheet's initial focus. */
@@ -54,14 +56,19 @@ const focusedWithoutKeyboard = () =>
     isTouchFirst() &&
     !document.activeElement?.matches(":focus-visible");
 
-export function Tip({ label, side = "right", children, disabled = false }: TipProps) {
+export function Tip({ label, side = "right", children, disabled = false, toggle = false }: TipProps) {
     const [open, setOpen] = useState(false);
     const touch = useRef(false);
+    const wasOpen = useRef(false);
+    // Radix closes a tip on pointer-down; the click that follows toggles from what it was before.
+    const toggling = toggle
+        ? { onClick: (event: React.MouseEvent) => setOpen(!(event.detail === 0 ? open : wasOpen.current)) }
+        : {};
     return (
-        <Root open={open && !disabled} onOpenChange={(next) => setOpen(next && !disabled && !touch.current && !focusedWithoutKeyboard())}>
-            <Trigger asChild onPointerDown={(event) => { touch.current = event.pointerType === "touch"; if (touch.current) setOpen(false); }} onPointerMove={(event) => { if (event.pointerType === "mouse") touch.current = false; }}>{children}</Trigger>
+        <Root open={open && !disabled} onOpenChange={(next) => setOpen(next && !disabled && (toggle || (!touch.current && !focusedWithoutKeyboard())))}>
+            <Trigger asChild {...toggling} onPointerDown={(event) => { wasOpen.current = open; touch.current = event.pointerType === "touch"; if (touch.current && !toggle) setOpen(false); }} onPointerMove={(event) => { if (event.pointerType === "mouse") touch.current = false; }}>{children}</Trigger>
             {!disabled && <Portal>
-                <Content side={side}>
+                <Content side={side} onPointerDownOutside={() => setOpen(false)}>
                     {label}
                     <Arrow className="fill-room-surface" />
                 </Content>

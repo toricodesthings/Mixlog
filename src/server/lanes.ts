@@ -32,6 +32,15 @@ export function lanesOf<T extends LaneRow>(trackId: string, rows: T[]) {
   }
 }
 
+/** The rows as they'll be once `id` is filed in `to`: what `fileVersion` writes, applied here first so a page can show
+ *  the move before the server answers. A new final sends the old one back to Masters. */
+export function moved<T extends LaneRow>(rows: T[], id: string, to: Lane): T[] {
+  const track = rows.find((v) => v.id === id)?.track_id
+  return rows.map((v) =>
+    v.id === id ? { ...v, kind: to === 'mix' ? 'mix' : 'master', is_final: to === 'final' ? 1 : 0 } : to === 'final' && v.track_id === track && v.kind === 'master' ? { ...v, is_final: 0 } : v,
+  )
+}
+
 /** What plays when nothing is picked: the final, else the newest master, else the newest mix. */
 export function playOf<T extends LaneRow>(trackId: string, rows: T[]): T | null {
   const lanes = lanesOf(trackId, rows)

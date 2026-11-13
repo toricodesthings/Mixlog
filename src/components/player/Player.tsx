@@ -126,6 +126,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [item, playing, loading, volume, muted])
 
+  // Space plays and pauses, ←/→ move 5 s, as in every music app and DAW: unless the key belongs to what has focus.
+  const keyed = useRef(state)
+  keyed.current = state
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !keyed.current.item) return
+      const space = e.key === ' '
+      if (!space && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      const target = e.target as Element | null
+      const own = 'input, textarea, select, [contenteditable="true"], [role="slider"], [role^="menu"], [role="listbox"], [role="tablist"], [role="toolbar"]'
+      if (target?.closest?.(own)) return
+      // A dialog keeps its keys (the room, which is the player, doesn't); a button or link keeps Space.
+      if (target?.closest?.('[role="dialog"]') && !target.closest('[data-listening-room]')) return
+      if (space && target?.closest?.('button, a, summary')) return
+      e.preventDefault()
+      if (space) keyed.current.toggle()
+      else keyed.current.skip(e.key === 'ArrowLeft' ? -5 : 5)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   useEffect(() => {
     if (!item) return
     setLoading(true)
@@ -177,18 +199,33 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   )
 }
 
-/** Reads the playhead every frame while playing (smooth on a wide bar, where `timeupdate`'s quarter-seconds step). */
+/** The playhead for React (the `m:ss` text, `aria-valuetext`): it moves on the audio's own events, about four times a
+ *  second. What *draws* it (a fill, a clip, a thumb) is smoother: while playing, every frame writes `--fill`,
+ *  `--buffered` (percent) and `--share` (0–1) onto each `[data-playhead]` element, as signal.ts does for the meters.
+ *  Nothing re-renders per frame. */
 function PlayheadClock({ audio, playing, children }: { audio: RefObject<HTMLAudioElement | null>; playing: boolean; children: ReactNode }) {
   const [playhead, setPlayhead] = useState<Playhead>({ time: 0, duration: 0, buffered: 0 })
   useEffect(() => {
     const a = audio.current
     if (!a) return
-    const read = () => setPlayhead({ time: a.currentTime, duration: Number.isFinite(a.duration) ? a.duration : 0, buffered: bufferedAt(a) })
+    const draw = () => {
+      const duration = Number.isFinite(a.duration) ? a.duration : 0
+      const share = duration ? Math.min(1, a.currentTime / duration) : 0
+      const buffered = duration ? Math.min(1, bufferedAt(a) / duration) : 0
+      for (const el of document.querySelectorAll<HTMLElement>('[data-playhead]')) {
+        el.style.setProperty('--fill', `${share * 100}%`)
+        el.style.setProperty('--buffered', `${buffered * 100}%`)
+        el.style.setProperty('--share', String(share))
+        // A native range's thumb follows too, unless a finger or the mouse is holding it.
+        if (el instanceof HTMLInputElement && !el.matches(':active')) el.value = String(Math.round(share * 1000))
+      }
+    }
+    const read = () => (setPlayhead({ time: a.currentTime, duration: Number.isFinite(a.duration) ? a.duration : 0, buffered: bufferedAt(a) }), draw())
     // Seeking, loading and the end move it while paused, too; `progress` is more of the file arriving.
-    const events = ['loadedmetadata', 'seeked', 'emptied', 'ended', 'progress'] as const
+    const events = ['timeupdate', 'loadedmetadata', 'seeked', 'emptied', 'ended', 'progress'] as const
     events.forEach((e) => a.addEventListener(e, read))
     let frame = 0
-    const tick = () => (read(), (frame = requestAnimationFrame(tick)))
+    const tick = () => (draw(), (frame = requestAnimationFrame(tick)))
     if (playing) frame = requestAnimationFrame(tick)
     read()
     return () => (cancelAnimationFrame(frame), events.forEach((e) => a.removeEventListener(e, read)))

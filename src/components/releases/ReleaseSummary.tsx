@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Pause, Play } from 'lucide-react'
-import { useState, type CSSProperties } from 'react'
+import { useReducedMotionConfig } from 'framer-motion'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 
 import { isFinal } from '#/server/files'
 import { playOf } from '#/server/lanes'
@@ -86,9 +87,7 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
           </div>
           <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
-              <h1 id="release-title" className="truncate pb-[0.12em] font-display text-[1.75rem] leading-[1.05] font-semibold tracking-[-0.02em] sm:text-5xl @5xl:text-6xl">
-                {release.title}
-              </h1>
+              <MarqueeTitle title={release.title} />
               {artFailure ? (
                 <p role="alert" className="mt-2 text-sm text-feedback-error">
                   {artFailure} Tap the cover to try again.
@@ -134,7 +133,7 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
                       <span aria-hidden="true" className="relative h-1.5 w-full overflow-hidden rounded-full bg-line-strong group-enabled:group-hover:bg-ink-muted/40">
                         {version && <span className="absolute inset-0 bg-accent/45" />}
                         {isLive(playable) && (
-                          <span className="absolute inset-y-0 left-0 bg-accent shadow-[0_0_8px_var(--accent)]" style={{ width: `${playhead.duration ? (playhead.time / playhead.duration) * 100 : 0}%` }} />
+                          <span data-playhead className="absolute inset-y-0 left-0 w-(--fill) bg-accent shadow-[0_0_8px_var(--accent)]" style={{ '--fill': `${playhead.duration ? (playhead.time / playhead.duration) * 100 : 0}%` } as CSSProperties} />
                         )}
                       </span>
                     </button>
@@ -190,7 +189,7 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
                             : `${versionLabel(version, section)}${isFinal(version.content_type) ? '' : ' · Test'}`}
                       </span>
                       {track.duration_ms ? (
-                        <span data-numeric className="w-12 shrink-0 text-right text-[13px] text-ink-soft">
+                        <span data-numeric className="w-12 shrink-0 text-right text-[0.8125rem] text-ink-soft">
                           {formatLength(track.duration_ms)}
                         </span>
                       ) : null}
@@ -235,13 +234,109 @@ function SignalPath({ section, releaseId, stations }: { section: Section; releas
                   <Icon size={17} aria-hidden="true" />
                   <Led lit={lit} className="absolute -top-1 left-1/2 -translate-x-1/2" />
                 </span>
-                <span className="font-display text-xs font-semibold text-ink sm:text-sm @6xl:text-[15px]">{label}</span>
-                <span className="text-[11.5px] leading-tight text-balance text-ink-soft sm:text-[12.5px] @6xl:text-sm">{fact}</span>
+                <span className="font-display text-xs font-semibold text-ink sm:text-sm @6xl:text-[0.9375rem]">{label}</span>
+                <span className="text-[0.71875rem] leading-tight text-balance text-ink-soft sm:text-[0.78125rem] @6xl:text-sm">{fact}</span>
               </Link>
             </li>
           ))}
         </ol>
       </div>
     </nav>
+  )
+}
+
+/** Music-player pace: 32px a second, a 2.5s rest at each end, each leg on a sine ease (no hard start or stop). */
+const MARQUEE_SPEED = 32
+const MARQUEE_REST = 2500
+const MARQUEE_EASE = 'cubic-bezier(0.37, 0, 0.63, 1)'
+
+/**
+ * The Summary's big title on one line. A title too long for it rests, glides to its end, rests and glides back, as a
+ * music player's does, its edges fading into the scene (`.title-marquee` in app.css). A mouse over it sends it back
+ * to its start from wherever it is and holds it there; leaving starts the cycle again. With reduced motion (Settings
+ * or the OS) it stays put, cut with an ellipsis. Measured on resize and once the font lands, so it only moves when
+ * it must.
+ */
+function MarqueeTitle({ title }: { title: string }) {
+  const h1 = useRef<HTMLHeadingElement>(null)
+  const run = useRef<Animation | null>(null)
+  const reduced = Boolean(useReducedMotionConfig())
+  const [shift, setShift] = useState(0)
+  useLayoutEffect(() => {
+    const el = h1.current
+    if (!el) return
+    // scrollWidth − clientWidth is the hidden part with or without the fade's padding (both sides grow by it)
+    const measure = () => setShift(Math.max(0, el.scrollWidth - el.clientWidth))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    // The inline text isn't observable; Outfit arriving late changes its width, so measure again once it has
+    let live = true
+    void document.fonts.ready.then(() => live && measure())
+    return () => ((live = false), observer.disconnect())
+  }, [title])
+  const moving = shift > 1 && !reduced
+  const text = () => h1.current?.firstElementChild ?? null
+
+  /** The cycle, from its start: rest, out, rest, back. The rests are fixed seconds, so the offsets follow the length. */
+  const loop = () => {
+    const el = text()
+    if (!el) return
+    const glide = (shift / MARQUEE_SPEED) * 1000
+    const total = 2 * (glide + MARQUEE_REST)
+    const at = (ms: number) => ms / total
+    const end = `${-shift}px 0`
+    run.current?.cancel()
+    run.current = el.animate(
+      [
+        { translate: '0 0', offset: 0 },
+        { translate: '0 0', offset: at(MARQUEE_REST), easing: MARQUEE_EASE },
+        { translate: end, offset: at(MARQUEE_REST + glide) },
+        { translate: end, offset: at(2 * MARQUEE_REST + glide), easing: MARQUEE_EASE },
+        { translate: '0 0', offset: 1 },
+      ],
+      { duration: total, iterations: Infinity },
+    )
+  }
+  useLayoutEffect(() => {
+    if (!moving) return
+    loop()
+    return () => {
+      run.current?.cancel()
+      run.current = null
+    }
+  }, [moving, shift])
+
+  /** Hover: back to the start from where it is on screen (never a jump), quicker the closer it is, then held. */
+  const rewind = () => {
+    const el = text()
+    if (!el || !run.current) return
+    const from = getComputedStyle(el).translate
+    const x = Math.abs(parseFloat(from) || 0)
+    run.current.cancel()
+    run.current = el.animate([{ translate: from === 'none' ? '0 0' : from }, { translate: '0 0' }], {
+      duration: Math.min(700, 200 + x * 1.2),
+      easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+    })
+  }
+  const enter = (event: PointerEvent) => moving && event.pointerType === 'mouse' && rewind()
+  const leave = (event: PointerEvent) => {
+    if (!moving || event.pointerType !== 'mouse') return
+    // Still on its way back: let it land, then start the cycle, so nothing jumps
+    const back = run.current
+    if (back && back.playState === 'running' && back.effect?.getTiming().iterations === 1) void back.finished.then(() => run.current === back && loop(), () => {})
+    else loop()
+  }
+  return (
+    <h1
+      ref={h1}
+      id="release-title"
+      data-overflow={moving || undefined}
+      onPointerEnter={enter}
+      onPointerLeave={leave}
+      className="title-marquee truncate pb-[0.12em] font-display text-[1.75rem] leading-[1.05] font-semibold tracking-[-0.02em] sm:text-5xl @5xl:text-6xl"
+    >
+      <span>{title}</span>
+    </h1>
   )
 }

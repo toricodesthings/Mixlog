@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { useLensScrub } from "../../hooks/ui/use-lens-scrub";
@@ -12,8 +12,8 @@ interface SegmentedOption<T extends string> {
 }
 
 const SIZES = {
-    sm: { root: "rounded-xl p-0.5", item: "rounded-lg px-3 py-1 text-[13px]", lens: "inset-y-0.5 rounded-lg" },
-    md: { root: "min-h-11 rounded-xl p-0.5", item: "h-9 rounded-lg px-3.5 text-sm", lens: "top-1/2 h-9 -translate-y-1/2 rounded-lg" },
+    sm: { root: "rounded-[11px] p-0.5", item: "rounded-lg px-3 py-1 text-[0.8125rem]", lens: "inset-y-0.5 rounded-lg" },
+    md: { root: "min-h-11 rounded-[11px] p-0.5", item: "h-9 rounded-lg px-3.5 text-sm before:absolute before:-inset-y-1 before:content-['']", lens: "top-1/2 h-9 -translate-y-1/2 rounded-lg" },
 } as const;
 
 /** The chosen/idle look of one segment, shared with other pressed controls (formatting toggles). Needs `--segment-tone` on the element or an ancestor. */
@@ -42,6 +42,7 @@ export function SegmentedControl<T extends string>({
     tone?: string;
     className?: string;
 }) {
+    const name = useId();
     const activeIndex = options.findIndex((option) => option.value === value);
     const { trackRef, lens, handlers, hoverIndex } = useLensScrub({ activeIndex, onCommit: (i) => onChange(options[i].value) });
     return (
@@ -62,23 +63,21 @@ export function SegmentedControl<T extends string>({
                 const active = option.value === value;
                 const lit = hoverIndex === null ? active : hoverIndex === index;
                 return (
-                    <button
+                    <label
                         key={option.value}
                         data-lens-item
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        onClick={() => onChange(option.value)}
                         style={option.tone ? ({ "--segment-tone": option.tone } as CSSProperties) : undefined}
                         className={cn(
-                            "relative inline-flex cursor-pointer select-none items-center justify-center gap-1.5 whitespace-nowrap border border-transparent font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--segment-tone)]/50",
+                            "relative inline-flex cursor-pointer select-none items-center justify-center gap-1.5 whitespace-nowrap border border-transparent font-medium transition-colors has-focus-visible:ring-2 has-focus-visible:ring-[var(--segment-tone)]/50",
                             SIZES[size].item,
                             lit ? "text-[var(--segment-tone)]" : active ? "text-ink-soft" : SEGMENT_IDLE,
                         )}
                     >
+                        {/* A native radio: one tab stop, arrow keys and the announcement come from the platform. */}
+                        <input type="radio" name={name} checked={active} onChange={() => onChange(option.value)} className="sr-only" />
                         {option.icon ? <span className="shrink-0">{option.icon}</span> : null}
                         {option.label}
-                    </button>
+                    </label>
                 );
             })}
         </div>

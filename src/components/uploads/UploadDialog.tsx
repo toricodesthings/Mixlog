@@ -7,9 +7,9 @@ import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { cn } from '../../lib/utils'
 import { Button, Led, Meter } from '../primitives'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../primitives/Dialog'
 import type { TrackState } from '../releases/Lane'
 import { LaneMenu, TARGET_ICON, TARGET_LABEL } from '../releases/LaneMenu'
+import { Composer } from '../shared/Composer'
 import { sortDrop, type Target } from './use-lane-upload'
 
 type Search = { upload?: true }
@@ -67,16 +67,12 @@ export function UploadDialog({ t }: { t: TrackState }) {
   const label = TARGET_LABEL(target)
 
   return (
-    <Dialog open onOpenChange={(open) => !open && void close()}>
-      <DialogContent className="gap-5 sm:max-w-2xl [&>*]:min-w-0">
-        <DialogHeader className="gap-1 text-left">
-          <p className="readout flex items-center gap-2 text-accent">
-            <Led lit={Boolean(drop.over)} />
-            Input armed · {label}
-          </p>
-          <DialogTitle className="font-display text-2xl">Upload to {t.track.title}</DialogTitle>
-        </DialogHeader>
-
+    <Composer
+      onClose={() => void close()}
+      title={`Upload to ${t.track.title}`}
+      eyebrow={<><Led lit={Boolean(drop.over)} /> Input armed · {label}</>}
+      className="gap-5 sm:max-w-2xl [&>*]:min-w-0"
+    >
         {isCompact ? (
           <LaneMenu title="Upload as" value={target} options={TARGETS.map((o) => o.target)} onChange={choose} align="start">
             <Button variant="secondary" className="w-full justify-start gap-2.5">
@@ -104,7 +100,7 @@ export function UploadDialog({ t }: { t: TrackState }) {
                     <span className="flex size-10 items-center justify-center rounded-xl bg-white/[0.05] text-ink-muted transition-colors duration-200 group-has-checked:bg-accent group-has-checked:text-room-void">
                       <OptionIcon size={18} aria-hidden="true" />
                     </span>
-                    <span className="font-display text-[15px] font-semibold text-ink-soft group-has-checked:text-ink">{TARGET_LABEL(option)}</span>
+                    <span className="font-display text-[0.9375rem] font-semibold text-ink-soft group-has-checked:text-ink">{TARGET_LABEL(option)}</span>
                     <span className="text-xs text-ink-muted">{hint}</span>
                     <Check size={14} strokeWidth={3} aria-hidden="true" className="absolute top-2.5 right-2.5 hidden size-[18px] rounded-full bg-accent p-0.5 text-room-void group-has-checked:block" />
                   </label>
@@ -128,7 +124,7 @@ export function UploadDialog({ t }: { t: TrackState }) {
           <span className="font-display text-lg font-semibold text-ink">{drop.over ? 'Let go to add them' : isTouch ? `Choose ${target === 'final' ? 'the final' : 'files'}` : `Drop ${target === 'final' ? 'the final' : 'files'} here`}</span>
           <span className="text-sm text-ink-soft">{target === 'final' ? 'A WAV, AIFF or FLAC' : 'MP3s, WAVs, any audio'}{isTouch ? '' : ', or click to choose'}</span>
         </button>
-        {note && <p role="status" className="-mt-2 text-[13px] text-ink-soft">{note}</p>}
+        {note && <p role="status" className="-mt-2 text-[0.8125rem] text-ink-soft">{note}</p>}
         <input
           ref={input}
           type="file"
@@ -141,7 +137,6 @@ export function UploadDialog({ t }: { t: TrackState }) {
             if (files.length) take(files)
           }}
         />
-      </DialogContent>
-    </Dialog>
+    </Composer>
   )
 }

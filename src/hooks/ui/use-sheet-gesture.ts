@@ -59,7 +59,9 @@ export function useSheetGesture({ element, enabled, onDismiss }: { element: HTML
         let scroller: Element | null = null;
         let mode: SheetDecision | null = null;
         let samples: { t: number; y: number }[] = [];
-        const settle = () => animate(y, 0, latest.current.reduced ? { duration: 0 } : SPRINGS.GLIDE);
+        let base = 0;
+        // Carries the finger's release speed on, so a sheet let go mid-pull doesn't stop dead and restart.
+        const settle = (velocity = 0) => animate(y, 0, latest.current.reduced ? { duration: 0 } : { ...SPRINGS.GLIDE, velocity });
 
         const onStart = (event: TouchEvent) => {
             const touch = event.touches[0];
@@ -71,6 +73,9 @@ export function useSheetGesture({ element, enabled, onDismiss }: { element: HTML
             blocked = Boolean(target.closest?.(BLOCKED));
             scroller = scrollerOf(target, element);
             height.current = element.offsetHeight || window.innerHeight;
+            // Caught mid-flight: stop where it is on screen and carry on from there, never jump to the finger.
+            y.stop();
+            base = y.get();
         };
         const onMove = (event: TouchEvent) => {
             const touch = event.touches[0];
@@ -83,7 +88,8 @@ export function useSheetGesture({ element, enabled, onDismiss }: { element: HTML
             }
             if (mode !== "sheet") return;
             event.preventDefault();
-            y.set(dy > 0 ? dy : rubber(dy, height.current));
+            const total = base + dy;
+            y.set(total > 0 ? total : rubber(total, height.current));
             const now = event.timeStamp;
             samples.push({ t: now, y: dy });
             samples = samples.filter((s) => now - s.t <= 100);
@@ -94,13 +100,13 @@ export function useSheetGesture({ element, enabled, onDismiss }: { element: HTML
                 const last = samples[samples.length - 1];
                 const velocity = first && last && last.t > first.t ? ((last.y - first.y) / (last.t - first.t)) * 1000 : 0;
                 if (shouldDismiss(y.get(), velocity, height.current)) latest.current.onDismiss(velocity);
-                else settle();
-            }
+                else settle(velocity);
+            } else if (y.get() !== 0) settle(); // a tap that only caught it
             start = null;
             mode = null;
         };
         const onCancel = () => {
-            if (mode === "sheet") settle();
+            if (mode === "sheet" || y.get() !== 0) settle();
             start = null;
             mode = null;
         };

@@ -14,10 +14,12 @@ export const Route = createRootRoute({
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
       { name: 'theme-color', content: '#0a1020' },
+      { name: 'color-scheme', content: 'dark' },
       { title: 'Mixlog' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', href: '/favicon.ico', sizes: '48x48' },
       { rel: 'icon', href: '/brand/mixlog-mark.png', type: 'image/png' },
       { rel: 'apple-touch-icon', href: '/brand/mixlog-mark.png' },
       // Access sits in front of everything, so the manifest is fetched with the session's cookie.

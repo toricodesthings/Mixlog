@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import type { ReleaseFormat, ReleaseRow } from '#/server/releases'
 import { dayOf, formatDay, todayIn, type LocalDate, type Zone } from '../../lib/time'
+import { fold } from '../../lib/utils'
 import type { Section } from './sections'
 
 /** How a section's releases show and in what order: all of it in the URL, so a refresh, Back or a link keeps it. */
@@ -57,9 +58,9 @@ export const sortOf = (section: Section, saved: string | null): SortMode => SORT
 
 /** Search (title, any word order, any case), then the format filter, then the order. Never mutates its input. */
 export function browse(section: Section, releases: ReleaseRow[], { query, format, sort, zone }: { query: string; format: FormatFilter; sort: SortMode; zone: Zone }) {
-  const words = query.toLocaleLowerCase().split(/\s+/).filter(Boolean)
+  const words = fold(query).split(/\s+/).filter(Boolean)
   const shown = releases.filter(
-    (r) => (format === 'all' || r.format === format) && words.every((w) => r.title.toLocaleLowerCase().includes(w)),
+    (r) => (format === 'all' || r.format === format) && words.every((w) => fold(r.title).includes(w)),
   )
   // By day, then by which was added first that day.
   const byDate = (a: ReleaseRow, b: ReleaseRow) =>

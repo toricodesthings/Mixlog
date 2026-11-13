@@ -27,13 +27,13 @@ export function LyricsPanel({ trackId, title, initial }: { trackId: string; titl
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="flex min-h-12 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
+          className="flex min-h-12 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-hidden"
         >
           <NotebookPen size={18} aria-hidden="true" className="shrink-0 text-accent" />
-          <span className="font-display text-[15px] font-semibold">Lyrics</span>
-          <SaveState status={lyrics.status} onRetry={() => void lyrics.flush()} quiet />
+          <span className="font-display text-[0.9375rem] font-semibold">Lyrics</span>
           <ChevronDown size={18} aria-hidden="true" className={cn('ml-auto shrink-0 text-ink-muted transition-transform duration-200', open && 'rotate-180')} />
         </button>
+        <SaveState status={lyrics.status} onRetry={() => void lyrics.flush()} quiet />
         <Tip label="Open the writing room">
           <button type="button" onClick={() => setRoom(true)} aria-label={`Open the writing room for ${title}`} className="press flex size-10 shrink-0 items-center justify-center rounded-xl text-ink-soft hover:bg-white/[0.05] hover:text-ink">
             <Maximize2 size={16} aria-hidden="true" />
@@ -44,10 +44,10 @@ export function LyricsPanel({ trackId, title, initial }: { trackId: string; titl
       {open ? (
         <div className="flex flex-col gap-3 px-3.5 pb-3.5">
           <SectionBar field={field} lyrics={lyrics} />
-          <LyricsField ref={field} lyrics={lyrics} label={`${title} lyrics`} className="min-h-48 rounded-xl border border-line-light bg-white/[0.04] px-3.5 py-3 text-[15px] leading-relaxed transition-colors focus-within:border-accent/40" />
+          <LyricsField ref={field} lyrics={lyrics} label={`${title} lyrics`} className="min-h-48 rounded-xl border border-line-light bg-white/[0.04] px-3.5 py-3 text-[0.9375rem] leading-relaxed transition-colors focus-within:border-accent/40" />
         </div>
       ) : (
-        <button type="button" onClick={() => setOpen(true)} tabIndex={-1} className="block w-full cursor-pointer px-3.5 pb-3.5 pl-[2.95rem] text-left text-[15px] leading-relaxed">
+        <button type="button" onClick={() => setOpen(true)} tabIndex={-1} className="block w-full cursor-pointer px-3.5 pb-3.5 pl-[2.95rem] text-left text-[0.9375rem] leading-relaxed">
           {preview.length ? (
             preview.map((line, i) => (
               <span key={i} className={cn('block truncate', isTag(line) ? 'readout text-accent' : 'text-ink-soft')}>
@@ -69,9 +69,9 @@ export function LyricsPanel({ trackId, title, initial }: { trackId: string; titl
 function SaveState({ status, onRetry, quiet }: { status: LyricsStatus; onRetry: () => void; quiet?: boolean }) {
   if (status === 'failed')
     return (
-      <span role="button" tabIndex={0} onClick={(e) => (e.stopPropagation(), onRetry())} onKeyDown={(e) => e.key === 'Enter' && onRetry()} className="readout cursor-pointer text-feedback-error hover:underline">
+      <button type="button" onClick={onRetry} className="readout min-h-9 rounded px-1 text-feedback-error hover:underline">
         Couldn’t save · Retry
-      </span>
+      </button>
     )
   return (
     <span className={cn('readout flex items-center gap-1.5 text-ink-muted', quiet && status === 'saved' && 'opacity-0')} aria-live="polite">
@@ -97,7 +97,7 @@ function SectionBar({ field, lyrics, className }: { field: RefObject<HTMLTextAre
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => mark(section)}
-          className="surface-control press flex min-h-9 shrink-0 cursor-pointer items-center gap-0.5 rounded-full border border-line/30 px-3 text-[13px] font-medium text-ink-soft hover:border-accent/40 hover:text-accent"
+          className="surface-control press flex min-h-9 pointer-coarse:min-h-11 shrink-0 cursor-pointer items-center gap-0.5 rounded-full border border-line/30 px-3 text-[0.8125rem] font-medium text-ink-soft hover:border-accent/40 hover:text-accent"
         >
           <Hash size={13} aria-hidden="true" className="text-accent" />
           {section}
@@ -138,7 +138,7 @@ function LyricsField({ ref, lyrics, label, className }: { ref: RefObject<HTMLTex
         placeholder="Verse, chorus, verse…"
         onChange={(e) => lyrics.edit(e.target.value)}
         onKeyDown={save}
-        className={cn(shared, 'resize-none overflow-hidden bg-transparent p-0 text-transparent caret-accent outline-none placeholder:text-ink-muted selection:bg-accent/30 selection:text-ink')}
+        className={cn(shared, 'resize-none overflow-hidden bg-transparent p-0 text-transparent caret-accent outline-hidden placeholder:text-ink-muted selection:bg-accent/30 selection:text-ink')}
       />
     </div>
   )
@@ -154,7 +154,7 @@ function WritingRoom({ open, onClose, lyrics, title }: { open: boolean; onClose:
         {open && (
           <DialogStage onOpenAutoFocus={(e) => (e.preventDefault(), field.current?.focus())}>
             <motion.div
-              className="layer-fullscreen-surface fixed inset-0 flex flex-col bg-room-deep outline-none"
+              className="layer-fullscreen-surface fixed inset-0 flex flex-col bg-room-deep outline-hidden"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } }}
               exit={{ opacity: 0, y: 8, transition: { duration: 0.18, ease: [0.25, 1, 0.5, 1] } }}
@@ -177,14 +177,14 @@ function WritingRoom({ open, onClose, lyrics, title }: { open: boolean; onClose:
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-6 sm:px-8 sm:py-10" onClick={(e) => e.target === e.currentTarget && field.current?.focus()}>
                 <div className="surface-card mx-auto flex min-h-full w-full max-w-[48rem] flex-col rounded-3xl border border-transparent px-6 py-8 transition-colors focus-within:border-accent/25 sm:px-14 sm:py-14">
                   {/* The whole page takes a click, not just the lines written so far */}
-                  <LyricsField ref={field} lyrics={lyrics} label={`${title} lyrics`} className="flex-1 text-[17px] leading-[1.85]" />
+                  <LyricsField ref={field} lyrics={lyrics} label={`${title} lyrics`} className="flex-1 text-[1.0625rem] leading-[1.85]" />
                 </div>
               </div>
               <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-line/30 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-8">
-                <span data-numeric className="text-[13px] text-ink-muted">
+                <span data-numeric className="text-[0.8125rem] text-ink-muted">
                   {lines} line{lines === 1 ? '' : 's'} · {words} word{words === 1 ? '' : 's'}
                 </span>
-                <span className="hidden text-[13px] text-ink-muted sm:block">Paste from Musixmatch as is: its tags and spacing carry over.</span>
+                <span className="hidden text-[0.8125rem] text-ink-muted sm:block">Paste from Musixmatch as is: its tags and spacing carry over.</span>
               </footer>
             </motion.div>
           </DialogStage>

@@ -15,9 +15,15 @@ export function isrcOf(value: string): string | null {
   return /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(isrc) ? isrc : null
 }
 
-/** A UPC (12 digits) or EAN (13), spaces ignored, its last digit the GTIN check digit. */
+/** A valid ISRC as printed, `CC-XXX-YY-NNNNN`; anything else as typed. */
+export const groupIsrc = (value: string) => isrcOf(value)?.replace(/^(.{2})(.{3})(.{2})(.{5})$/, '$1-$2-$3-$4') ?? value
+
+/** A valid UPC in short runs (`0 12345 67890 5`, an EAN's first digit alone); anything else as typed. */
+export const groupUpc = (value: string) => upcOf(value)?.replace(/^(\d)(\d{5})(\d{5})(\d+)$/, '$1 $2 $3 $4') ?? value
+
+/** A UPC (12 digits) or EAN (13), spaces, hyphens and dots ignored, its last digit the GTIN check digit. */
 export function upcOf(value: string): string | null {
-  const upc = value.replace(/\s/g, '')
+  const upc = value.replace(/[\s.-]/g, '')
   if (!/^\d{12,13}$/.test(upc)) return null
   // Weights 3,1,3,1… from the right, skipping the check digit; the total comes to a multiple of 10.
   const sum = [...upc.slice(0, -1)].reverse().reduce((total, d, i) => total + Number(d) * (i % 2 === 0 ? 3 : 1), 0)

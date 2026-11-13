@@ -60,7 +60,7 @@ export function WithMeters({ data, children }: { data: ReleaseData; children: Re
               style={headerH ? ({ '--dock-header-h': `${headerH}px` } as CSSProperties) : undefined}
               className="meters-dock surface-shell h-full shrink-0 overflow-hidden"
             >
-              <AnimatePresence mode="wait" initial={false}>
+              <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div key={version.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={TWEENS.FADE} className="h-full w-[26rem]">
                   <MeterBridge docked t={{ data, release: data.release, track, section: sectionOf(data.release) }} version={version} headingRef={heading} onClose={close} />
                 </motion.div>

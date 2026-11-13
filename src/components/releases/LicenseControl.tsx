@@ -9,8 +9,8 @@ import { downloadUrl, uploadLicense } from '../../lib/files'
 import { deviceZone, formatMoment, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { Button, Transfer, Tuning } from '../primitives'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../primitives/Dialog'
 import { SegmentedControl } from '../primitives/SegmentedControl'
+import { Composer } from '../shared/Composer'
 import { sizeOf } from '../uploads/progress'
 import { formatOf, licensesOf } from './stacks'
 
@@ -114,24 +114,37 @@ function UploadState({ state }: { state: ReturnType<typeof useLicenseUpload>['st
 export function LicenseDialog({ tracks, versions }: { tracks: TrackRow[]; versions: VersionRow[] }) {
   const { open, show, close } = useLicenseParam()
   const version = versions.find((v) => v.id === open && v.kind === 'license')
-  return (
-    <Dialog open={Boolean(version)} onOpenChange={(next) => !next && void close()}>
-      {version && <LicenseSheet version={version} track={tracks.find((t) => t.id === version.track_id)} stack={licensesOf(version.track_id!, versions)} show={show} />}
-    </Dialog>
-  )
+  return version ? <LicenseSheet version={version} track={tracks.find((t) => t.id === version.track_id)} stack={licensesOf(version.track_id!, versions)} show={show} close={() => void close()} /> : null
 }
 
-function LicenseSheet({ version, track, stack, show }: { version: VersionRow; track?: TrackRow; stack: VersionRow[]; show: (id: string) => void }) {
+function LicenseSheet({ version, track, stack, show, close }: { version: VersionRow; track?: TrackRow; stack: VersionRow[]; show: (id: string) => void; close: () => void }) {
   const upload = useLicenseUpload(version.track_id!, show)
   const zone = deviceZone()
   return (
-    <DialogContent className="flex max-h-[92dvh] w-[min(56rem,calc(100vw-2rem))] max-w-none flex-col gap-4">
-      <DialogHeader className="gap-1 pr-10">
-        <DialogTitle>License{track ? ` · ${track.title}` : ''}</DialogTitle>
-        <p className="readout text-ink-muted">
-          v{version.number} · {formatOf(version.filename)} · {sizeOf(version.size)} · Added {formatMoment(version.created_at, zone, todayIn(zone))}
-        </p>
-      </DialogHeader>
+    <Composer
+      onClose={close}
+      title={`License${track ? ` · ${track.title}` : ''}`}
+      eyebrow={`v${version.number} · ${formatOf(version.filename)} · ${sizeOf(version.size)} · Added ${formatMoment(version.created_at, zone, todayIn(zone))}`}
+      actions={
+        <>
+          <span className="mr-auto min-w-0 truncate text-sm text-ink-muted">{version.filename}</span>
+          <UploadState state={upload.state} />
+          {/* Takes a dropped PDF or Word document too. */}
+          <Button type="button" variant="ghost" onClick={upload.pick} disabled={upload.sending} {...upload.drop} className={cn('gap-1.5', upload.over && 'ring-2 ring-accent')}>
+            <FilePlus2 size={16} aria-hidden="true" />
+            New version
+          </Button>
+          <Button asChild variant="secondary" className="gap-1.5">
+            <a href={downloadUrl(version.id)} download={version.filename}>
+              <Download size={16} aria-hidden="true" />
+              Download
+            </a>
+          </Button>
+          {upload.picker}
+        </>
+      }
+      className="flex max-h-[92dvh] w-[min(56rem,calc(100vw-2rem))] max-w-none flex-col gap-4"
+    >
       {stack.length > 1 && (
         <SegmentedControl ariaLabel="License version" size="sm" value={version.id} onChange={show} options={stack.map((v) => ({ value: v.id, label: `v${v.number}` }))} />
       )}
@@ -140,22 +153,7 @@ function LicenseSheet({ version, track, stack, show }: { version: VersionRow; tr
           <LicenseDocument key={version.id} version={version} />
         </Suspense>
       </div>
-      <DialogFooter className="flex-wrap items-center gap-2" {...upload.drop}>
-        <span className="mr-auto min-w-0 truncate text-sm text-ink-muted">{version.filename}</span>
-        <UploadState state={upload.state} />
-        <Button type="button" variant="ghost" onClick={upload.pick} disabled={upload.sending} className={cn('gap-1.5', upload.over && 'ring-2 ring-accent')}>
-          <FilePlus2 size={16} aria-hidden="true" />
-          New version
-        </Button>
-        <Button asChild variant="secondary" className="gap-1.5">
-          <a href={downloadUrl(version.id)} download={version.filename}>
-            <Download size={16} aria-hidden="true" />
-            Download
-          </a>
-        </Button>
-        {upload.picker}
-      </DialogFooter>
-    </DialogContent>
+    </Composer>
   )
 }
 

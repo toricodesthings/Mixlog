@@ -1,7 +1,7 @@
-import { CalendarClock, Disc3, Settings, Trash2, type LucideIcon } from 'lucide-react'
+import { CalendarClock, Disc3, Settings, Trash2, UsersRound, type LucideIcon } from 'lucide-react'
 
 export type Destination = {
-  to: '/upcoming' | '/releases' | '/trash'
+  to: '/upcoming' | '/releases' | '/artists' | '/trash'
   label: string
   icon: LucideIcon
   /** The pages this destination stands for, so Upcoming stays lit on one of its tracks. */
@@ -13,6 +13,7 @@ export const DESTINATIONS: { primary: Destination[]; secondary: Destination[] } 
   primary: [
     { to: '/upcoming', label: 'Upcoming', icon: CalendarClock, owns: (p) => p.startsWith('/upcoming') },
     { to: '/releases', label: 'Releases', icon: Disc3, owns: (p) => p.startsWith('/releases') },
+    { to: '/artists', label: 'Artists', icon: UsersRound, owns: (p) => p.startsWith('/artists') },
   ],
   secondary: [
     { to: '/trash', label: 'Trash', icon: Trash2, owns: (p) => p === '/trash' },

@@ -82,7 +82,7 @@ function PdfPages({ data, version }: { data: Uint8Array; version: VersionRow }) 
 function Unreadable({ version, children }: { version: VersionRow; children: string }) {
   return (
     <div className="flex h-full min-h-[50dvh] flex-col items-center justify-center gap-4 p-8 text-center">
-      <p className="max-w-sm text-[15px] text-ink-soft">{children}</p>
+      <p className="max-w-sm text-[0.9375rem] text-ink-soft">{children}</p>
       <Button asChild variant="secondary">
         <a href={downloadUrl(version.id)} download={version.filename}>Download {version.filename}</a>
       </Button>

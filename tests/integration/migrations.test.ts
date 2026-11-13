@@ -56,3 +56,29 @@ it('renumbers mixes and masters as one song, pins 1.0.0’s finals, and sets asi
   expect(all('SELECT id FROM versions WHERE pruned_at IS NOT NULL')).toEqual(['cx1'])
   expect(() => db.exec("INSERT INTO versions (id, track_id, kind, number, r2_key, filename, content_type, size) VALUES ('dup', 'a', 'mix', 3, 'k-dup', 'd', 'audio/mpeg', 1)")).toThrow(/UNIQUE/)
 })
+
+it('links artists to many tracks and distinguishes featured artists', () => {
+  const db = new DatabaseSync(':memory:')
+  db.exec('PRAGMA foreign_keys = ON')
+  const files = readdirSync('migrations').filter((f) => f.endsWith('.sql')).sort()
+  files.forEach((file) => db.exec(readFileSync(`migrations/${file}`, 'utf8').replace(/PRAGMA foreign_keys=(ON|OFF);/g, '')))
+
+  db.exec(`
+    INSERT INTO artists (id, name) VALUES ('a1', 'Artist One'), ('a2', 'Artist Two');
+    INSERT INTO releases (id, title) VALUES ('r', 'Release');
+    INSERT INTO tracks (id, release_id, title) VALUES ('t1', 'r', 'Track One'), ('t2', 'r', 'Track Two');
+    INSERT INTO track_artists (track_id, artist_id, role, position) VALUES
+      ('t1', 'a1', 'artist', 1), ('t1', 'a2', 'featured', 2), ('t2', 'a1', 'artist', 1);
+  `)
+
+  expect(db.prepare('SELECT artist_id, role FROM track_artists WHERE track_id = ? ORDER BY position').all('t1')).toEqual([
+    { artist_id: 'a1', role: 'artist' },
+    { artist_id: 'a2', role: 'featured' },
+  ])
+  expect(db.prepare('SELECT track_id FROM track_artists WHERE artist_id = ? ORDER BY track_id').all('a1')).toEqual([
+    { track_id: 't1' },
+    { track_id: 't2' },
+  ])
+  expect(() => db.exec("INSERT INTO track_artists (track_id, artist_id, role, position) VALUES ('t1', 'a1', 'featured', 3)")).toThrow(/UNIQUE/)
+  expect(() => db.exec("INSERT INTO track_artists (track_id, artist_id, role, position) VALUES ('t1', 'a2', 'guest', 3)")).toThrow(/CHECK/)
+})

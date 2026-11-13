@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Page } from '#/components/layout/Page'
 import { EmptyState } from '#/components/shared/EmptyState'
 
-export const Route = createFileRoute('/trash')({ component: Trash })
+export const Route = createFileRoute('/trash')({ head: () => ({ meta: [{ title: 'Trash · Mixlog' }] }), component: Trash })
 
 function Trash() {
   return (

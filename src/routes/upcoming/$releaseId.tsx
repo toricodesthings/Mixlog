@@ -10,6 +10,7 @@ export const Route = createFileRoute('/upcoming/$releaseId')({
     ...(search.upload === true ? { upload: true as const } : {}),
   }),
   loader: ({ params }) => loadRelease('upcoming', params.releaseId),
+  head: ({ loaderData }) => ({ meta: [{ title: `${loaderData?.release.title ?? 'Release'} · Upcoming · Mixlog` }] }),
   component: Release,
 })
 

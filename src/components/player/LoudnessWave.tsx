@@ -62,6 +62,7 @@ export function LoudnessWave({ item, wave: { bars: wave, ms, loudestMs }, size =
         ref={box}
         className="loudness-wave relative min-w-0 flex-1"
         data-active={active || undefined}
+        data-playhead={active || undefined}
         style={{
           '--wave-h': `${drawn}px`,
           '--fill': `${share * 100}%`,

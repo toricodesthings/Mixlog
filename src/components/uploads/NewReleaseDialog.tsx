@@ -1,5 +1,5 @@
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { ChevronDown, FilePlus2, ImagePlus, X } from 'lucide-react'
+import { Album, CalendarDays, ChevronDown, FilePlus2, ImagePlus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { ARTWORK_ACCEPT, AUDIO_ACCEPT, FINAL_ACCEPT, MAX_AUDIO_BYTES, artworkProblem, audioTypeOf, isFinal, type AudioKind } from '#/server/files'
@@ -10,9 +10,8 @@ import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { readDuration, uploadArtwork, uploadAudio } from '../../lib/files'
 import { deviceZone, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
-import { Button, Input, Led, Meter, Progress, Tip, Transfer } from '../primitives'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../primitives/Dialog'
-import { SegmentedControl } from '../primitives/SegmentedControl'
+import { Button, DayInput, Input, Led, Meter, Progress, Tip, Transfer } from '../primitives'
+import { Composer, ComposerRow, ComposerRows, ValueSelect } from '../shared/Composer'
 import { MetaLine } from '../shared/MetaLine'
 import { formatLength } from '../releases/browse'
 import { ReleaseArt } from '../releases/ReleaseArt'
@@ -189,28 +188,33 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && close()}>
-      <DialogContent className="gap-5 sm:max-w-2xl [&>*]:min-w-0" onEscapeKeyDown={(e) => busy && e.preventDefault()} onPointerDownOutside={(e) => busy && e.preventDefault()}>
-        <DialogHeader className="gap-1 text-left">
-          <p className="readout flex items-center gap-2 text-accent">
-            <Led breathe={busy} lit={total > 0} />
-            {busy ? `Recording · ${stored} of ${total}` : total ? [rows.length && `${rows.length} ${rows.length === 1 ? 'bounce' : 'bounces'}`, cover && 'artwork'].filter(Boolean).join(' · ') : 'Input armed'}
-          </p>
-          <DialogTitle className="font-display text-2xl">{released ? 'Add a release' : 'New release'}</DialogTitle>
-          {busy && totalBytes > 0 && (
-            <div className="mt-2 flex flex-col gap-1.5">
-              <Progress value={sentBytes / totalBytes} label="Saving the release" valueText={`${sentOf(sentBytes / totalBytes, totalBytes)} sent`} />
-              <p data-numeric className="readout flex justify-between gap-3 text-ink-muted">
-                <span>{sentOf(sentBytes / totalBytes, totalBytes)}</span>
-                <span>
-                  {timeLeft(sentBytes - startedAt.current.sent, totalBytes - startedAt.current.sent, (performance.now() - startedAt.current.at) / 1000) ??
-                    `${Math.round((sentBytes / totalBytes) * 100)}%`}
-                </span>
-              </p>
-            </div>
-          )}
-        </DialogHeader>
-
+    <Composer
+      onClose={close}
+      title={released ? 'Add a release' : 'New release'}
+      eyebrow={
+        <>
+          <Led breathe={busy} lit={total > 0} />
+          {busy ? `Recording · ${stored} of ${total}` : total ? [rows.length && `${rows.length} ${rows.length === 1 ? 'bounce' : 'bounces'}`, cover && 'artwork'].filter(Boolean).join(' · ') : 'Input armed'}
+        </>
+      }
+      band={
+        busy && totalBytes > 0 ? (
+          <div className="flex flex-col gap-1.5">
+            <Progress value={sentBytes / totalBytes} label="Saving the release" valueText={`${sentOf(sentBytes / totalBytes, totalBytes)} sent`} />
+            <p data-numeric className="readout flex justify-between gap-3 text-ink-muted">
+              <span>{sentOf(sentBytes / totalBytes, totalBytes)}</span>
+              <span>
+                {timeLeft(sentBytes - startedAt.current.sent, totalBytes - startedAt.current.sent, (performance.now() - startedAt.current.at) / 1000) ??
+                  `${Math.round((sentBytes / totalBytes) * 100)}%`}
+              </span>
+            </p>
+          </div>
+        ) : undefined
+      }
+      submit={{ label: failures ? 'Try again' : 'Save', onSubmit: () => void save(), disabled: !ready, busy, busyLabel: `Saving ${Math.min(stored + 1, total)} of ${total}…` }}
+      closeLabel={created ? 'Close' : 'Cancel'}
+      className="gap-5 sm:max-w-2xl [&>*]:min-w-0"
+    >
         <div className="flex items-start gap-4">
           {/* The only way in for artwork: click it, or drop a PNG or JPG right on it. */}
           <Tip label={coverLabel}>
@@ -233,40 +237,30 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
               )}
             </button>
           </Tip>
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <label className="flex flex-col gap-1.5">
-              <span className="readout text-ink-muted">Title</span>
-              <Input
-                value={shownTitle}
-                disabled={locked}
-                maxLength={200}
-                autoFocus={!isTouch}
-                placeholder={single ? 'Name the single' : `Name the ${FORMAT_LABEL[shownFormat]}`}
-                onChange={(e) => setTitle(e.target.value)}
-                className="font-display text-base font-semibold"
-              />
-            </label>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className={cn(locked && 'pointer-events-none opacity-60')}>
-                <SegmentedControl ariaLabel="Format" value={shownFormat} onChange={setFormat} options={FORMATS} size="sm" />
-              </div>
-              {released && (
-                <label className="flex items-center gap-2">
-                  <span className="readout whitespace-nowrap text-ink-muted">Out on</span>
-                  <Input
-                    type="date"
-                    value={releasedOn}
-                    max={today}
-                    required
-                    disabled={locked}
-                    onChange={(e) => setReleasedOn(e.target.value)}
-                    className="h-9 w-auto rounded-lg"
-                  />
-                </label>
-              )}
-            </div>
-          </div>
+          <label className="flex min-w-0 flex-1 flex-col gap-1.5 self-center">
+            <span className="readout text-ink-muted">Title</span>
+            <Input
+              value={shownTitle}
+              disabled={locked}
+              maxLength={200}
+              autoFocus={!isTouch}
+              placeholder={single ? 'Name the single' : `Name the ${FORMAT_LABEL[shownFormat]}`}
+              onChange={(e) => setTitle(e.target.value)}
+              className="font-display text-base font-semibold"
+            />
+          </label>
         </div>
+
+        <ComposerRows>
+          <ComposerRow icon={Album} label="Format">
+            <ValueSelect label="Format" value={shownFormat} onChange={setFormat} options={FORMATS} disabled={locked} />
+          </ComposerRow>
+          {released && (
+            <ComposerRow icon={CalendarDays} label="Out on">
+              <DayInput aria-label="Out on" value={releasedOn} max={today} required disabled={locked} onChange={setReleasedOn} row className="pointer-fine:w-44" />
+            </ComposerRow>
+          )}
+        </ComposerRows>
 
         {rows.length > 0 && (
           <section aria-label="Bounces" className="flex flex-col gap-2">
@@ -288,11 +282,11 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
                           maxLength={200}
                           aria-label={`Track title for ${row.file.name}`}
                           onChange={(e) => edit(row.file, { title: e.target.value })}
-                          className="h-9 rounded-lg font-medium"
+                          className="h-9 pointer-coarse:h-11 rounded-lg font-medium"
                         />
                       )}
                       {state?.state === 'failed' ? (
-                        <span role="alert" className="text-[13px] text-feedback-error">{state.error}</span>
+                        <span role="alert" className="text-[0.8125rem] text-feedback-error">{state.error}</span>
                       ) : state?.state === 'sending' ? (
                         <UploadProgress name={row.file.name} size={row.file.size} sent={state.sent} phase={state.phase} />
                       ) : (
@@ -348,27 +342,18 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
           }}
         />
 
-        {coverProblem && <p role="alert" className="text-[13px] text-feedback-error">{coverProblem}</p>}
-        {cover && progress.get(cover)?.state === 'failed' && <p role="alert" className="text-[13px] text-feedback-error">Artwork: {progress.get(cover)!.error}</p>}
+        {coverProblem && <p role="alert" className="text-[0.8125rem] text-feedback-error">{coverProblem}</p>}
+        {cover && progress.get(cover)?.state === 'failed' && <p role="alert" className="text-[0.8125rem] text-feedback-error">Artwork: {progress.get(cover)!.error}</p>}
         {leftOut.length + finalsLeftOut.length > 0 && (
-          <p className="text-[13px] text-ink-muted">
+          <p className="text-[0.8125rem] text-ink-muted">
             Left out: {[...leftOut, ...finalsLeftOut].join(', ')}.
             {finalsLeftOut.length > 0 && ' Releases keep the final: a WAV, AIFF or FLAC. Start it in Upcoming to keep test bounces.'}
           </p>
         )}
-        {problem && <p role="alert" className="text-[13px] text-feedback-error">{problem}</p>}
-        {failures > 0 && !busy && <p className="text-[13px] text-ink-soft">The release is saved with what made it. Try again sends only what didn’t.</p>}
+        {problem && <p role="alert" className="text-[0.8125rem] text-feedback-error">{problem}</p>}
+        {failures > 0 && !busy && <p className="text-[0.8125rem] text-ink-soft">The release is saved with what made it. Try again sends only what didn’t.</p>}
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={close} disabled={busy}>
-            {created ? 'Close' : 'Cancel'}
-          </Button>
-          <Button onClick={() => void save()} disabled={busy || !ready} aria-busy={busy}>
-            {busy ? `Saving ${Math.min(stored + 1, total)} of ${total}…` : failures ? 'Try again' : 'Save'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </Composer>
   )
 }
 

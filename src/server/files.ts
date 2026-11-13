@@ -77,6 +77,9 @@ export function audioProblem(kind: unknown, contentType: unknown, size: unknown)
 export const fileKey = (owner: { releaseId: string; trackId?: string }, kind: (typeof VERSION_KINDS)[number], versionId: string) =>
   `releases/${owner.releaseId}/${owner.trackId ? `tracks/${owner.trackId}/` : ''}${kind}/${versionId}`
 
+/** Profile images live outside release versions: one replaceable portrait per artist. */
+export const artistProfileKey = (artistId: string, imageId: string) => `artists/${artistId}/profile/${imageId}`
+
 /** A license is the paper behind a cover or a remix: a PDF or a Word document, typed by extension like audio. */
 const LICENSE_EXTENSIONS: Record<string, string> = {
   pdf: 'application/pdf',

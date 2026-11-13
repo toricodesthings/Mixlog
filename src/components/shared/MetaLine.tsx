@@ -16,7 +16,7 @@ export function MetaLine({ facts, wrap, className }: { facts: (string | null | u
   // line (the first fact's, or a wrapped one's) falls outside it, so no line starts with a dot.
   if (wrap)
     return (
-      <span className={cn('block min-w-0 overflow-hidden text-[13.5px] text-ink-muted', className)} data-numeric>
+      <span className={cn('block min-w-0 overflow-hidden text-[0.84375rem] text-ink-muted', className)} data-numeric>
         <span className="-ml-[11px] flex flex-wrap items-center gap-x-2 gap-y-0.5">
           {shown.map((fact, i) => (
             <span key={i} className="flex min-w-0 items-center gap-2">
@@ -28,7 +28,7 @@ export function MetaLine({ facts, wrap, className }: { facts: (string | null | u
       </span>
     )
   return (
-    <span className={cn('flex min-w-0 items-center gap-x-2 truncate text-[13.5px] text-ink-muted', className)} data-numeric>
+    <span className={cn('flex min-w-0 items-center gap-x-2 truncate text-[0.84375rem] text-ink-muted', className)} data-numeric>
       {shown.map((fact, i) => (
         <Fragment key={i}>
           {i > 0 && dot}

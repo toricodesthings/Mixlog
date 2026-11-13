@@ -48,7 +48,7 @@ export function ReleasesTab() {
     <div>
       <h2 className="mb-10 font-display text-2xl font-semibold text-ink">Releases</h2>
       <SettingsSection title="After a release goes out">
-        <p className="text-[13px] leading-relaxed text-ink-muted">
+        <p className="text-[0.8125rem] leading-relaxed text-ink-muted">
           Each track keeps what shipped; the rest is set aside. Until it's erased, the release can move back to Upcoming with all of them. Kept for every device.
         </p>
         <fieldset disabled={keep === undefined} className="flex flex-col gap-2" aria-busy={keep === undefined}>

@@ -135,7 +135,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
             type="button"
             onClick={() => player.play(playableOf(release, track, version, zone))}
             aria-label={live && player.playing ? `Pause ${track.title}, ${label}` : `Play ${track.title}, ${label}`}
-            className="press flex size-11 shrink-0 items-center justify-center rounded-full text-accent"
+            className="press flex size-11 shrink-0 items-center justify-center rounded-full text-accent after:absolute after:inset-0 after:rounded-2xl after:content-['']"
           >
             {live && player.loading ? <Fetching className="size-7" /> : live && player.playing ? <Meter live bars={3} /> : <Play size={18} aria-hidden="true" className="translate-x-px fill-current" />}
           </button>
@@ -153,7 +153,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
         )}
         <span className={cn('flex min-w-0 flex-1 flex-col py-2', isCompact ? 'gap-0.5' : 'gap-1')}>
           {/* Two lines on a phone rather than cut short; one, truncated, beside the columns on a wide screen. */}
-          <span className={cn('text-[15px] font-medium', isCompact ? 'line-clamp-2 leading-snug break-words' : 'truncate', live ? 'text-accent' : 'text-ink')}>{name}</span>
+          <span className={cn('text-[0.9375rem] font-medium', isCompact ? 'line-clamp-2 leading-snug break-words' : 'truncate', live ? 'text-accent' : 'text-ink')}>{name}</span>
           {isCompact && facts}
         </span>
         {!isCompact && facts}
@@ -167,7 +167,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
               aria-label={`Meters for ${label}`}
               aria-expanded={metersOpen}
               aria-controls={metersOpen ? `meters-${version.id}` : undefined}
-              className={cn('relative shrink-0 rounded-full', metersOpen ? 'text-accent' : 'text-ink-muted hover:text-accent')}
+              className={cn('relative z-[1] shrink-0 rounded-full', metersOpen ? 'text-accent' : 'text-ink-muted hover:text-accent')}
             >
               <Activity size={16} aria-hidden="true" />
               {metersOpen && <Led className="absolute top-2 right-2" />}
@@ -176,7 +176,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
         )}
         {movable && (
           <LaneMenu title={`Move v${version.number} to`} value={lane} options={LANES} test={test} onChange={(to) => (to === 'final' && test ? askWav() : void t.move(version, to as Lane))}>
-            <Button ref={moveButton} variant="ghost" size="icon" aria-label={`Move v${version.number}, now in ${lane === 'final' ? 'the final' : lane === 'master' ? 'Masters' : 'Mixes'}`} className="shrink-0 rounded-full text-ink-muted hover:text-accent" disabled={t.moving}>
+            <Button ref={moveButton} variant="ghost" size="icon" aria-label={`Move v${version.number}, now in ${lane === 'final' ? 'the final' : lane === 'master' ? 'Masters' : 'Mixes'}`} className="relative z-[1] shrink-0 rounded-full text-ink-muted hover:text-accent">
               <ArrowUpDown size={16} aria-hidden="true" />
             </Button>
           </LaneMenu>
@@ -184,7 +184,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
         {!movable && !released && !isCompact && <span aria-hidden="true" className="size-11 shrink-0" />}
         {released && (
           <Tip label="Replace" side="left">
-            <Button variant="ghost" size="icon" onClick={() => t.pick(target, propose)} aria-label={`Replace ${version.filename}`} disabled={Boolean(replacing)} className="shrink-0 rounded-full text-ink-muted hover:text-accent">
+            <Button variant="ghost" size="icon" onClick={() => t.pick(target, propose)} aria-label={`Replace ${version.filename}`} disabled={Boolean(replacing)} className="relative z-[1] shrink-0 rounded-full text-ink-muted hover:text-accent">
               <RefreshCw size={16} aria-hidden="true" />
             </Button>
           </Tip>
@@ -194,7 +194,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
             href={downloadUrl(version.id)}
             download={version.filename}
             aria-label={`Download ${version.filename}`}
-            className="press flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:text-accent"
+            className="press relative z-[1] flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:text-accent"
           >
             <Download size={16} aria-hidden="true" />
           </a>
@@ -231,7 +231,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
           </Button>
         </li>
       )}
-      {refused && <li role="status" className="px-4 pb-2 text-[13px] text-ink-soft">{refused}</li>}
+      {refused && <li role="status" className="px-4 pb-2 text-[0.8125rem] text-ink-soft">{refused}</li>}
       {replacing && <UploadRow pending={replacing} onRetry={() => t.uploads.retry(replacing.key)} onDismiss={() => t.uploads.dismiss(replacing.key)} />}
     </>
   )
@@ -246,11 +246,11 @@ function Loudness({ a }: { a: Measured }) {
       <Activity size={13} aria-hidden="true" className="text-accent" />
       <span data-numeric>{reading(a.lufs!)} LUFS · {reading(a.truePeak, 1, true)} dBTP</span>
       {over && (
-        <Tip label="Most platforms ask for −1 dBTP or lower" side="top">
-          <span tabIndex={0} className="flex items-center rounded">
+        <Tip label="Most platforms ask for −1 dBTP or lower" side="top" toggle>
+          <button type="button" className="flex items-center rounded">
             <Led tone="tube" />
             <span className="sr-only">true peak above −1 dBTP</span>
-          </span>
+          </button>
         </Tip>
       )}
     </span>

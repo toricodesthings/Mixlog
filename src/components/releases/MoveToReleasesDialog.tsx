@@ -1,13 +1,13 @@
 import { useNavigate } from '@tanstack/react-router'
-import { Disc3 } from 'lucide-react'
+import { CalendarDays, Disc3 } from 'lucide-react'
 import { useState } from 'react'
 
 import { lanesOf } from '#/server/lanes'
 import { moveToReleases, type TrackRow } from '#/server/releases'
 import { moveBackWindow, prunedOf } from '#/server/shipping'
 import { dayOf, deviceZone, formatDay, todayIn } from '../../lib/time'
-import { Button, Input, Tuning } from '../primitives'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../primitives/Dialog'
+import { DayInput } from '../primitives'
+import { Composer, ComposerRow, ComposerRows } from '../shared/Composer'
 import { Lane, useTrack } from './Lane'
 import type { ReleaseData } from './loaders'
 import { releaseLink, useMoveParam } from './sections'
@@ -41,23 +41,25 @@ export function MoveToReleasesDialog(data: ReleaseData) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && state.status !== 'moving' && void close()}>
-      <DialogContent className="flex max-h-[92dvh] w-[min(40rem,calc(100vw-2rem))] max-w-none flex-col gap-5">
-        <DialogHeader className="gap-1 pr-10">
-          <DialogTitle>Move to Releases</DialogTitle>
-          <DialogDescription>Stamps exactly what shipped. Each track goes out with its final.</DialogDescription>
-        </DialogHeader>
-
+    <Composer
+      open={open}
+      onClose={() => void close()}
+      title="Move to Releases"
+      description="Stamps exactly what shipped. Each track goes out with its final."
+      submit={{ label: 'Move to Releases', icon: Disc3, onSubmit: () => void move(), disabled: !ready, busy: state.status === 'moving', busyLabel: 'Moving' }}
+      className="flex max-h-[92dvh] w-[min(40rem,calc(100vw-2rem))] max-w-none flex-col gap-5"
+    >
         <ol className="-mx-1 flex flex-col gap-2 overflow-y-auto px-1">
           {tracks.map((track, i) => (
             <TrackFinal key={track.id} data={data} track={track} number={i + 1} title={release.format === 'single' ? release.title : track.title} />
           ))}
         </ol>
 
-        <label className="flex flex-wrap items-center gap-3">
-          <span className="readout text-ink-muted">Out on</span>
-          <Input type="date" value={releasedOn} max={today} required onChange={(e) => setReleasedOn(e.target.value)} className="h-10 w-auto" />
-        </label>
+        <ComposerRows>
+          <ComposerRow icon={CalendarDays} label="Out on">
+            <DayInput aria-label="Out on" value={releasedOn} max={today} required onChange={setReleasedOn} row className="pointer-fine:w-44" />
+          </ComposerRow>
+        </ComposerRows>
 
         <p className="surface-row rounded-2xl px-4 py-3 text-sm text-ink-soft">
           Keeps each final, the current instrumental, acapella, stems, Canvas and video, the licenses and the artwork.{' '}
@@ -74,18 +76,8 @@ export function MoveToReleasesDialog(data: ReleaseData) {
           )}
         </p>
 
-        {state.status === 'failed' && <p role="alert" className="text-[13px] text-feedback-error">{state.message}</p>}
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => void close()} disabled={state.status === 'moving'}>
-            Cancel
-          </Button>
-          <Button onClick={() => void move()} disabled={!ready || state.status === 'moving'} aria-busy={state.status === 'moving'} className="gap-2">
-            {state.status === 'moving' ? <Tuning className="text-current" /> : <Disc3 size={16} aria-hidden="true" />}
-            {state.status === 'moving' ? 'Moving' : 'Move to Releases'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        {state.status === 'failed' && <p role="alert" className="text-[0.8125rem] text-feedback-error">{state.message}</p>}
+    </Composer>
   )
 }
 
@@ -103,7 +95,7 @@ function TrackFinal({ data, track, number, title }: { data: ReleaseData; track: 
         heading={
           <span className="flex min-w-0 shrink items-center gap-3">
             <span className="readout w-6 shrink-0 text-accent">{String(number).padStart(2, '0')}</span>
-            <span className="truncate text-[15px] font-medium">{title}</span>
+            <span className="truncate text-[0.9375rem] font-medium">{title}</span>
           </span>
         }
       />

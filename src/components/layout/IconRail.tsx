@@ -163,7 +163,7 @@ function RailItem({
   const content = (
     <>
       <Led lit={lit} className={cn('absolute left-[3px] transition-opacity duration-(--duration-normal)', lit ? 'opacity-100' : 'opacity-0')} />
-      {busy ? <Tuning className="w-[18px] text-[12px]" /> : <Icon size={18} aria-hidden="true" className="shrink-0" />}
+      {busy ? <Tuning className="w-[18px] text-[0.75rem]" /> : <Icon size={18} aria-hidden="true" className="shrink-0" />}
       <Label expanded={expanded}>{label}</Label>
     </>
   )

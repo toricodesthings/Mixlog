@@ -50,7 +50,7 @@ export function ReleaseLayout(data: ReleaseData) {
   const room = useRoomStyle(release.id, release.artwork_id)
   const cover = <ArtworkButton releaseId={release.id} title={release.title} artworkId={release.artwork_id} onFailure={setArtFailure} />
   const facts = artFailure ? (
-    <p role="alert" className="truncate text-[13px] text-feedback-error">
+    <p role="alert" className="truncate text-[0.8125rem] text-feedback-error">
       {artFailure} Tap the cover to try again.
     </p>
   ) : (
@@ -85,7 +85,7 @@ export function ReleaseLayout(data: ReleaseData) {
                   <Link
                     {...releaseLink(section, release.id, part)}
                     activeOptions={{ exact: part === 'summary' }}
-                    className="group press relative flex h-12 items-center gap-3 rounded-xl px-3 text-[15px] text-ink-soft transition-colors hover:text-ink data-[status=active]:bg-accent-soft data-[status=active]:font-medium data-[status=active]:text-ink"
+                    className="group press relative flex h-12 items-center gap-3 rounded-xl px-3 text-[0.9375rem] text-ink-soft transition-colors hover:text-ink data-[status=active]:bg-accent-soft data-[status=active]:font-medium data-[status=active]:text-ink"
                   >
                     {({ isActive }) => (
                       <>

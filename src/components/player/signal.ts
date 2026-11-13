@@ -62,8 +62,8 @@ export function tap(audio: HTMLAudioElement): AnalyserNode | null {
   return graph.analyser
 }
 
-/** Settings' reduced motion, or the system's: as `AppShell`'s `MotionConfig` reads it. */
-const reduced = () => document.documentElement.dataset.motion === 'reduced' || matchMedia('(prefers-reduced-motion: reduce)').matches
+/** Settings' reduced motion or the system's: `applyAppearance` puts both on `data-motion`. */
+const reduced = () => document.documentElement.dataset.motion === 'reduced'
 
 /**
  * While playing, every frame: writes the levels as CSS variables (`--level-0`…`--level-4`, `--bass`, `--kick`) and

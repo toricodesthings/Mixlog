@@ -50,7 +50,7 @@ export const Item = ({ className = "", variant = "default", ...props }: RadixDro
 
 /** A selected menu choice, with the same focus and touch targets as other items. */
 export const RadioItem = ({ className = "", children, ...props }: RadixDropdownMenu.DropdownMenuRadioItemProps & { ref?: React.Ref<HTMLDivElement> }) => (
-    <RadixDropdownMenu.RadioItem className={`relative flex min-h-11 cursor-pointer items-center rounded-lg py-2 pl-9 pr-3 text-sm text-ink-soft outline-none transition-colors ${MENU_HOVER} focus:text-accent data-[state=checked]:font-medium data-[state=checked]:text-accent ${className}`} {...props}>
+    <RadixDropdownMenu.RadioItem className={`relative flex min-h-11 cursor-pointer items-center rounded-lg py-2 pl-9 pr-3 text-sm text-ink-soft outline-hidden transition-colors ${MENU_HOVER} focus:text-accent data-[state=checked]:font-medium data-[state=checked]:text-accent ${className}`} {...props}>
         <span className="absolute left-3 flex size-4 items-center justify-center">
             <RadixDropdownMenu.ItemIndicator><Check size={15} aria-hidden="true" /></RadixDropdownMenu.ItemIndicator>
         </span>

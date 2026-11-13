@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/react-router'
 import { ImagePlus } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { ARTWORK_ACCEPT, artworkProblem } from '#/server/files'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
@@ -28,6 +28,15 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
     onFailure(next.status === 'failed' ? next.message : null)
   }
   const [sent, setSent] = useState(0)
+  // The picked file is the cover at once, under the ring that says it isn't stored yet.
+  const [picked, setPicked] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  useEffect(() => {
+    if (!picked) return setPreview(null)
+    const url = URL.createObjectURL(picked)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [picked])
   const label = status === 'failed' ? 'Try the artwork again' : artworkId ? 'Replace the artwork' : 'Add artwork'
 
   const send = async (file: File | undefined) => {
@@ -36,12 +45,15 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
     if (problem) return setState({ status: 'failed', message: problem })
     setSent(0)
     setState({ status: 'uploading' })
+    setPicked(file)
     try {
       await uploadArtwork(releaseId, file, setSent)
       await router.invalidate()
       setState({ status: 'idle' })
     } catch (error) {
       setState({ status: 'failed', message: error instanceof Error ? error.message : 'Couldn’t add the artwork.' })
+    } finally {
+      setPicked(null) // stored (the reload carries it), or failed (the old cover returns)
     }
   }
 
@@ -63,6 +75,7 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
           className={cn('group press relative', size === 'panel' ? 'block w-full rounded-[1.4rem]' : size === 'stage' ? 'block rounded-[1.4rem] sm:rounded-[1.8rem]' : 'rounded-2xl', status === 'failed' && 'ring-2 ring-feedback-error/70', over === 'files' && 'ring-2 ring-accent glow-accent')}
         >
           <ReleaseArt title={title} id={releaseId} artworkId={artworkId} full={size === 'panel'} size={size} className={size === 'stage' ? 'scene-cover' : undefined} />
+          {preview && <img src={preview} alt="" className="absolute inset-0 size-full rounded-[inherit] object-cover" />}
           <span
             className={cn(
               'absolute inset-0 flex items-center justify-center rounded-[inherit] bg-room-void/60 text-ink transition-opacity duration-(--duration-normal)',

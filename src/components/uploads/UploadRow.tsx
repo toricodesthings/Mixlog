@@ -19,7 +19,7 @@ export function UploadProgress({ name, size, sent, startedAt, phase }: { name: s
           {after === 'measuring' ? 'Measuring' : 'Storing'}
         </span>
       ) : (
-        <span data-numeric className="truncate text-[12.5px] text-ink-muted">
+        <span data-numeric className="truncate text-[0.78125rem] text-ink-muted">
           {[sentOf(sent, size), left].filter(Boolean).join(' · ')}
         </span>
       )}
@@ -38,9 +38,9 @@ export function UploadRow({ pending, onRetry, onDismiss, className }: { pending:
         {state === 'sending' ? <Transfer direction="up" value={sent} className="size-5" /> : <Led lit={state !== 'failed'} />}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-[15px] font-medium text-ink">{file.name}</span>
+        <span className="truncate text-[0.9375rem] font-medium text-ink">{file.name}</span>
         {state === 'failed' ? (
-          <span role="alert" className="text-[13px] text-feedback-error">{error}</span>
+          <span role="alert" className="text-[0.8125rem] text-feedback-error">{error}</span>
         ) : state === 'queued' ? (
           <span className="readout text-ink-muted">Waiting its turn</span>
         ) : (

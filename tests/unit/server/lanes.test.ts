@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { LANES, lanesOf, moveProblem, nextLane, playOf, type Lane } from '#/server/lanes'
+import { LANES, lanesOf, moveProblem, moved, nextLane, playOf, type Lane } from '#/server/lanes'
 
 const v = (id: string, kind: string, number: number, content_type = 'audio/mpeg', is_final = 0, is_current = 0) => ({ id, track_id: 't', kind, number, content_type, is_final, is_current })
 const WAV = 'audio/wav'
@@ -61,5 +61,17 @@ describe('moving between lanes', () => {
 
   it('steps up and down one lane, and stops at the edges', () => {
     expect(LANES.map((l) => [nextLane(l, -1), nextLane(l, 1)])).toEqual([[null, 'master'], ['final', 'mix'], ['master', null]])
+  })
+})
+
+describe('a move shown before the server answers', () => {
+  const rows = [v('x1', 'mix', 1, WAV), v('m3', 'master', 3, WAV, 1), v('m2', 'master', 2)]
+
+  it('files it where fileVersion will, and sends the old final back to Masters', () => {
+    const lanes = lanesOf('t', moved(rows, 'x1', 'final'))
+    expect(lanes.final?.id).toBe('x1')
+    expect(lanes.master.map((r) => r.id)).toEqual(['m3', 'm2'])
+    expect(lanes.mix).toEqual([])
+    expect(lanesOf('t', moved(rows, 'm3', 'mix')).final).toBeNull()
   })
 })

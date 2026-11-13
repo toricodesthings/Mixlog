@@ -33,6 +33,11 @@ describe('browse', () => {
     expect(ids(browse('upcoming', rows, { query: '  ', format: 'all', sort: 'newest', zone: Z }))).toHaveLength(3)
   })
 
+  it('ignores accents and apostrophes', () => {
+    const named = (title: string) => [{ ...rows[0], id: 'n', title }]
+    expect(ids(browse('upcoming', named('Beyoncé’s Don’t'), { query: 'beyonces dont', format: 'all', sort: 'newest', zone: Z }))).toEqual(['n'])
+  })
+
   it('filters by format', () => {
     expect(ids(browse('upcoming', rows, { query: '', format: 'single', sort: 'newest', zone: Z }))).toEqual(['b'])
   })

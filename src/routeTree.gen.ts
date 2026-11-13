@@ -10,10 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as ReleasesRouteImport } from './routes/releases'
 import { Route as TrashRouteImport } from './routes/trash'
 import { Route as UpcomingRouteImport } from './routes/upcoming'
 import { Route as ApiUploadsRouteImport } from './routes/api/uploads'
+import { Route as ArtistsIndexRouteImport } from './routes/artists/index'
+import { Route as ArtistsArtistIdRouteImport } from './routes/artists/$artistId'
 import { Route as ReleasesIndexRouteImport } from './routes/releases/index'
 import { Route as ReleasesReleaseIdRouteImport } from './routes/releases/$releaseId'
 import { Route as UpcomingIndexRouteImport } from './routes/upcoming/index'
@@ -26,6 +29,7 @@ import { Route as ReleasesReleaseIdDetailsRouteImport } from './routes/releases/
 import { Route as UpcomingReleaseIdIndexRouteImport } from './routes/upcoming/$releaseId/index'
 import { Route as UpcomingReleaseIdArtworkRouteImport } from './routes/upcoming/$releaseId/artwork'
 import { Route as UpcomingReleaseIdDetailsRouteImport } from './routes/upcoming/$releaseId/details'
+import { Route as ApiArtistsArtistIdProfileRouteImport } from './routes/api/artists.$artistId.profile'
 import { Route as ApiReleasesReleaseIdArtworkRouteImport } from './routes/api/releases.$releaseId.artwork'
 import { Route as ApiTracksTrackIdLicenseRouteImport } from './routes/api/tracks.$trackId.license'
 import { Route as ReleasesReleaseIdTracksIndexRouteImport } from './routes/releases/$releaseId/tracks/index'
@@ -36,6 +40,11 @@ import { Route as UpcomingReleaseIdTracksTrackIdRouteImport } from './routes/upc
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtistsRoute = ArtistsRouteImport.update({
+  id: '/artists',
+  path: '/artists',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReleasesRoute = ReleasesRouteImport.update({
@@ -57,6 +66,16 @@ const ApiUploadsRoute = ApiUploadsRouteImport.update({
   id: '/api/uploads',
   path: '/api/uploads',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ArtistsIndexRoute = ArtistsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ArtistsRoute,
+} as any)
+const ArtistsArtistIdRoute = ArtistsArtistIdRouteImport.update({
+  id: '/$artistId',
+  path: '/$artistId',
+  getParentRoute: () => ArtistsRoute,
 } as any)
 const ReleasesIndexRoute = ReleasesIndexRouteImport.update({
   id: '/',
@@ -122,6 +141,12 @@ const UpcomingReleaseIdDetailsRoute =
     path: '/details',
     getParentRoute: () => UpcomingReleaseIdRoute,
   } as any)
+const ApiArtistsArtistIdProfileRoute =
+  ApiArtistsArtistIdProfileRouteImport.update({
+    id: '/api/artists/$artistId/profile',
+    path: '/api/artists/$artistId/profile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiReleasesReleaseIdArtworkRoute =
   ApiReleasesReleaseIdArtworkRouteImport.update({
     id: '/api/releases/$releaseId/artwork',
@@ -160,12 +185,15 @@ const UpcomingReleaseIdTracksTrackIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/artists': typeof ArtistsRouteWithChildren
   '/releases': typeof ReleasesRouteWithChildren
   '/trash': typeof TrashRoute
   '/upcoming': typeof UpcomingRouteWithChildren
   '/api/uploads': typeof ApiUploadsRouteWithChildren
+  '/artists/$artistId': typeof ArtistsArtistIdRoute
   '/releases/$releaseId': typeof ReleasesReleaseIdRouteWithChildren
   '/upcoming/$releaseId': typeof UpcomingReleaseIdRouteWithChildren
+  '/artists/': typeof ArtistsIndexRoute
   '/releases/': typeof ReleasesIndexRoute
   '/upcoming/': typeof UpcomingIndexRoute
   '/api/files/$versionId': typeof ApiFilesVersionIdRoute
@@ -176,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/upcoming/$releaseId/details': typeof UpcomingReleaseIdDetailsRoute
   '/releases/$releaseId/': typeof ReleasesReleaseIdIndexRoute
   '/upcoming/$releaseId/': typeof UpcomingReleaseIdIndexRoute
+  '/api/artists/$artistId/profile': typeof ApiArtistsArtistIdProfileRoute
   '/api/releases/$releaseId/artwork': typeof ApiReleasesReleaseIdArtworkRoute
   '/api/tracks/$trackId/license': typeof ApiTracksTrackIdLicenseRoute
   '/releases/$releaseId/tracks/$trackId': typeof ReleasesReleaseIdTracksTrackIdRoute
@@ -187,6 +216,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/trash': typeof TrashRoute
   '/api/uploads': typeof ApiUploadsRouteWithChildren
+  '/artists/$artistId': typeof ArtistsArtistIdRoute
+  '/artists': typeof ArtistsIndexRoute
   '/releases': typeof ReleasesIndexRoute
   '/upcoming': typeof UpcomingIndexRoute
   '/api/files/$versionId': typeof ApiFilesVersionIdRoute
@@ -197,6 +228,7 @@ export interface FileRoutesByTo {
   '/upcoming/$releaseId/details': typeof UpcomingReleaseIdDetailsRoute
   '/releases/$releaseId': typeof ReleasesReleaseIdIndexRoute
   '/upcoming/$releaseId': typeof UpcomingReleaseIdIndexRoute
+  '/api/artists/$artistId/profile': typeof ApiArtistsArtistIdProfileRoute
   '/api/releases/$releaseId/artwork': typeof ApiReleasesReleaseIdArtworkRoute
   '/api/tracks/$trackId/license': typeof ApiTracksTrackIdLicenseRoute
   '/releases/$releaseId/tracks/$trackId': typeof ReleasesReleaseIdTracksTrackIdRoute
@@ -207,12 +239,15 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/artists': typeof ArtistsRouteWithChildren
   '/releases': typeof ReleasesRouteWithChildren
   '/trash': typeof TrashRoute
   '/upcoming': typeof UpcomingRouteWithChildren
   '/api/uploads': typeof ApiUploadsRouteWithChildren
+  '/artists/$artistId': typeof ArtistsArtistIdRoute
   '/releases/$releaseId': typeof ReleasesReleaseIdRouteWithChildren
   '/upcoming/$releaseId': typeof UpcomingReleaseIdRouteWithChildren
+  '/artists/': typeof ArtistsIndexRoute
   '/releases/': typeof ReleasesIndexRoute
   '/upcoming/': typeof UpcomingIndexRoute
   '/api/files/$versionId': typeof ApiFilesVersionIdRoute
@@ -223,6 +258,7 @@ export interface FileRoutesById {
   '/upcoming/$releaseId/details': typeof UpcomingReleaseIdDetailsRoute
   '/releases/$releaseId/': typeof ReleasesReleaseIdIndexRoute
   '/upcoming/$releaseId/': typeof UpcomingReleaseIdIndexRoute
+  '/api/artists/$artistId/profile': typeof ApiArtistsArtistIdProfileRoute
   '/api/releases/$releaseId/artwork': typeof ApiReleasesReleaseIdArtworkRoute
   '/api/tracks/$trackId/license': typeof ApiTracksTrackIdLicenseRoute
   '/releases/$releaseId/tracks/$trackId': typeof ReleasesReleaseIdTracksTrackIdRoute
@@ -234,12 +270,15 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/artists'
     | '/releases'
     | '/trash'
     | '/upcoming'
     | '/api/uploads'
+    | '/artists/$artistId'
     | '/releases/$releaseId'
     | '/upcoming/$releaseId'
+    | '/artists/'
     | '/releases/'
     | '/upcoming/'
     | '/api/files/$versionId'
@@ -250,6 +289,7 @@ export interface FileRouteTypes {
     | '/upcoming/$releaseId/details'
     | '/releases/$releaseId/'
     | '/upcoming/$releaseId/'
+    | '/api/artists/$artistId/profile'
     | '/api/releases/$releaseId/artwork'
     | '/api/tracks/$trackId/license'
     | '/releases/$releaseId/tracks/$trackId'
@@ -261,6 +301,8 @@ export interface FileRouteTypes {
     | '/'
     | '/trash'
     | '/api/uploads'
+    | '/artists/$artistId'
+    | '/artists'
     | '/releases'
     | '/upcoming'
     | '/api/files/$versionId'
@@ -271,6 +313,7 @@ export interface FileRouteTypes {
     | '/upcoming/$releaseId/details'
     | '/releases/$releaseId'
     | '/upcoming/$releaseId'
+    | '/api/artists/$artistId/profile'
     | '/api/releases/$releaseId/artwork'
     | '/api/tracks/$trackId/license'
     | '/releases/$releaseId/tracks/$trackId'
@@ -280,12 +323,15 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/artists'
     | '/releases'
     | '/trash'
     | '/upcoming'
     | '/api/uploads'
+    | '/artists/$artistId'
     | '/releases/$releaseId'
     | '/upcoming/$releaseId'
+    | '/artists/'
     | '/releases/'
     | '/upcoming/'
     | '/api/files/$versionId'
@@ -296,6 +342,7 @@ export interface FileRouteTypes {
     | '/upcoming/$releaseId/details'
     | '/releases/$releaseId/'
     | '/upcoming/$releaseId/'
+    | '/api/artists/$artistId/profile'
     | '/api/releases/$releaseId/artwork'
     | '/api/tracks/$trackId/license'
     | '/releases/$releaseId/tracks/$trackId'
@@ -306,11 +353,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArtistsRoute: typeof ArtistsRouteWithChildren
   ReleasesRoute: typeof ReleasesRouteWithChildren
   TrashRoute: typeof TrashRoute
   UpcomingRoute: typeof UpcomingRouteWithChildren
   ApiUploadsRoute: typeof ApiUploadsRouteWithChildren
   ApiFilesVersionIdRoute: typeof ApiFilesVersionIdRoute
+  ApiArtistsArtistIdProfileRoute: typeof ApiArtistsArtistIdProfileRoute
   ApiReleasesReleaseIdArtworkRoute: typeof ApiReleasesReleaseIdArtworkRoute
   ApiTracksTrackIdLicenseRoute: typeof ApiTracksTrackIdLicenseRoute
 }
@@ -322,6 +371,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artists': {
+      id: '/artists'
+      path: '/artists'
+      fullPath: '/artists'
+      preLoaderRoute: typeof ArtistsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/releases': {
@@ -351,6 +407,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/uploads'
       preLoaderRoute: typeof ApiUploadsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/artists/': {
+      id: '/artists/'
+      path: '/'
+      fullPath: '/artists/'
+      preLoaderRoute: typeof ArtistsIndexRouteImport
+      parentRoute: typeof ArtistsRoute
+    }
+    '/artists/$artistId': {
+      id: '/artists/$artistId'
+      path: '/$artistId'
+      fullPath: '/artists/$artistId'
+      preLoaderRoute: typeof ArtistsArtistIdRouteImport
+      parentRoute: typeof ArtistsRoute
     }
     '/releases/': {
       id: '/releases/'
@@ -436,6 +506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UpcomingReleaseIdDetailsRouteImport
       parentRoute: typeof UpcomingReleaseIdRoute
     }
+    '/api/artists/$artistId/profile': {
+      id: '/api/artists/$artistId/profile'
+      path: '/api/artists/$artistId/profile'
+      fullPath: '/api/artists/$artistId/profile'
+      preLoaderRoute: typeof ApiArtistsArtistIdProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/releases/$releaseId/artwork': {
       id: '/api/releases/$releaseId/artwork'
       path: '/api/releases/$releaseId/artwork'
@@ -480,6 +557,19 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface ArtistsRouteChildren {
+  ArtistsArtistIdRoute: typeof ArtistsArtistIdRoute
+  ArtistsIndexRoute: typeof ArtistsIndexRoute
+}
+
+const ArtistsRouteChildren: ArtistsRouteChildren = {
+  ArtistsArtistIdRoute: ArtistsArtistIdRoute,
+  ArtistsIndexRoute: ArtistsIndexRoute,
+}
+
+const ArtistsRouteWithChildren =
+  ArtistsRoute._addFileChildren(ArtistsRouteChildren)
 
 interface ReleasesReleaseIdRouteChildren {
   ReleasesReleaseIdArtworkRoute: typeof ReleasesReleaseIdArtworkRoute
@@ -561,11 +651,13 @@ const ApiUploadsRouteWithChildren = ApiUploadsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArtistsRoute: ArtistsRouteWithChildren,
   ReleasesRoute: ReleasesRouteWithChildren,
   TrashRoute: TrashRoute,
   UpcomingRoute: UpcomingRouteWithChildren,
   ApiUploadsRoute: ApiUploadsRouteWithChildren,
   ApiFilesVersionIdRoute: ApiFilesVersionIdRoute,
+  ApiArtistsArtistIdProfileRoute: ApiArtistsArtistIdProfileRoute,
   ApiReleasesReleaseIdArtworkRoute: ApiReleasesReleaseIdArtworkRoute,
   ApiTracksTrackIdLicenseRoute: ApiTracksTrackIdLicenseRoute,
 }

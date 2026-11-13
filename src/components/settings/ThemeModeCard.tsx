@@ -48,16 +48,16 @@ export function ThemeModeCard({ mode, selected, onSelect }: { mode: ThemeChoice;
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        'group flex w-full cursor-pointer flex-col gap-2.5 rounded-2xl border p-3 text-left transition-all duration-200',
+        'group flex min-w-0 w-full cursor-pointer flex-col gap-2.5 overflow-hidden rounded-2xl border p-3 text-left transition-all duration-200',
         selected ? 'border-accent/40 bg-accent/[0.06]' : 'border-line-light bg-white/[0.02] hover:bg-white/[0.04]',
       )}
     >
       <MiniPreview mode={mode} />
       <div className="flex items-center gap-2">
         <Icon size={14} aria-hidden="true" className={cn('transition-colors', selected ? 'text-accent' : 'text-ink-muted')} />
-        <span className="text-[13px] font-medium text-ink">{meta.label}</span>
+        <span className="min-w-0 truncate text-[0.8125rem] font-medium text-ink">{meta.label}</span>
       </div>
-      <span className="text-[11px] text-ink-muted">{meta.desc}</span>
+      <span className="min-w-0 text-[0.6875rem] leading-snug text-ink-muted">{meta.desc}</span>
     </button>
   )
 }

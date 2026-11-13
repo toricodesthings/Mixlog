@@ -91,9 +91,8 @@
   --duration-smooth: 300ms;
   --duration-expressive: 450ms;
   --spring-snap: 400ms linear(0, 0.2271, 0.5535, 0.7826, 0.9088, 0.9679, 0.9918, 0.9997, 1.0015, 1.0013, 1.0008, 1, 1);
-  /* Liquid: leaves with some speed and settles with a breath of overshoot (5%), never a bounce: glass answering a hand */
-  --spring-liquid: 560ms linear(0, 0.36, 0.618, 0.794, 0.911, 0.983, 1.024, 1.045, 1.052, 1.052, 1.046, 1.039, 1.032, 1.025, 1.019, 1.014, 1.009, 1.006, 1.004, 1.002, 1);
-  --spring-glide: 500ms linear(0, 0.0953, 0.2805, 0.4696, 0.6291, 0.7511, 0.8386, 0.8986, 0.9383, 0.9636, 0.9792, 0.9886, 0.9941, 0.9972, 0.9988, 0.9996, 1);
+  /* Liquid: leaves with some speed and settles with a breath of overshoot (under 1%), never a bounce: glass answering a hand */
+  --spring-liquid: 340ms linear(0, 0.38, 0.66, 0.84, 0.94, 0.985, 1.004, 1.007, 1.005, 1.002, 1, 1);
   --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
   --morph-in: 200ms var(--ease-out-expo);
   --morph-out: 130ms var(--ease-out-quart);
@@ -176,7 +175,7 @@
     @apply font-sans antialiased;
     background-color: var(--color-room-void);
     color: var(--color-ink);
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
@@ -208,13 +207,18 @@
     cursor: not-allowed;
   }
 
+  /* Under 16px, iOS zooms the page on focus. */
+  @media (pointer: coarse) {
+    input, select, textarea { font-size: max(1rem, 16px); }
+  }
+
   * {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--color-ink) 12%, transparent) transparent;
   }
 
   *:focus-visible {
-    @apply outline-none;
+    @apply outline-hidden;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
     transition: box-shadow var(--duration-smooth) var(--ease-out-expo);
   }
@@ -477,6 +481,17 @@
     color-mix(in srgb, var(--color-panel-raised) var(--control-tint), transparent)
   );
 }
+/* One light from above. Volume is one highlight on the top edge and one shade on the bottom, as background layers
+   (never a box-shadow, which the focus ring owns). `raise`: things you press. `sink`: wells you put things into. */
+:root {
+  --raise: linear-gradient(rgb(255 255 255 / 0.09), transparent 1px), linear-gradient(to top, rgb(0 0 0 / 0.22), transparent 1px);
+  --sink: linear-gradient(rgb(0 0 0 / 0.22), transparent 1px), linear-gradient(to top, rgb(255 255 255 / 0.06), transparent 1px);
+}
+[data-theme="daylight"] {
+  --raise: linear-gradient(rgb(255 255 255 / 0.7), transparent 1px), linear-gradient(to top, rgb(60 40 10 / 0.12), transparent 1px);
+  --sink: linear-gradient(rgb(60 40 10 / 0.12), transparent 1px), linear-gradient(to top, rgb(255 255 255 / 0.6), transparent 1px);
+}
+.raise, button.surface-control { background-image: var(--raise); }
 button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint-up); }
 .surface-control-accent:hover { --control-tone-mix: 25%; }
 
@@ -484,6 +499,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   background-color: color-mix(in srgb, var(--color-panel) var(--row-tint), transparent);
   background-image: linear-gradient(var(--row-wash, transparent), var(--row-wash, transparent));
 }
+.sink { background-image: var(--sink); }
 .surface-row:hover { --row-tint: var(--row-tint-up); }
 
 @utility surface-card {
@@ -545,7 +561,6 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 /* Reduced motion: it still lights and lifts (state), but nothing leans or drifts */
 :root[data-motion="reduced"] .glass-card { transform: none; }
 :root[data-motion="reduced"] .glass-card-art { scale: 1 !important; }
-@media (prefers-reduced-motion: reduce) { .glass-card { transform: none; } .glass-card-art { scale: 1 !important; } }
 
 .surface-card[data-lift]:hover,
 .surface-card[data-state="selected"] {
@@ -572,20 +587,13 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 
 /* Reduced motion is global (the OS, or Settings › Appearance): state changes still happen, they just don't travel. */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
 :root[data-motion="reduced"] *,
 :root[data-motion="reduced"] *::before,
 :root[data-motion="reduced"] *::after {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
+  /* Only what travels or leans stops; colour, opacity and light keep their short ease. */
+  transition-property: color, background-color, border-color, opacity, box-shadow, fill, stroke !important;
   scroll-behavior: auto !important;
 }
 
@@ -704,14 +712,12 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 
 /* While typing, the keyboard covers the home indicator: a sheet drops its safe-area pad. */
 @media (pointer: coarse) {
-  .mobile-sheet-shell:has(:is(textarea, [contenteditable="true"], input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"])):focus) {
+  .mobile-sheet-shell:has(:is(textarea, [contenteditable="true"], input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="date"], [type="time"], [type="datetime-local"], [type="button"], [type="submit"])):focus) {
     padding-bottom: 0;
   }
 }
-/* A dialog's corner X never sits on its title. A phone sheet whose footer has its own Cancel drops the X. */
+/* A dialog's corner X never sits on its title. */
 [data-dialog-content="true"]:has(> [data-dialog-x]) [data-dialog-header] { padding-right: 3rem; }
-[data-dialog-sheet]:has([data-dialog-footer]) > [data-dialog-x] { display: none; }
-[data-dialog-sheet]:has([data-dialog-footer]) [data-dialog-header] { padding-right: 0; }
 
 /* A tab's own heading is the sheet's title on compact, so it isn't said twice. */
 .mobile-settings-content > div > h2:first-child { display: none; }
@@ -720,7 +726,6 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 .utility-sheet-content input,
 .utility-sheet-content select,
 .utility-sheet-content textarea { font-size: max(1rem, 16px); } /* under 16px, iOS zooms on focus */
-.utility-sheet-content { -webkit-overflow-scrolling: touch; }
 .utility-sheet-content, .utility-sheet-header {
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
@@ -729,6 +734,17 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 /* ══ SIGNAL GIMMICKS — the audio-engineering cameos (docs: src/AGENTS.md §6, "Cameos").
    Ambient motion is slow and decorative, never carries meaning, and stops under reduced motion
    (the global rule above lands each loop on its resting frame). ══ */
+
+/* The Summary's title when it's longer than its line (ReleaseSummary's MarqueeTitle, which glides it with the Web
+   Animations API: fixed rests at each end). Its edges fade into the scene, the fade's width given back by a negative
+   margin so the text still lines up with the cover. Not set under reduced motion: the title keeps its ellipsis. */
+.title-marquee[data-overflow] {
+  --marquee-fade: 1.25rem;
+  margin-inline: calc(-1 * var(--marquee-fade));
+  text-overflow: clip;
+  mask-image: linear-gradient(to right, transparent, #000 var(--marquee-fade), #000 calc(100% - var(--marquee-fade)), transparent);
+}
+.title-marquee[data-overflow] > span { display: inline-block; padding-inline: var(--marquee-fade); will-change: translate; }
 
 /* The scope graticule behind every page: a faint grid fading out from the top, like a lit oscilloscope.
    The ground isolates so the grid sits above its own background and under everything else. */
@@ -773,6 +789,9 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 .brand-bar { transform-box: fill-box; transform-origin: center; }
 :is(.brand-live, [data-meter-host]:hover) .brand-bar { animation: brand-sing var(--period, 900ms) ease-in-out infinite alternate; animation-delay: var(--delay, 0ms); }
 @keyframes brand-sing { from { scale: 1 1; } to { scale: 1 0.45; } }
+/* Its hold (the fermata) draws itself on once as the mark wakes; the dash runs a little past the path so the rest frame is whole */
+:is(.brand-live, [data-meter-host]:hover) .brand-hold { stroke-dasharray: 1.02 2; animation: brand-hold 900ms var(--ease-out-expo) backwards; }
+@keyframes brand-hold { from { stroke-dashoffset: 1.02; } }
 
 /* Scope trace (primitives/Scope): the line draws itself in, then a pulse of signal keeps travelling it. */
 /* The dash runs past the path's end (1.2 of a pathLength of 1): with a non-scaling stroke, Chrome measures it on screen,
@@ -785,7 +804,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 /* Readout: a console's channel-strip lettering. Small caps-mono, tracked, tabular. */
 @utility readout {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1118,11 +1137,6 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 [data-theme="daylight"] .scene-shooting { display: none; }
 /* At rest each lantern hangs mid-air at its own height (`--rest`), never on the water */
-@media (prefers-reduced-motion: reduce) {
-  .scene-lantern, .scene-cloud-bank, .scene-fall { animation: none; }
-  .scene-lantern { translate: 0 var(--rest, -40px); opacity: 0.85; }
-  .scene-shooting, .scene-pulse { display: none; }
-}
 :root[data-motion="reduced"] :is(.scene-lantern, .scene-cloud-bank, .scene-fall) { animation: none; }
 :root[data-motion="reduced"] .scene-pulse { display: none; }
 :root[data-motion="reduced"] .scene-lantern { translate: 0 var(--rest, -40px); opacity: 0.85; }
@@ -1141,6 +1155,89 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 [data-theme="daylight"] .scene-cover { box-shadow: 0 24px 48px -20px rgb(0 0 0 / 0.3), 0 0 0 1px color-mix(in oklab, var(--accent) 18%, transparent); }
 /* A strip that scrolls sideways fades out at its edge instead of being cut */
 .edge-fade-x { mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent); }
+
+/* ══ TOASTS (primitives/Toaster): the talkback on the desk ══
+   Sonner draws nothing (`unstyled`) but positions, stacks and swipes; its own CSS is unlayered, so these rules are
+   too, and outrank it on purpose (`.toaster` + attributes). Floating glass, a level trace lit along the top from the
+   left and an LED on the title, both in --toast-tone. Arrives in 300ms, leaves in 200, swipes with the finger. */
+:root { --toast-lift: 1rem; }
+/* On desktop the docked player owns the bottom edge: rise above it while it's there. */
+:root:has(.player-bar) { --toast-lift: calc(5.5rem + 1rem); }
+.toaster[data-sonner-toaster] { z-index: var(--z-floating-ui); font-family: var(--font-sans); --width: 22.5rem; }
+.toaster .toast {
+  --toast-tone: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: var(--width);
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  border-radius: 1rem;
+  color: var(--color-ink);
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--toast-tone) 65%, transparent), transparent 55%);
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+}
+.toaster .toast[data-type="success"] { --toast-tone: var(--color-feedback-success); }
+.toaster .toast[data-type="error"] { --toast-tone: var(--color-feedback-error); }
+.toaster .toast[data-type="warning"] { --toast-tone: var(--color-tube); }
+.toaster .toast:focus-visible { box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32), 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+[data-theme="daylight"] .toaster .toast { box-shadow: 0 14px 36px -10px rgba(94, 72, 41, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+
+/* The words, and a lamp column before them that every toast shares, so titles start on one line: the LED lit on the
+   title's centre line, or, while the studio works, the room tuning in (`Tuning`, sized to the column). */
+.toaster .toast { --lamp: 1.125rem; }
+.toaster .toast-content { position: relative; display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 0.125rem; padding-left: calc(var(--lamp) + 0.625rem); line-height: 1.35; }
+.toaster .toast-content::before {
+  @apply led;
+  --led-tone: var(--toast-tone);
+  content: "";
+  position: absolute;
+  left: calc(var(--lamp) / 2 - 3px);
+  top: calc(0.5lh - 3px);
+}
+.toaster .toast[data-type="loading"] .toast-content::before { display: none; }
+.toaster .toast-icon { position: absolute; left: 1rem; top: 50%; translate: 0 -50%; display: flex; align-items: center; width: var(--lamp); font-size: calc(var(--lamp) / 1.75); }
+/* Sonner wraps the loading icon to cross-fade it over a spinner it no longer draws: let it sit in the column. */
+.toaster .toast-icon .sonner-loader { position: static; transform: none; display: flex; }
+.toaster .toast-title { font-size: 0.875rem; font-weight: 600; color: var(--color-ink); }
+.toaster .toast-description { font-size: 0.8125rem; color: var(--color-ink-soft); }
+
+/* Undo and friends: a lit chip in the tone of the room; Cancel stays quiet. 44px on touch, 36px for a fine pointer. */
+.toaster .toast-button {
+  flex-shrink: 0;
+  min-height: 2.75rem;
+  padding: 0 0.875rem;
+  border-radius: 0.625rem;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+@media (pointer: fine) { .toaster .toast-button { min-height: 2.25rem; } }
+.toaster .toast-button:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+.toaster .toast-action {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1);
+}
+.toaster .toast-action:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.toaster .toast-cancel { color: var(--color-ink-muted); background: transparent; }
+.toaster .toast-cancel:hover { color: var(--color-ink); background: color-mix(in srgb, var(--color-ink) 8%, transparent); }
+
+/* Motion on Mixlog's clock, not Sonner's 400ms: in on the expo ease, out faster; a swipe keeps Sonner's `none`. */
+.toaster .toast[data-swiping="false"] {
+  transition: transform var(--duration-smooth) var(--ease-out-expo), opacity var(--duration-smooth) var(--ease-out-expo),
+    height var(--duration-smooth) var(--ease-out-expo), box-shadow var(--duration-normal) ease;
+}
+.toaster .toast[data-removed="true"][data-swiping="false"][data-swipe-out="false"][data-front] {
+  transition: transform var(--duration-normal) var(--ease-out-quart), opacity var(--duration-normal) var(--ease-out-quart);
+}
+/* Stacked behind the front one, only the glass shows. */
+.toaster .toast > * { transition: opacity var(--duration-normal) ease; }
+.toaster .toast[data-expanded="false"][data-front="false"] > * { opacity: 0; }
 
 /* ══ THE PLAYER (components/player): its bar, its playhead and the listening room's record ══ */
 
@@ -1365,7 +1462,7 @@ body:has([data-listening-room]) .art-scene:not([data-room-scene]) * { animation-
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 /* The patch cable between them: a soft glow, the wire, a pulse of signal running it, a jack at each end */
-.patch-cable { position: fixed; inset: 0; width: 100vw; height: 100dvh; pointer-events: none; z-index: 5; overflow: visible; transition: opacity 150ms ease-out; }
+.patch-cable { position: fixed; inset: 0; width: 100vw; height: 100dvh; pointer-events: none; z-index: var(--z-floating-bar); overflow: visible; transition: opacity 150ms ease-out; }
 .patch-cable path { fill: none; stroke-linecap: round; }
 .patch-glow { stroke: color-mix(in srgb, var(--accent) 40%, transparent); stroke-width: 6; filter: blur(4px); }
 .patch-wire { stroke: color-mix(in srgb, var(--accent) 75%, transparent); stroke-width: 1.5; }
@@ -1373,4 +1470,3 @@ body:has([data-listening-room]) .art-scene:not([data-room-scene]) * { animation-
 .patch-jack { fill: color-mix(in srgb, var(--accent) 70%, transparent); }
 @keyframes patch-signal { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
 :root[data-motion="reduced"] .patch-pulse { display: none; }
-@media (prefers-reduced-motion: reduce) { .patch-pulse { display: none; } }

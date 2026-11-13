@@ -1,10 +1,11 @@
-import { ClientOnly, Outlet } from '@tanstack/react-router'
+import { ClientOnly, Outlet, useRouterState } from '@tanstack/react-router'
+import { useEffect, useRef } from 'react'
 
 import { MotionConfig } from 'framer-motion'
 
 import { useAppearance } from '../../hooks/ui/use-appearance'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
-import { BrandMark, Tuning } from '../primitives'
+import { BrandMark, Toaster, Tuning } from '../primitives'
 import { ListeningRoom } from '../player/ListeningRoom'
 import { PlayerProvider } from '../player/Player'
 import { PlayerBar } from '../player/PlayerBar'
@@ -36,7 +37,25 @@ function Boot() {
   )
 }
 
+/** A new page lands focus on its heading (the title is announced, and the next Tab starts in the page), not on the link
+ * that was pressed. Only the path counts: a search change (Settings, the room, meters) keeps focus where it is. */
+function useFocusHeading() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) return void (first.current = false)
+    const frame = requestAnimationFrame(() => {
+      const h1 = document.querySelector<HTMLElement>('h1')
+      if (!h1) return
+      h1.tabIndex = -1
+      h1.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [pathname])
+}
+
 function Shell() {
+  useFocusHeading()
   const { isDesktop } = useShellMode()
   const { reduceMotion } = useAppearance()
   // Springs and sheet gestures read this: reduced when asked here, else the device's own setting.
@@ -55,6 +74,7 @@ function Shell() {
         </div>
         <ListeningRoom />
         <SettingsDialog />
+        <Toaster />
       </PlayerProvider>
     </MotionConfig>
   )

@@ -52,7 +52,7 @@ export function MeterBridge({ t, version, headingRef, onClose, docked }: {
           <Activity size={18} aria-hidden="true" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h4 ref={headingRef} tabIndex={-1} className="truncate font-display text-xl font-semibold leading-tight tracking-tight text-ink outline-none">{nameOf(version)}</h4>
+          <h4 ref={headingRef} tabIndex={-1} className="truncate font-display text-xl font-semibold leading-tight tracking-tight text-ink outline-hidden">{nameOf(version)}</h4>
           <p className="readout truncate text-ink-muted">{label}{isMeasured(a) ? ` · ${clock(a.ms / 1000)}` : ''}</p>
         </div>
         {onClose && (
@@ -140,8 +140,8 @@ function Group({ icon, title, summary, open: initially = false, children }: { ic
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={id} className="press flex min-h-16 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left">
         <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-dim text-accent">{icon}</span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="font-display text-[15px] font-semibold text-ink">{title}</span>
-          <span data-numeric className="truncate text-[13px] text-ink-muted">{summary}</span>
+          <span className="font-display text-[0.9375rem] font-semibold text-ink">{title}</span>
+          <span data-numeric className="truncate text-[0.8125rem] text-ink-muted">{summary}</span>
         </span>
         <ChevronDown size={18} aria-hidden="true" className={cn('shrink-0 text-ink-muted transition-transform duration-200', open && 'rotate-180')} />
       </button>
@@ -161,8 +161,8 @@ function Instrument({ name, tip, value, unit, digits = 1, signed, empty = '—',
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <Tip label={tip} side="top">
-        <span tabIndex={0} className="readout w-fit rounded text-ink-muted">{name}</span>
+      <Tip label={tip} side="top" toggle>
+        <button type="button" className="readout w-fit rounded text-ink-muted">{name}</button>
       </Tip>
       <p className="flex items-baseline gap-1.5 whitespace-nowrap">
         <span aria-hidden="true" data-numeric className="font-display text-2xl font-semibold tracking-tight text-ink">{value === null ? empty : reading(value, digits, signed)}</span>
@@ -179,13 +179,13 @@ function DeltaLine({ d, unit, word, since, number }: { d: Delta; unit: string; w
   const Icon = d.same ? Equal : d.by > 0 ? ArrowUp : ArrowDown
   const sentence = d.same ? `The same as ${since}` : `${Math.abs(d.by)} ${unit} ${d.by > 0 ? word[0] : word[1]} than ${since}`.replace('  ', ' ')
   return (
-    <Tip label={`Since ${since}`} side="bottom">
-      <span tabIndex={0} className="readout flex w-fit items-center gap-1 rounded text-accent-tertiary">
+    <Tip label={`Since ${since}`} side="bottom" toggle>
+      <button type="button" className="readout flex w-fit items-center gap-1 rounded text-accent-tertiary">
         <Icon size={12} aria-hidden="true" />
         {!d.same && <span aria-hidden="true" data-numeric>{Math.abs(d.by).toFixed(unit ? 1 : 2)}</span>}
         <span aria-hidden="true" className="text-ink-muted">v{number}</span>
         <span className="sr-only">{sentence}</span>
-      </span>
+      </button>
     </Tip>
   )
 }
@@ -245,35 +245,49 @@ function CrestSpan({ lufs, dbtp }: { lufs: number; dbtp: number }) {
 /** What each platform's normalization does to its level at default settings: every platform a row, its logo, where
  *  it plays, and the change in dB: a fact, never a verdict. */
 function Penalty({ a }: { a: Measured }) {
-  const bys = PLATFORMS.map((p) => normalizationOf(a, p) ?? 0)
+  const rows = PLATFORMS.map((p) => ({ p, by: normalizationOf(a, p) ?? 0 }))
+  const bys = rows.map((r) => r.by)
   const [low, high] = [Math.min(...bys), Math.max(...bys)]
   const summary = low === high ? (low === 0 ? 'Played as it is' : `${reading(low, 1, true)} dB everywhere`) : `${reading(low, 1, true)} to ${reading(high, 1, true)} dB`
   return (
     <Group icon={<Volume2 size={16} />} title="Penalty" summary={summary} open>
-      <ul className="-my-2 flex flex-col divide-y divide-line/40">
-        {PLATFORMS.map((p, i) => {
-          const by = bys[i]
-          const Icon = by < 0 ? ArrowDown : by > 0 ? ArrowUp : Equal
-          const said = by === 0 ? `${p.name} leaves it as it is` : `${p.name} turns it ${by < 0 ? 'down' : 'up'} ${Math.abs(by).toFixed(1)} dB`
-          return (
-            <li key={p.name} className="flex min-h-14 items-center gap-3 py-2">
-              <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-dim text-ink-soft">
-                <Logo icon={LOGO[p.name]} />
-              </span>
-              <span aria-hidden="true" className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-[14px] font-medium text-ink">{p.name}</span>
-                <span data-numeric className="text-[12.5px] text-ink-muted">Plays at {reading(p.target, 0)} LUFS</span>
-              </span>
-              <span aria-hidden="true" className="flex items-baseline gap-1 text-ink">
-                <Icon size={13} className="self-center text-accent" />
-                <span data-numeric className="font-display text-lg font-semibold">{by === 0 ? '0.0' : Math.abs(by).toFixed(1)}</span>
-                <span className="readout text-ink-muted">dB</span>
-              </span>
-              <span className="sr-only">{said}</span>
-            </li>
-          )
-        })}
-      </ul>
+      {/* In short runs, by what happens to the song, the biggest change first (a platform with no change is left as is). */}
+      <div className="-my-2 flex flex-col gap-3">
+        {[
+          { title: 'Turned down', rows: rows.filter((r) => r.by < 0).sort((x, y) => x.by - y.by) },
+          { title: 'Turned up', rows: rows.filter((r) => r.by > 0).sort((x, y) => y.by - x.by) },
+          { title: 'Left as is', rows: rows.filter((r) => r.by === 0) },
+        ]
+          .filter((g) => g.rows.length > 0)
+          .map(({ title, rows: group }) => (
+            <section key={title} aria-label={title}>
+              <h4 aria-hidden="true" className="readout pt-2 text-ink-muted">{title}</h4>
+              <ul className="flex flex-col divide-y divide-line/40">
+                {group.map(({ p, by }) => {
+                  const Icon = by < 0 ? ArrowDown : by > 0 ? ArrowUp : Equal
+                  const said = by === 0 ? `${p.name} leaves it as it is` : `${p.name} turns it ${by < 0 ? 'down' : 'up'} ${Math.abs(by).toFixed(1)} dB`
+                  return (
+                    <li key={p.name} className="flex min-h-14 items-center gap-3 py-2">
+                      <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-dim text-ink-soft">
+                        <Logo icon={LOGO[p.name]} />
+                      </span>
+                      <span aria-hidden="true" className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-[0.875rem] font-medium text-ink">{p.name}</span>
+                        <span data-numeric className="text-[0.78125rem] text-ink-muted">Plays at {reading(p.target, 0)} LUFS</span>
+                      </span>
+                      <span aria-hidden="true" className="flex items-baseline gap-1 text-ink">
+                        <Icon size={13} className="self-center text-accent" />
+                        <span data-numeric className="font-display text-lg font-semibold">{by === 0 ? '0.0' : Math.abs(by).toFixed(1)}</span>
+                        <span className="readout text-ink-muted">dB</span>
+                      </span>
+                      <span className="sr-only">{said}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ))}
+      </div>
     </Group>
   )
 }
@@ -313,7 +327,7 @@ function Technical({ version, a }: { version: Version; a: Measured }) {
           <div className="flex min-w-0 flex-col gap-1">
             <dt className="readout truncate text-ink-muted">{k}</dt>
             <dd className="flex min-w-0 items-baseline gap-1.5">
-              <span data-numeric className={cn('text-ink', wide ? 'text-[14px]' : 'font-display text-lg leading-none font-semibold')}>{v}</span>
+              <span data-numeric className={cn('text-ink', wide ? 'text-[0.875rem]' : 'font-display text-lg leading-none font-semibold')}>{v}</span>
               {unit && <span className="readout text-ink-muted">{unit}</span>}
             </dd>
           </div>
@@ -327,8 +341,8 @@ function Unread() {
   return (
     <div className="flex flex-col items-start gap-2">
       <Scope flat className="h-8 w-40" />
-      <Tip label="Mixlog can’t read this format yet." side="bottom">
-        <span tabIndex={0} className="readout rounded text-ink-muted">No reading</span>
+      <Tip label="Mixlog can’t read this format yet." side="bottom" toggle>
+        <button type="button" className="readout rounded text-ink-muted">No reading</button>
       </Tip>
     </div>
   )
@@ -364,7 +378,7 @@ function Unmeasured({ version }: { version: Version }) {
           Measure
         </Button>
       </Tip>
-      {state.step === 'failed' && <p role="alert" className="text-[13px] text-feedback-error">Couldn’t measure it. Try again.</p>}
+      {state.step === 'failed' && <p role="alert" className="text-[0.8125rem] text-feedback-error">Couldn’t measure it. Try again.</p>}
     </div>
   )
 }

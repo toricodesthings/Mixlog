@@ -207,7 +207,7 @@ function ReleasePanel({ section, release }: { section: Section; release: Release
       </span>
       <span className="flex min-w-0 flex-col gap-0.5 px-1">
         <span className="truncate font-display text-base font-semibold tracking-tight text-ink">{release.title}</span>
-        <MetaLine facts={[dateLabel(section, release, deviceZone())]} className="text-[13px]" />
+        <MetaLine facts={[dateLabel(section, release, deviceZone())]} className="text-[0.8125rem]" />
       </span>
       <dl className="flex flex-wrap gap-1.5">
         {tiles.map(({ icon: Icon, label, value }) => (
@@ -216,7 +216,7 @@ function ReleasePanel({ section, release }: { section: Section; release: Release
               <Icon size={13} aria-hidden="true" className="shrink-0 text-accent" />
               <span className="sr-only">{label}</span>
             </dt>
-            <dd data-numeric className="truncate text-[13px] font-semibold text-ink">
+            <dd data-numeric className="truncate text-[0.8125rem] font-semibold text-ink">
               {value}
             </dd>
           </div>

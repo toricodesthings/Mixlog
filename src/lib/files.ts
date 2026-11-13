@@ -52,6 +52,10 @@ async function sendOne(url: string, file: File, type: string, fallback: string, 
 export const uploadArtwork = (releaseId: string, file: File, onProgress: (sent: number) => void = () => {}) =>
   sendOne(`/api/releases/${releaseId}/artwork`, file, file.type, 'Couldn’t add the artwork.', onProgress)
 
+/** Sends an artist's replaceable profile image. */
+export const uploadArtistProfile = (artistId: string, file: File, onProgress: (sent: number) => void = () => {}) =>
+  sendOne(`/api/artists/${artistId}/profile`, file, file.type, 'Couldn’t add the profile image.', onProgress)
+
 /** Sends a PDF or Word document as the track's next license. Typed by extension: browsers disagree on a .doc's. */
 export const uploadLicense = (trackId: string, file: File, onProgress: (sent: number) => void = () => {}) =>
   sendOne(`/api/tracks/${trackId}/license`, file, licenseTypeOf(file.name) ?? file.type, 'Couldn’t add the license.', onProgress)

@@ -63,7 +63,7 @@ export function SettingsSheet() {
             </NavigationRow>
           </div>
           <div className={NAV_GROUP}>
-            <a href={SIGN_OUT_URL} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-[15px] text-ink-soft hover:bg-white/[0.04]">
+            <a href={SIGN_OUT_URL} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-[0.9375rem] text-ink-soft hover:bg-white/[0.04]">
               <LogOut size={18} aria-hidden="true" className="text-ink-muted" />
               Sign out
             </a>

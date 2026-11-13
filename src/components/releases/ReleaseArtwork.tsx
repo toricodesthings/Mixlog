@@ -56,7 +56,7 @@ function Later({ icon: Icon, title, readout, children }: { icon: LucideIcon; tit
         </div>
       </div>
       <Scope flat className="w-full opacity-70" />
-      <p className="text-[15px] leading-relaxed text-ink-soft">{children}</p>
+      <p className="text-[0.9375rem] leading-relaxed text-ink-soft">{children}</p>
     </section>
   )
 }

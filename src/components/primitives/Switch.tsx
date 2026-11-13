@@ -5,7 +5,7 @@ import { cn } from "../../lib/utils"
 const Switch = ({ className, ...props }: React.ComponentProps<typeof SwitchPrimitives.Root>) => (
     <SwitchPrimitives.Root
         className={cn(
-            "group peer relative inline-flex h-11 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-room-base disabled:cursor-not-allowed disabled:opacity-50",
+            "group peer relative inline-flex h-11 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-room-base disabled:cursor-not-allowed disabled:opacity-50",
             "after:absolute after:left-1 after:h-5 after:w-9 after:rounded-full after:border after:border-transparent after:shadow-sm after:transition-colors",
             "data-[state=checked]:after:bg-accent data-[state=unchecked]:after:bg-white/10 data-[state=unchecked]:after:border-white/5",
             className

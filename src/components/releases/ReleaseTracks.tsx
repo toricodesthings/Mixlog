@@ -71,7 +71,7 @@ export function TrackPage(data: ReleaseData & { track: TrackRow }) {
   return (
     <WithMeters data={data}>
       <div className="flex flex-col gap-4">
-        <Link {...releaseLink(section, data.release.id, 'tracks')} className="flex w-fit items-center gap-1 rounded text-[13px] font-medium text-accent hover:underline hover:underline-offset-4">
+        <Link {...releaseLink(section, data.release.id, 'tracks')} className="flex w-fit items-center gap-1 rounded text-[0.8125rem] font-medium text-accent hover:underline hover:underline-offset-4">
           <ChevronLeft size={14} aria-hidden="true" />
           All tracks
         </Link>
@@ -192,7 +192,7 @@ function Alternates({ t }: { t: TrackState }) {
           ...(unfolded === kind ? earlier.map((v) => <VersionRow key={v.id} t={t} version={v} slide={slide.row} />) : []),
         ])}
       </ol>
-      {t.message && (ALTERNATE_CHOICES as readonly string[]).includes(t.message.target) && <p role="status" className="px-3 pb-2 text-[13px] text-ink-soft">{t.message.text}</p>}
+      {t.message && (ALTERNATE_CHOICES as readonly string[]).includes(t.message.target) && <p role="status" className="px-3 pb-2 text-[0.8125rem] text-ink-soft">{t.message.text}</p>}
     </section>
   )
 }

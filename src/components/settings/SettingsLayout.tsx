@@ -12,7 +12,7 @@ export function SettingsSection({
 }) {
     return (
         <section className={cn("flex flex-col gap-4 mb-10 w-full", className)}>
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-soft">
+            <h3 className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.2em] text-ink-soft">
                 {title}
             </h3>
             <div className="flex flex-col gap-6">{children}</div>

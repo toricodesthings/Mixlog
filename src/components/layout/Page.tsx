@@ -44,7 +44,7 @@ export function Page({ title, crumbs = [], lead, meta, actions, bar, bleed, chil
       {lead}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {crumbs.length > 0 && <Breadcrumbs crumbs={back ? crumbs.slice(-1) : crumbs} back={back} />}
-        {!bleed && title && <h1 className={cn('truncate font-display font-semibold leading-tight tracking-tight', isCompact ? 'text-[22px]' : 'text-2xl')}>{title}</h1>}
+        {!bleed && title && <h1 className={cn('line-clamp-2 text-balance font-display font-semibold leading-tight tracking-tight', isCompact ? 'text-[1.375rem]' : 'text-2xl')}>{title}</h1>}
         {meta}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
@@ -71,7 +71,7 @@ export function Page({ title, crumbs = [], lead, meta, actions, bar, bleed, chil
 function Breadcrumbs({ crumbs, back }: { crumbs: Crumb[]; back: boolean }) {
   return (
     <nav aria-label="Breadcrumb">
-      <ol className="flex min-w-0 items-center gap-1 text-[12.5px] font-medium leading-tight">
+      <ol className="flex min-w-0 items-center gap-1 text-[0.78125rem] font-medium leading-tight">
         {crumbs.map((crumb) => (
           <li key={crumb.label} className="flex min-w-0 items-center gap-1">
             {back && <ChevronLeft size={14} aria-hidden="true" className="-ml-1 shrink-0 text-accent" />}

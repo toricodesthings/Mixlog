@@ -6,6 +6,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+Mixlog answers before the server does: every change instant, every page named, every control in reach.
+
+### Added
+
+- Space plays and pauses; ← and → move five seconds.
+- Dates can be typed loosely (Oct 12, 12/10/2026, yesterday), and the field says back what it read.
+- Swipe down lowers the listening room.
+- Tap a light or a reading's name for what it means, on touch too.
+- Every page names itself in the tab and lands focus on its heading.
+
+### Changed
+
+- Moving a version, saving Details, adding an artist and picking a cover show the change at once.
+- A whole row plays from anywhere on it, and small touch targets grow to 44px.
+- UPC and ISRC are checked after you leave the field, in words, and shown in short runs.
+- Search ignores accents and apostrophes, and UPCs accept hyphens and dots.
+- Penalty lists platforms by what happens to the song, biggest change first.
+- The browser's toolbar follows Daylight, and a theme chosen in one tab reaches the others.
+- Text sizes follow the browser's font-size setting, and fields no longer zoom the page on iPhone.
+- Raised controls get a little volume, and wells get depth.
+- Reduced motion keeps colour and light changes and stops only what travels.
+- On a phone, every dialog is one glass sheet: close on the left, the title centred, ✓ to save on the right.
+- A release's format, its day out and an artist's role are picked from one card of rows; on a phone the day opens its wheel.
+
+- The Mixlog mark holds its peak as a whole note under a hand-drawn fermata, cool bars under one warm stroke.
+
 ## [1.3.1] - 2026-11-06
 
 ### Changed
