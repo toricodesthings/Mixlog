@@ -5,8 +5,8 @@ import { z } from 'zod'
 
 import { allowed } from '#/server/access'
 import {
-  AUDIO_KINDS, MAX_ARTWORK_BYTES, MAX_AUDIO_BYTES, MAX_LICENSE_BYTES, UPLOAD_PART_BYTES,
-  artworkProblem, audioProblem, contentRange, fileKey, isFinal, licenseProblem, startsLike, type AudioKind,
+  AUDIO_KINDS, MAX_ARTWORK_BYTES, MAX_AUDIO_BYTES, MAX_CANVAS_BYTES, MAX_LICENSE_BYTES, UPLOAD_PART_BYTES,
+  artworkProblem, audioProblem, canvasProblem, contentRange, fileKey, isFinal, isMp4, licenseProblem, startsLike, type AudioKind,
 } from '#/server/files'
 import { db } from '#/server/db'
 import { Id, isId } from '#/server/input'
@@ -256,7 +256,7 @@ async function stack(
   try {
     await db.batch([
       db.insert(versions).values({
-        id: v.id, trackId: v.trackId, kind: v.kind as AudioKind | 'license', r2Key: v.key, filename: v.filename, contentType: v.contentType, size: v.size,
+        id: v.id, trackId: v.trackId, kind: v.kind as AudioKind | 'license' | 'canvas', r2Key: v.key, filename: v.filename, contentType: v.contentType, size: v.size,
         durationMs: v.durationMs, note: v.note ?? null, releasedAt: v.released ? stampNow : null, analysis: v.analysis ?? null,
         number: sql`(SELECT COALESCE(MAX(n.number), 0) + 1 FROM ${versions} n WHERE n.track_id = ${v.trackId} AND ${sequence})`,
       }),
@@ -302,6 +302,45 @@ export async function addLicense(request: Request, trackId: string): Promise<Res
     customMetadata: { release: track.releaseId, track: trackId, kind: 'license', filename },
   })
   const number = await stack({ id, trackId, kind: 'license', key, filename, contentType: contentType!, size, durationMs: null })
+  return Response.json({ id, number }, { status: 201 })
+}
+
+/** POST /api/tracks/$trackId/canvas: the body is an MP4, the track's Canvas. Upcoming stacks it as the next version
+ *  (current follows newest; nothing is overwritten). Releases keep one per track: the first ships at once; a second
+ *  must name the one it replaces (`x-replaces`, after the artist confirmed it), which goes only once the new one is safe. */
+export async function addCanvas(request: Request, trackId: string): Promise<Response> {
+  if (!(await allowed(request))) return text(403, 'Forbidden')
+  if (!isId(trackId)) return text(404, 'Not found')
+  const contentType = request.headers.get('content-type')
+  const size = Number(request.headers.get('content-length'))
+  const problem = canvasProblem(contentType, size)
+  if (problem) return text(size > MAX_CANVAS_BYTES ? 413 : 400, problem)
+  const [track] = await db.select({ releaseId: tracks.releaseId, released: releases.releasedAt }).from(tracks).innerJoin(releases, eq(releases.id, tracks.releaseId)).where(eq(tracks.id, trackId))
+  if (!track?.releaseId) return text(404, 'Not found')
+
+  const replaces = request.headers.get('x-replaces')
+  const released = track.released !== null
+  const [shipped] = released
+    ? await db.select({ id: versions.id, r2Key: versions.r2Key }).from(versions).where(and(eq(versions.trackId, trackId), eq(versions.kind, 'canvas'), isNotNull(versions.releasedAt), isNull(versions.prunedAt)))
+    : []
+  if (!released && replaces) return text(400, 'Upcoming keeps every version: nothing is replaced.')
+  if (released && (shipped?.id ?? null) !== (replaces || null)) return text(400, shipped ? 'This track has its Canvas. Replace it instead.' : 'That file isn’t this slot’s to replace.')
+
+  // Read whole (32 MB at most, checked above) so its first bytes can be checked against the type it claims.
+  const bytes = new Uint8Array(await request.arrayBuffer())
+  if (bytes.byteLength !== size || !isMp4(bytes)) return text(400, 'That file isn’t the MP4 its name says.')
+  const id = crypto.randomUUID()
+  const filename = (request.headers.get('x-filename') ?? '').slice(0, 255) || 'canvas.mp4'
+  const key = fileKey({ releaseId: track.releaseId, trackId }, 'canvas', id)
+  await env.FILES.put(key, bytes, {
+    httpMetadata: { contentType: contentType! },
+    customMetadata: { release: track.releaseId, track: trackId, kind: 'canvas', filename },
+  })
+  const number = await stack(
+    { id, trackId, kind: 'canvas', key, filename, contentType: contentType!, size, durationMs: null, released },
+    released ? [...pin(trackId, 'canvas', id), ...(shipped ? [db.delete(versions).where(eq(versions.id, shipped.id))] : [])] : [],
+  )
+  if (shipped) await env.FILES.delete(shipped.r2Key) // only once the new one is safe
   return Response.json({ id, number }, { status: 201 })
 }
 

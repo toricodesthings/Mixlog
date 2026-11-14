@@ -1,4 +1,4 @@
-import { Clapperboard, FolderOpen, type LucideIcon } from 'lucide-react'
+import { FolderOpen, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { deviceZone, formatMoment, todayIn } from '../../lib/time'
@@ -6,11 +6,13 @@ import { Scope } from '../primitives'
 import { MetaLine } from '../shared/MetaLine'
 import { ArtworkButton } from './ArtworkButton'
 import type { ReleaseData } from './loaders'
+import { CanvasSection } from './ReleaseCanvas'
 import { formatOf } from './stacks'
 
-/** Artwork & Canvas: the cover large (click it, or drop a PNG or JPG on it; one per release), and the places
- *  Canvas and the release's other material will go. */
-export function ReleaseArtwork({ release, versions }: ReleaseData) {
+/** Artwork & Canvas: the cover large (click it, or drop a PNG or JPG on it; one per release), each track's Canvas
+ *  beside it, and the place the release's other material will go. */
+export function ReleaseArtwork(data: ReleaseData) {
+  const { release, versions } = data
   const [failure, setFailure] = useState<string | null>(null)
   const artwork = versions.find((v) => v.kind === 'artwork' && v.is_current)
   const zone = deviceZone()
@@ -31,9 +33,7 @@ export function ReleaseArtwork({ release, versions }: ReleaseData) {
         )}
       </section>
       <div className="flex flex-col gap-4">
-        <Later icon={Clapperboard} title="Canvas" readout="Loop · 3–8 s · 9:16">
-          The short vertical loop Spotify plays behind a track. Its place is here; uploading it comes next.
-        </Later>
+        <CanvasSection {...data} />
         <Later icon={FolderOpen} title="Other material" readout="Press · lyrics · extras">
           Press photos, lyric sheets, a visualiser: whatever else goes out with it. Coming next.
         </Later>

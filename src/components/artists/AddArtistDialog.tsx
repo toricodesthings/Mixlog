@@ -10,7 +10,7 @@ import { Composer, ComposerRow, ComposerRows, ValueSelect } from '../shared/Comp
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
 
 const ROLES = ['Artist', 'Producer', 'Songwriter', 'Composer', 'Engineer', 'Other'] as const
-const ROLE_OPTIONS = [{ value: 'none', label: 'No role' }, ...ROLES.map((r) => ({ value: r, label: r }))]
+export const ROLE_OPTIONS = [{ value: 'none', label: 'No role' }, ...ROLES.map((r) => ({ value: r, label: r }))]
 
 /** An artist on its way: in the list at once (`id` is its own until the server's lands). */
 export type ArtistDraft = { id: string; name: string; role: string | null; image: string | null }

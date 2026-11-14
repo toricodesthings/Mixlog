@@ -3,7 +3,9 @@ import { Album, Check, Disc3, Music, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import { groupIsrc, groupUpc, isrcOf, needsLicense, upcOf } from '#/server/details'
+import { setTrackArtists, type TrackArtist } from '#/server/artists'
 import { updateRelease, type ReleaseFormat, type TrackOrigin } from '#/server/releases'
+import { ArtistPicker, TrackArtistsButton, useArtistsParam } from '../artists/ArtistPicker'
 import { deviceZone, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { Button, DayInput, Input, Led, toast } from '../primitives'
@@ -33,7 +35,7 @@ const ORIGINS = [
  * a release in progress has (title, format, the day it's planned for); Releases adds the release day, UPC and ISRCs.
  * Every field is optional but the title (and a release's day); nothing waits on them. Saved together, on Save; lyrics save themselves as they're written.
  */
-export function ReleaseDetailsForm({ release, tracks, versions }: ReleaseData) {
+export function ReleaseDetailsForm({ release, tracks, versions, artists }: ReleaseData) {
   const router = useRouter()
   const navigate = useNavigate()
   const released = sectionOf(release) === 'released'
@@ -59,6 +61,7 @@ export function ReleaseDetailsForm({ release, tracks, versions }: ReleaseData) {
   const changeTrack = (id: string, next: Partial<(typeof form.tracks)[number]>) =>
     change({ tracks: form.tracks.map((t) => (t.id === id ? { ...t, ...next } : t)) })
   const single = form.format === 'single'
+  const billing = useBilling(artists)
   // One track: whose song it is goes for the whole release, so it's asked once, up here
   const sole = form.tracks.length === 1 ? form.tracks[0] : null
 
@@ -125,7 +128,7 @@ export function ReleaseDetailsForm({ release, tracks, versions }: ReleaseData) {
       </Sheet>
 
       {form.tracks.length > 0 && (
-        <Sheet title="Tracks" readout={released ? 'Titles · ISRCs · Lyrics' : 'Titles · Lyrics'}>
+        <Sheet title="Tracks" readout={released ? 'Titles · Artists · ISRCs · Lyrics' : 'Titles · Artists · Lyrics'}>
           <ol className="flex flex-col gap-2 md:col-span-full">
             {form.tracks.map((track, i) => (
               <li key={track.id} className="surface-item flex flex-col gap-3 rounded-2xl p-3">
@@ -154,6 +157,7 @@ export function ReleaseDetailsForm({ release, tracks, versions }: ReleaseData) {
                   {!sole && <OriginControl origin={track.origin} onChange={(origin) => changeTrack(track.id, { origin })} label={`Track ${i + 1} origin`} licenses={licensesOf(track.id, versions)} trackId={track.id} />}
                 </div>
                 {isrcProblem(track) && <p id={`isrc-${track.id}`} className="text-sm text-feedback-error">{isrcProblem(track)}</p>}
+                <div className="pl-9"><TrackArtistsButton trackId={track.id} billed={billing.of(track.id)} label={`Track ${i + 1} artists`} /></div>
                 <LyricsPanel trackId={track.id} title={single ? form.title : track.title} initial={tracks[i].lyrics ?? ''} />
               </li>
             ))}
@@ -178,8 +182,41 @@ export function ReleaseDetailsForm({ release, tracks, versions }: ReleaseData) {
       </div>
     </form>
     <LicenseDialog tracks={tracks} versions={versions} />
+    {billing.open && form.tracks.some((t) => t.id === billing.open) && (
+      <ArtistPicker
+        key={billing.open}
+        trackTitle={single ? form.title : form.tracks.find((t) => t.id === billing.open)!.title}
+        number={form.tracks.findIndex((t) => t.id === billing.open) + 1}
+        billed={billing.of(billing.open)}
+        onDone={(next) => billing.save(billing.open!, next)}
+      />
+    )}
+    {billing.problem && <p role="alert" className="px-1 text-sm text-feedback-error">{billing.problem}</p>}
     </>
   )
+}
+
+/** The artists on each track: saved on its own (like lyrics, not with Save), shown changed at once, and put back with
+ *  the reason if the save fails. */
+function useBilling(artists: TrackArtist[]) {
+  const router = useRouter()
+  const { open } = useArtistsParam()
+  const [pending, setPending] = useState(() => new Map<string, Omit<TrackArtist, 'track_id'>[]>())
+  const [problem, setProblem] = useState<string | null>(null)
+  const forget = (trackId: string) => setPending((m) => (m.delete(trackId), new Map(m)))
+  return {
+    open,
+    problem,
+    of: (trackId: string) => pending.get(trackId) ?? artists.filter((a) => a.track_id === trackId),
+    save: (trackId: string, billed: Omit<TrackArtist, 'track_id'>[]) => {
+      setProblem(null)
+      setPending((m) => new Map(m).set(trackId, billed))
+      setTrackArtists({ data: { trackId, artists: billed.map((a) => ({ id: a.id, role: a.role })) } })
+        .then(() => router.invalidate())
+        .then(() => forget(trackId))
+        .catch((error) => (forget(trackId), setProblem((error instanceof Error && error.message) || 'Couldn’t save the track’s artists. Nothing changed; try again.')))
+    },
+  }
 }
 
 /** One part of the form, like a page of a distributor's: a title, its channel-strip readout, its fields (side by side

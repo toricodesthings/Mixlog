@@ -3,8 +3,8 @@ import { asc, count, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/server/db'
-import { readWith } from '#/server/input'
-import { artists, releases, trackArtists, tracks } from '#/server/schema'
+import { Id, Refusal, readWith } from '#/server/input'
+import { TRACK_ARTIST_ROLES, artists, releases, trackArtists, tracks } from '#/server/schema'
 
 export type ArtistRow = {
   id: string
@@ -17,11 +17,18 @@ export type ArtistRow = {
 export type ArtistTrack = {
   id: string
   title: string
+  release_id: string | null
   release_title: string | null
-  role: 'artist' | 'featured'
+  release_format: 'single' | 'ep' | 'album' | null
+  released_at: string | null
+  role: TrackArtistRole
 }
 
-/** Artists are shared across tracks; the management surface is intentionally read-only for now. */
+export type TrackArtistRole = (typeof TRACK_ARTIST_ROLES)[number]
+/** An artist on a track, in credit order: main artists first, then featured. */
+export type TrackArtist = { track_id: string; id: string; name: string; role: TrackArtistRole; profile_image_url: string | null }
+
+/** Every artist, A to Z, with how many tracks they're on. */
 export const listArtists = createServerFn().handler(
   (): Promise<ArtistRow[]> =>
     db
@@ -36,7 +43,7 @@ export const listArtists = createServerFn().handler(
       .leftJoin(trackArtists, eq(trackArtists.artistId, artists.id))
       .groupBy(artists.id, artists.name)
       .orderBy(asc(artists.name))
-      .then((rows) => rows.map(({ profile_image_key, ...row }) => ({ ...row, profile_image_url: profile_image_key ? artistProfileUrl(row.id) : null }))),
+      .then((rows) => rows.map(({ profile_image_key, ...row }) => ({ ...row, profile_image_url: profile_image_key ? artistProfileUrl(row.id, profile_image_key) : null }))),
 )
 
 const artistInput = readWith(
@@ -76,7 +83,10 @@ export const getArtist = createServerFn()
       .select({
         id: tracks.id,
         title: tracks.title,
+        release_id: releases.id,
         release_title: releases.title,
+        release_format: releases.format,
+        released_at: releases.releasedAt,
         role: trackArtists.role,
       })
       .from(trackArtists)
@@ -87,7 +97,7 @@ export const getArtist = createServerFn()
     const { profile_image_key, ...profile } = artist
     return {
       ...profile,
-      profile_image_url: profile_image_key ? artistProfileUrl(artist.id) : null,
+      profile_image_url: profile_image_key ? artistProfileUrl(artist.id, profile_image_key) : null,
       tracks: linkedTracks,
     }
   })
@@ -107,4 +117,27 @@ export const updateArtist = createServerFn({ method: 'POST' })
     if (!updated.length) throw new Error('Artist not found.')
   })
 
-export const artistProfileUrl = (id: string) => `/api/artists/${id}/profile`
+/** Where an artist's picture is served, named by its key so a new picture is never the cached old one. */
+export const artistProfileUrl = (id: string, key: string) => `/api/artists/${id}/profile?v=${key.slice(-8)}`
+
+/** A track's artists, saved whole (the picker's Done): main artists first, then featured, each in the order
+ *  given. One batch, so a track's artists are never half-written. */
+export const setTrackArtists = createServerFn({ method: 'POST' })
+  .validator(
+    readWith(
+      z.object({
+        trackId: Id('Not a track.'),
+        artists: z.array(z.object({ id: Id('That artist is not available.'), role: z.enum(TRACK_ARTIST_ROLES) })).max(50, 'A track has at most 50 artists.'),
+      }),
+    ),
+  )
+  .handler(async ({ data }) => {
+    const [track] = await db.select({ id: tracks.id }).from(tracks).where(eq(tracks.id, data.trackId))
+    if (!track) throw new Refusal('That track is not available.')
+    const ordered = [...data.artists.filter((a) => a.role === 'artist'), ...data.artists.filter((a) => a.role === 'featured')]
+    if (new Set(ordered.map((a) => a.id)).size !== ordered.length) throw new Refusal('An artist is on a track once.')
+    await db.batch([
+      db.delete(trackArtists).where(eq(trackArtists.trackId, data.trackId)),
+      ...ordered.map((a, i) => db.insert(trackArtists).values({ trackId: data.trackId, artistId: a.id, role: a.role, position: i + 1 })),
+    ])
+  })

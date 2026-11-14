@@ -18,6 +18,7 @@ export function SearchField({ value, onValueChange, className, disabled, ...inpu
 
     return (
         <div
+            data-focus-container
             className={cn(
                 "flex min-h-11 min-w-0 items-center gap-2.5 px-3",
                 "rounded-xl border border-line-light bg-white/[0.05] shadow-sm transition-colors focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/40",

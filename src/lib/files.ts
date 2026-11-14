@@ -42,8 +42,8 @@ function sendWithProgress(method: string, url: string, body: Blob, headers: Reco
 }
 
 /** Sends a file whole as one request. Resolves with the stored version; rejects with the Worker's reason. */
-async function sendOne(url: string, file: File, type: string, fallback: string, onProgress: (sent: number) => void): Promise<{ id: string; number: number }> {
-  const response = await sendWithProgress('POST', url, file, { 'content-type': type, 'x-filename': file.name.slice(0, 255) }, (bytes) => onProgress(bytes / file.size))
+async function sendOne(url: string, file: File, type: string, fallback: string, onProgress: (sent: number) => void, headers: Record<string, string> = {}): Promise<{ id: string; number: number }> {
+  const response = await sendWithProgress('POST', url, file, { ...headers, 'content-type': type, 'x-filename': file.name.slice(0, 255) }, (bytes) => onProgress(bytes / file.size))
   if (!response.ok) throw new Error(response.text || fallback)
   return JSON.parse(response.text)
 }
@@ -59,6 +59,11 @@ export const uploadArtistProfile = (artistId: string, file: File, onProgress: (s
 /** Sends a PDF or Word document as the track's next license. Typed by extension: browsers disagree on a .doc's. */
 export const uploadLicense = (trackId: string, file: File, onProgress: (sent: number) => void = () => {}) =>
   sendOne(`/api/tracks/${trackId}/license`, file, licenseTypeOf(file.name) ?? file.type, 'Couldn’t add the license.', onProgress)
+
+/** Sends an MP4 as the track's Canvas: the next version in Upcoming; in Releases its slot's file, `replaces` naming the
+ *  one it overwrites once the artist has confirmed it. */
+export const uploadCanvas = (trackId: string, file: File, onProgress: (sent: number) => void = () => {}, replaces?: string) =>
+  sendOne(`/api/tracks/${trackId}/canvas`, file, 'video/mp4', 'Couldn’t add the Canvas.', onProgress, replaces ? { 'x-replaces': replaces } : {})
 
 const failed = async (response: Response, fallback: string) => new Error((await response.text().catch(() => '')) || fallback)
 

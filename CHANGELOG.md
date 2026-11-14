@@ -6,6 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- Add artists to each track from Details: pick them from portrait cards, main or featured, or add a new one in place.
+- Artists has search and two views, round portraits or a list, and each artist's tracks link straight to the track.
+- An EP or album takes another track from its Tracks part, then opens its Upload.
+- Each track's Canvas: drop an MP4 on Artwork & Canvas, watch it loop, and see its length and shape against Spotify's.
+
+### Fixed
+
+- A new artist picture shows at once instead of the old one for an hour.
+- Search boxes no longer draw a second focus ring inside their own.
+
 ## [1.4.0] - 2026-11-13
 
 Mixlog answers before the server does: every change instant, every page named, every control in reach.

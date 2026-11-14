@@ -109,5 +109,16 @@ const LICENSE_MAGIC: Record<string, number[]> = {
 /** Whether a file's bytes are what its type says, so a page or a program renamed `.pdf` is refused. */
 export const startsLike = (contentType: string, bytes: Uint8Array) => LICENSE_MAGIC[contentType]?.every((b, i) => bytes[i] === b) ?? false
 
+/** A Canvas is what Spotify takes: an MP4, short and vertical. Sent whole like artwork, so its first bytes can be checked. */
+export const CANVAS_ACCEPT = 'video/mp4,.mp4'
+export const MAX_CANVAS_BYTES = 32 * 1024 * 1024
+
+/** Why this can't be a Canvas, or null when it can. */
+export const canvasProblem = (contentType: string | null, size: number) =>
+  oneFileProblem(['video/mp4'], MAX_CANVAS_BYTES, contentType, size, 'A Canvas is an MP4.', 'video', 'A Canvas is 32 MB at most.')
+
+/** Whether bytes open like an MP4: its first box is `ftyp`, four bytes in. */
+export const isMp4 = (bytes: Uint8Array) => bytes.length > 8 && String.fromCharCode(...bytes.subarray(4, 8)) === 'ftyp'
+
 /** A final is lossless (WAV, AIFF, FLAC); anything else is a test bounce. The format says it, so Mixlog never asks. */
 export const isFinal = (contentType: string) => ['audio/wav', 'audio/aiff', 'audio/flac'].includes(contentType)

@@ -6,8 +6,11 @@ import { isId } from '#/server/input'
 const release = getRouteApi('/releases/$releaseId')
 
 export const Route = createFileRoute('/releases/$releaseId/tracks/')({
-  // `?meters=<versionId>` opens a version's meters.
-  validateSearch: (search: Record<string, unknown>): { meters?: string } => (isId(search.meters) ? { meters: search.meters } : {}),
+  // `?meters=<versionId>` opens a version's meters; `?add` Add a track (an EP or album).
+  validateSearch: (search: Record<string, unknown>): { meters?: string; add?: true } => ({
+    ...(isId(search.meters) ? { meters: search.meters } : {}),
+    ...(search.add === true ? { add: true as const } : {}),
+  }),
   component: Part,
 })
 

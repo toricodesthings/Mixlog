@@ -1,5 +1,5 @@
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { Album, CalendarDays, ChevronDown, FilePlus2, ImagePlus, X } from 'lucide-react'
+import { Album, CalendarClock, CalendarDays, ChevronDown, Disc3, FilePlus2, ImagePlus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { ARTWORK_ACCEPT, AUDIO_ACCEPT, FINAL_ACCEPT, MAX_AUDIO_BYTES, artworkProblem, audioTypeOf, isFinal, type AudioKind } from '#/server/files'
@@ -191,6 +191,7 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
     <Composer
       onClose={close}
       title={released ? 'Add a release' : 'New release'}
+      icon={released ? Disc3 : CalendarClock}
       eyebrow={
         <>
           <Led breathe={busy} lit={total > 0} />

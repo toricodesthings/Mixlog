@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { sqlite } from '../../support/cloudflare-workers'
 import { call } from '../../support/start'
-import { createRelease, fileVersion, getRelease, listReleased, listUpcoming, moveToReleases, releaseQuery, updateRelease } from '#/server/releases'
+import { addTrack, createRelease, fileVersion, getRelease, listReleased, listUpcoming, moveToReleases, releaseQuery, updateRelease } from '#/server/releases'
 import { releases } from '#/server/schema'
 
 sqlite.exec(`
@@ -134,4 +134,13 @@ describe('moving a version between lanes', () => {
     await expect(move('m4', 'final')).rejects.toThrow(/has its final/)
     expect(sqlite.prepare(`SELECT released_at IS NOT NULL AS stamped FROM versions WHERE id = 'x2'`).get()).toEqual({ stamped: 1 })
   })
+})
+
+it('adds a track to the end of an EP, never to a single', async () => {
+  const ep = await call(createRelease, { title: 'Glass City', format: 'ep', tracks: ['Glass City'] })
+  const { id } = await call(addTrack, { releaseId: ep.id, title: '  Neon Rain ' })
+  expect((await call(getRelease, ep.id)).tracks.map((t) => [t.id, t.title])).toEqual([[ep.trackIds[0], 'Glass City'], [id, 'Neon Rain']])
+  const single = await call(createRelease, { title: 'Solo', format: 'single', tracks: [] })
+  await expect(call(addTrack, { releaseId: single.id, title: 'Two' })).rejects.toThrow('Make it an EP')
+  await expect(call(addTrack, { releaseId: ep.id, title: ' ' })).rejects.toThrow('title')
 })

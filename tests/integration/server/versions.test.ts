@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { network, sent } from '../../support/browser'
 import { deletedKeys, multiparts, objects } from '../../support/cloudflare-workers'
 import { call } from '../../support/start'
-import { downloadUrl, fileUrl, previewUrl, readFile, uploadArtwork, uploadAudio, uploadLicense } from '#/lib/files'
+import { downloadUrl, fileUrl, previewUrl, readFile, uploadArtwork, uploadAudio, uploadCanvas, uploadLicense } from '#/lib/files'
 import { UPLOAD_PART_BYTES, audioTypeOf, type AudioKind } from '#/server/files'
 import { createRelease, getRelease } from '#/server/releases'
 
@@ -249,6 +249,34 @@ describe('licenses', () => {
   })
 })
 
+describe('canvas', () => {
+  // The smallest thing that opens like an MP4: a box size, then `ftyp`.
+  const mp4 = (name: string, tag = 'isom') => new File([new Uint8Array([0, 0, 0, 24]), `ftyp${tag}`, new Uint8Array(12)], name)
+
+  it('stacks in Upcoming, newest current, and refuses anything that isn’t an MP4', async () => {
+    expect(await uploadCanvas(intro, mp4('loop.mp4'))).toMatchObject({ number: 1 })
+    expect(await uploadCanvas(intro, mp4('loop tighter.mp4'))).toMatchObject({ number: 2 })
+    expect((await stack(intro, 'canvas')).map((v) => [v.number, v.is_current, v.content_type])).toEqual([[2, 1, 'video/mp4'], [1, 0, 'video/mp4']])
+    const keys = objects.size
+    await expect(uploadCanvas(intro, new File(['<html>'], 'loop.mp4'))).rejects.toThrow(/isn’t the MP4/)
+    await expect(uploadCanvas(intro, mp4('loop.mp4'), () => {}, (await stack(intro, 'canvas'))[1].id)).rejects.toThrow(/nothing is replaced/)
+    expect(objects.size).toBe(keys)
+  })
+
+  it('in Releases ships the first at once, and replaces it only when named', async () => {
+    const out = await call(createRelease, { title: 'Out Now', format: 'single', tracks: [], releasedOn: '2026-01-02', zone: 'UTC' })
+    const [t] = out.trackIds
+    const canvases = async () => (await call(getRelease, out.id)).versions.filter((v) => v.kind === 'canvas')
+    const first = await uploadCanvas(t, mp4('first.mp4'))
+    expect(await canvases()).toMatchObject([{ id: first.id, is_current: 1 }])
+    expect((await canvases())[0].released_at).not.toBeNull()
+    await expect(uploadCanvas(t, mp4('second.mp4'))).rejects.toThrow(/Replace it instead/)
+    const second = await uploadCanvas(t, mp4('second.mp4'), () => {}, first.id)
+    expect((await canvases()).map((v) => [v.id, v.filename, v.is_current])).toEqual([[second.id, 'second.mp4', 1]])
+    expect(deletedKeys.some((k) => k.endsWith(`/canvas/${first.id}`))).toBe(true)
+  })
+})
+
 describe('outside pnpm dev', () => {
   afterEach(() => vi.unstubAllEnvs())
 
@@ -264,8 +292,9 @@ describe('outside pnpm dev', () => {
       fetch('/api/uploads/complete', { method: 'POST', body: '{}' }),
       fetch(`/api/releases/${releaseId}/artwork`, { method: 'POST', body: 'x', headers: { 'content-type': 'image/png', 'content-length': '1' } }),
       fetch(`/api/tracks/${song}/license`, { method: 'POST', body: '%PDF-', headers: { 'content-type': 'application/pdf', 'content-length': '5' } }),
+      fetch(`/api/tracks/${song}/canvas`, { method: 'POST', body: 'x', headers: { 'content-type': 'video/mp4', 'content-length': '1' } }),
     ])
-    expect(answers.map((r) => r.status)).toEqual(Array(7).fill(403))
+    expect(answers.map((r) => r.status)).toEqual(Array(8).fill(403))
     expect(objects.size).toBe(keys)
   })
 })

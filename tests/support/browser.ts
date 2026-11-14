@@ -5,6 +5,7 @@ import { vi } from 'vitest'
 
 import { Route as artwork } from '#/routes/api/releases.$releaseId.artwork'
 import { Route as files } from '#/routes/api/files.$versionId'
+import { Route as canvas } from '#/routes/api/tracks.$trackId.canvas'
 import { Route as license } from '#/routes/api/tracks.$trackId.license'
 import { Route as complete } from '#/routes/api/uploads.complete'
 import { Route as uploads } from '#/routes/api/uploads'
@@ -16,6 +17,7 @@ const routes: [string, { options: unknown }][] = [
   ['/api/files/$versionId', files],
   ['/api/releases/$releaseId/artwork', artwork],
   ['/api/tracks/$trackId/license', license],
+  ['/api/tracks/$trackId/canvas', canvas],
 ]
 
 export const sent: string[] = []

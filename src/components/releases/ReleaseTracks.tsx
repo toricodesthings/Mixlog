@@ -13,6 +13,7 @@ import { WithMeters } from '../meters/MetersPanel'
 import { EmptyState } from '../shared/EmptyState'
 import { UploadDialog, useUploadParam } from '../uploads/UploadDialog'
 import { UploadRow } from '../uploads/UploadRow'
+import { AddTrackDialog, AddTrackSlot, useAddTrackParam } from './AddTrack'
 import { formatLength } from './browse'
 import { Lane, useTrack, type TrackState } from './Lane'
 import { LaneMenu } from './LaneMenu'
@@ -27,11 +28,18 @@ export function ReleaseTracks(data: ReleaseData) {
   const section = sectionOf(release)
   // Files dragged over the page light the lanes; one dropped anywhere else is left alone, never opened by the browser.
   const filesOver = useFileDrop(() => {})
+  const adding = useAddTrackParam()
+  // A single is its one track; an EP or album takes more, one after the last.
+  const grows = release.format !== 'single'
+  const dialog = grows && adding.open && <AddTrackDialog release={release} number={tracks.length + 1} />
   if (tracks.length === 0) {
     return (
-      <EmptyState title="No tracks yet" readout="Trk 00" flat>
-        Its tracks line up here in order, each with its mixes, masters and final.
-      </EmptyState>
+      <>
+        <EmptyState title="No tracks yet" readout="Trk 00" flat action={grows && <Button onClick={() => void adding.show()}><Plus size={16} aria-hidden="true" />Add a track</Button>}>
+          Its tracks line up here in order, each with its mixes, masters and final.
+        </EmptyState>
+        {dialog}
+      </>
     )
   }
   const back = pruned > 0 && release.released_at ? moveBackWindow(release.released_at, keepDays) : null
@@ -59,6 +67,8 @@ export function ReleaseTracks(data: ReleaseData) {
             uploads={release.format === 'single'}
           />
         ))}
+        {grows && <AddTrackSlot number={tracks.length + 1} />}
+        {dialog}
       </div>
     </WithMeters>
   )

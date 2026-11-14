@@ -9,7 +9,8 @@ import { db } from '#/server/db'
 import { AUDIO_KINDS } from '#/server/files'
 import { Id, idInput, readWith, Refusal } from '#/server/input'
 import { analysisInput, fingerprintOf, isMeasured, type Analysis, type Fingerprint, type Measured } from '#/server/loudness'
-import { currentPins, releases, stampNow, tracks, versions } from '#/server/schema'
+import { artistProfileUrl, type TrackArtist } from '#/server/artists'
+import { artists, currentPins, releases, stampNow, trackArtists, tracks, versions } from '#/server/schema'
 import { keepDays } from '#/server/settings'
 import { LANES, lanesOf, moveProblem } from '#/server/lanes'
 import { moveBackWindow, prunedOf, shippedOf } from '#/server/shipping'
@@ -138,7 +139,7 @@ export const getRelease = createServerFn()
   .handler(async ({ data: id }) => {
     const [release] = await releaseQuery().where(eq(releases.id, id))
     if (!release) throw notFound()
-    const [[trackRows, versionRows, [{ pruned }]], keep] = await Promise.all([
+    const [[trackRows, versionRows, [{ pruned }], billed], keep] = await Promise.all([
       db.batch([
         db
           .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, scene: tracks.scene, duration_ms: sql<number | null>`${playLength(outer('tracks', 'id'))}` })
@@ -147,6 +148,12 @@ export const getRelease = createServerFn()
           .orderBy(tracks.position, tracks.createdAt),
         versionsOf(id),
         db.select({ pruned: sql<number>`COUNT(*)` }).from(versions).where(and(inArray(versions.trackId, tracksOf(id)), isNotNull(versions.prunedAt))),
+        db
+          .select({ track_id: trackArtists.trackId, id: artists.id, name: artists.name, role: trackArtists.role, image: artists.profileImageKey })
+          .from(trackArtists)
+          .innerJoin(artists, eq(artists.id, trackArtists.artistId))
+          .where(inArray(trackArtists.trackId, tracksOf(id)))
+          .orderBy(trackArtists.position),
       ]),
       keepDays(),
     ])
@@ -161,6 +168,8 @@ export const getRelease = createServerFn()
       release: release as ReleaseRow,
       tracks: trackRows as TrackRow[],
       versions: versionRows as VersionRow[],
+      /** Who's billed on each track, in billing order. */
+      artists: billed.map(({ image, ...a }): TrackArtist => ({ ...a, profile_image_url: image ? artistProfileUrl(a.id, image) : null })),
       /** Versions pruned when it moved to Releases, still waiting out the keep window. */
       pruned,
       /** How long what didn't ship is kept after release (Settings → Releases); null keeps everything. */
@@ -192,6 +201,22 @@ export const createRelease = createServerFn({ method: 'POST' })
       ...data.tracks.map((title, i) => db.insert(tracks).values({ id: trackIds[i], releaseId: id, position: i + 1, title })),
     ])
     return { id, trackIds }
+  })
+
+/** Adds a track to the end of an EP or album (a single is its one track: make it an EP first). Either section: a
+ *  released one's new track waits on its final like any other. */
+export const addTrack = createServerFn({ method: 'POST' })
+  .validator(readWith(z.object({ releaseId: Id('Not a release.'), title: Title })))
+  .handler(async ({ data }) => {
+    const [release] = await db
+      .select({ format: releases.format, last: sql<number | null>`(SELECT MAX(${tracks.position}) FROM ${tracks} WHERE ${tracks.releaseId} = ${releases.id})` })
+      .from(releases)
+      .where(eq(releases.id, data.releaseId))
+    if (!release) throw notFound()
+    if (release.format === 'single') throw new Refusal('A single has one track. Make it an EP in Details to add another.')
+    const id = crypto.randomUUID()
+    await db.insert(tracks).values({ id, releaseId: data.releaseId, position: (release.last ?? 0) + 1, title: data.title })
+    return { id }
   })
 
 /** Saves a release's Details in one batch: title, format, its day, UPC, and each track's title, ISRC and origin. */

@@ -1,18 +1,21 @@
 import { Link, useRouter } from '@tanstack/react-router'
-import { ArrowLeft, ChevronDown, Disc3, Save, UserRound } from 'lucide-react'
+import { BadgeCheck, ChevronRight, ImagePlus, ListMusic, Save } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { updateArtist, type ArtistProfile } from '#/server/artists'
 import { ARTWORK_ACCEPT, artworkProblem } from '#/server/files'
+import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { uploadArtistProfile } from '../../lib/files'
 import { cn } from '../../lib/utils'
-import { Button, Input, Transfer } from '../primitives'
-import * as DropdownMenu from '../primitives/DropdownMenu'
+import { Button, Input, Led, Scope, Transfer, useHoverSlide } from '../primitives'
 import { Page } from '../layout/Page'
-import { useDropTarget } from '../../hooks/ui/use-drop-target'
+import { ComposerRow, ComposerRows, ValueSelect } from '../shared/Composer'
+import { MetaLine } from '../shared/MetaLine'
+import { sectionOf, trackLink } from '../releases/sections'
+import { ROLE_OPTIONS } from './AddArtistDialog'
+import { ArtistAvatar } from './ArtistAvatar'
 
-const ROLES = ['Artist', 'Producer', 'Songwriter', 'Composer', 'Engineer', 'Other'] as const
-
+/** An artist's page: their portrait, name and role (saved together), then every track they're on, each a link to it. */
 export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
   const router = useRouter()
   const input = useRef<HTMLInputElement>(null)
@@ -25,6 +28,8 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
   const [busy, setBusy] = useState(false) // only the picture's bytes keep it busy
   const [problem, setProblem] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const slide = useHoverSlide()
+  const dirty = name.trim() !== shownName || role !== (artist.role ?? '') || profile !== null
 
   useEffect(() => {
     if (!profile) return setPreview(null)
@@ -37,7 +42,7 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
     if (!file) return
     const issue = artworkProblem(file.type, file.size)
     setProblem(issue)
-    if (!issue) setProfile(file)
+    if (!issue) (setProfile(file), setSaved(false))
   }
   const drop = useDropTarget({ onFiles: (files) => pick(files[0]) })
   /** The name and role change at once and the server catches up behind them; a failure puts the name back and says why. */
@@ -70,114 +75,102 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
       title={shownName}
       crumbs={[{ label: 'Artists', link: { to: '/artists' } }]}
       actions={
-        <Button onClick={save}>
+        <Button onClick={save} disabled={!dirty || busy} aria-label="Save" className="max-sm:w-11 max-sm:px-0">
           <Save size={16} aria-hidden="true" />
-          <span>Save</span>
+          <span className="max-sm:hidden">Save</span>
         </Button>
       }
     >
-      <div className="grid w-full min-w-0 gap-6 lg:h-[calc(100dvh-var(--shell-header-h)-3rem)] lg:min-h-0 lg:grid-cols-[minmax(20rem,0.8fr)_minmax(0,1.2fr)] xl:grid-cols-2">
-        <div className="flex min-w-0 flex-col gap-6">
-          <section className="surface-card glass-edge flex flex-col items-center gap-4 rounded-[2rem] p-5 text-center" aria-labelledby="artist-profile">
-          <div className="flex items-center gap-2 self-start text-left">
-            <UserRound size={17} aria-hidden="true" className="text-accent" />
-            <h2 id="artist-profile" className="font-display text-lg font-semibold">Profile</h2>
+      <div className="mx-auto grid w-full max-w-6xl items-start gap-4 lg:grid-cols-[minmax(19rem,24rem)_minmax(0,1fr)] lg:gap-6">
+        <section aria-label="Profile" className="surface-card glass-edge flex flex-col gap-5 rounded-[2rem] p-5 sm:p-6">
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <button
+              type="button"
+              {...drop.props}
+              onClick={() => input.current?.click()}
+              aria-label={artist.profile_image_url || preview ? 'Change the picture' : 'Add a picture'}
+              className={cn('group press relative rounded-full', drop.over && 'ring-2 ring-accent')}
+            >
+              <span aria-hidden="true" className="absolute -inset-3 rounded-full border border-line-light" />
+              <span aria-hidden="true" className="absolute -inset-6 rounded-full border border-line/50" />
+              <ArtistAvatar id={artist.id} name={shownName} src={preview ?? artist.profile_image_url} size="profile" className="glow-accent" />
+              <span className={cn('absolute inset-0 flex items-center justify-center rounded-full bg-room-void/60 text-ink transition-opacity duration-(--duration-normal)', drop.over ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100')}>
+                <ImagePlus size={24} aria-hidden="true" />
+              </span>
+              {busy && profile && (
+                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-room-void/60">
+                  <Transfer direction="up" value={sent} label="Sending the picture" className="text-4xl" />
+                </span>
+              )}
+            </button>
+            <p className="readout mt-3 text-ink-muted">{preview ? 'New picture · saved with Save' : 'PNG or JPG · click or drop'}</p>
+            <input ref={input} type="file" accept={ARTWORK_ACCEPT} hidden onChange={(event) => (pick(event.target.files?.[0]), (event.target.value = ''))} />
           </div>
-          <button
-            type="button"
-            {...drop.props}
-            onClick={() => input.current?.click()}
-            aria-label={profile ? 'Replace profile image' : 'Add profile image'}
-            className={cn('group relative flex size-48 items-center justify-center overflow-hidden rounded-full border border-dashed border-line-strong bg-room-surface text-5xl font-display font-semibold text-accent transition-[border-color,box-shadow] hover:border-accent/60', drop.over && 'border-accent glow-accent')}
-          >
-            {preview ? (
-              <img src={preview} alt="" width={192} height={192} className="size-full object-cover" />
-            ) : artist.profile_image_url ? (
-              <img src={artist.profile_image_url} alt="" decoding="async" width={192} height={192} className="size-full object-cover" />
-            ) : (
-              initialsOf(artist.name)
-            )}
-            <span className="absolute inset-0 flex items-center justify-center bg-room-void/65 text-sm text-ink opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Change image</span>
-          </button>
-          <p className="readout text-ink-muted">PNG or JPG · optional</p>
-          <input ref={input} type="file" accept={ARTWORK_ACCEPT} hidden onChange={(event) => { pick(event.target.files?.[0]); event.target.value = '' }} />
-          {busy && profile && <Transfer direction="up" value={sent} label="Sending the profile image" className="text-3xl" />}
-          </section>
 
-          <section className="surface-card glass-edge flex min-w-0 flex-col gap-6 rounded-[2rem] p-5 sm:p-6 lg:p-8" aria-labelledby="artist-details">
-          <div>
-            <h2 id="artist-details" className="font-display text-xl font-semibold tracking-tight">Artist details</h2>
-            <p className="mt-1 text-sm leading-relaxed text-ink-muted">Main or featured billing is chosen on each track.</p>
-          </div>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-semibold text-ink">Name</span>
-            <Input value={name} onChange={(event) => { setName(event.target.value); setSaved(false) }} />
+            <span className="readout text-ink-muted">Name</span>
+            <Input value={name} maxLength={200} onChange={(event) => (setName(event.target.value), setSaved(false))} className="font-display text-base font-semibold" />
           </label>
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-semibold text-ink">Role <span className="font-normal text-ink-muted">· optional</span></span>
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger asChild>
-                <Button type="button" variant="secondary" className="w-full justify-between">
-                  <span>{role || 'Choose a role'}</span>
-                  <ChevronDown size={16} aria-hidden="true" className="text-ink-muted" />
-                </Button>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Content align="start" className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
-                <DropdownMenu.RadioGroup value={role || 'none'} onValueChange={(next) => setRole(next === 'none' ? '' : next)}>
-                  <DropdownMenu.RadioItem value="none">No role</DropdownMenu.RadioItem>
-                  {ROLES.map((option) => <DropdownMenu.RadioItem key={option} value={option}>{option}</DropdownMenu.RadioItem>)}
-                </DropdownMenu.RadioGroup>
-              </DropdownMenu.Content>
-            </DropdownMenu.Root>
-          </label>
-          {problem && <p role="alert" className="text-sm text-feedback-error">{problem}</p>}
-          {saved && <p role="status" className="text-sm text-feedback-success">Artist saved.</p>}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
-            <p className="readout text-ink-muted">{artist.track_count} {artist.track_count === 1 ? 'track' : 'tracks'}</p>
-            <div className="flex gap-2">
-              <Button variant="secondary" asChild>
-                <Link to="/artists"><ArrowLeft size={16} aria-hidden="true" /> Back to Artists</Link>
-              </Button>
-              <Button onClick={save}><Save size={16} aria-hidden="true" /> Save</Button>
-            </div>
-          </div>
-          </section>
-        </div>
+          <ComposerRows>
+            <ComposerRow icon={BadgeCheck} label="Role">
+              <ValueSelect label="Role" value={role || 'none'} onChange={(next) => (setRole(next === 'none' ? '' : next), setSaved(false))} options={ROLE_OPTIONS} />
+            </ComposerRow>
+          </ComposerRows>
+          {problem ? (
+            <p role="alert" className="text-sm text-feedback-error">{problem}</p>
+          ) : (
+            saved && !dirty && (
+              <p className="readout flex items-center gap-2 text-ink-muted" aria-live="polite">
+                <Led />
+                Saved
+              </p>
+            )
+          )}
+        </section>
 
-        <section className="surface-card glass-edge flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[2rem] p-5 sm:p-6 lg:p-8" aria-labelledby="artist-tracks">
-          <div className="flex shrink-0 items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Disc3 size={18} aria-hidden="true" className="text-accent" />
-              <h2 id="artist-tracks" className="font-display text-xl font-semibold tracking-tight">Tracks</h2>
-            </div>
-            <span className="readout text-ink-muted">{artist.tracks.length} {artist.tracks.length === 1 ? 'track' : 'tracks'}</span>
+        <section aria-labelledby="artist-tracks" className="surface-card flex min-w-0 flex-col gap-3 rounded-[2rem] p-3 sm:p-4">
+          <div className="flex items-baseline justify-between gap-3 px-3 pt-2">
+            <h2 id="artist-tracks" className="font-display text-xl font-semibold tracking-tight">Tracks</h2>
+            <p className="readout text-ink-muted">{artist.tracks.length} {artist.tracks.length === 1 ? 'track' : 'tracks'}</p>
           </div>
-          <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
-            {artist.tracks.length === 0 ? (
-              <p className="py-8 text-sm leading-relaxed text-ink-muted">This artist is not attached to any tracks yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {artist.tracks.map((track) => (
-                  <li key={track.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-line/60 bg-room-surface-muted/50 px-3 py-3">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-room-surface text-accent">
-                      <Disc3 size={16} aria-hidden="true" />
+          {artist.tracks.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-6 pt-4 pb-8 text-center">
+              <Scope flat className="opacity-70" />
+              <p className="max-w-xs text-sm leading-relaxed text-ink-soft">Not on a track yet. Add them from a track’s Details, under its title.</p>
+            </div>
+          ) : (
+            <ol className="relative flex flex-col gap-0.5" {...slide.group}>
+              {slide.light}
+              {artist.tracks.map((track) => {
+                const body = (
+                  <>
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] text-accent">
+                      <ListMusic size={18} aria-hidden="true" />
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="truncate font-display font-semibold text-ink">{track.title}</span>
-                      <span className="truncate text-sm text-ink-muted">{track.release_title ?? 'No release'}</span>
+                      <MetaLine facts={[track.release_format === 'single' ? 'Single' : track.release_title, track.released_at ? 'Released' : 'Upcoming']} className="text-[0.8125rem]" />
                     </span>
-                    <span className="readout shrink-0 text-ink-muted">{track.role === 'featured' ? 'Featured' : 'Main'}</span>
+                    <span className={cn('readout shrink-0', track.role === 'featured' ? 'text-accent-tertiary' : 'text-accent')}>{track.role === 'featured' ? 'Feat.' : 'Main'}</span>
+                  </>
+                )
+                return (
+                  <li key={track.id} className="relative" {...slide.row}>
+                    {track.release_id ? (
+                      <Link {...trackLink(sectionOf(track), track.release_id, track.id)} className="group playhead-sweep press flex min-h-16 items-center gap-3 rounded-2xl px-3 py-2">
+                        {body}
+                        <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-ink-muted transition-[translate,color] group-hover:translate-x-0.5 group-hover:text-accent" />
+                      </Link>
+                    ) : (
+                      <div className="flex min-h-16 items-center gap-3 px-3 py-2">{body}</div>
+                    )}
                   </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                )
+              })}
+            </ol>
+          )}
         </section>
       </div>
     </Page>
   )
-}
-
-function initialsOf(name: string) {
-  return name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join('').toUpperCase() || '?'
 }
