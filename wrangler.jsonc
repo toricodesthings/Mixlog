@@ -4,6 +4,7 @@
 	"compatibility_date": "2026-10-23",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "src/server.ts", // TanStack Start's handler, plus the cleanup cron
+	"preview_urls": false, // Old versions don't stay reachable with production data; nothing uses previews.
 	// Failures only: the code logs warnings and errors (src/server/log.ts), never the happy path, so no line per request
 	// either. Issues groups errors and 5xx responses; traces sample 1% of requests, enough to see where time goes.
 	"observability": {

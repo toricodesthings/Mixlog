@@ -20,9 +20,10 @@ The Worker side of the one Mixlog app: TanStack Start server functions on Cloudf
 ```text
 src/
 ├── server.ts        # The Worker entry (`main`): Start's fetch handler, plus `scheduled` for the daily cron (cleanup, then measuring)
-├── start.ts         # createStart: defaultSsr false, the access and failures function middleware, routeFailures for /api
+├── start.ts         # createStart: defaultSsr false, request middleware (securityHeaders, sameOrigin, routeFailures for /api), the access and failures function middleware
 └── server/
     ├── access.ts    # isAllowed (verifies the Access token, JWKS once per isolate), allowed (the door: isAllowed with this deployment's vars, or `pnpm dev`)
+    ├── headers.ts   # SECURITY_HEADERS, withSecurityHeaders: what every answer says about framing, sniffing, indexing; a header a response set itself wins
     ├── schema.ts    # The D1 schema in Drizzle: the source of truth for tables, checks and indexes
     ├── db.ts        # db: Drizzle over env.DB
     ├── input.ts     # Id, isId, idInput (route params as row IDs; anything else is not found), Refusal (a no in the artist's words), readWith (a Zod schema in our own words)
@@ -57,7 +58,7 @@ migrations/          # NNNN_what.sql, generated from schema.ts by `pnpm db:gener
 
 ## 4. Request Lifecycle
 
-The Worker serves the prerendered SPA shell (no data in it). Every server function call runs the `access` function middleware (`start.ts`): `isAllowed` checks the `cf-access-jwt-assertion` header against `ACCESS_TEAM_DOMAIN`'s JWKS, issuer and `ACCESS_AUD`, and fails closed (missing config, missing token, any verification error → 403). It's skipped only under `pnpm dev` (`import.meta.env.DEV`). Function middleware, not request middleware, because the build prerenders the shell without a token; the `/api` handlers in `versions.ts` run the same check themselves, first. `defaultSsr: false` keeps loaders in the browser, so no data is fetched without a token.
+The Worker serves the prerendered SPA shell (no data in it). Every answer gets `SECURITY_HEADERS` (`securityHeaders`), and every server function call and every `/api` request but a `GET`/`HEAD` must come from Mixlog's own pages (`sameOrigin`, TanStack's CSRF middleware; a client sending no origin headers passes to `allowed`). Static files get theirs from `public/_headers`. Every server function call runs the `access` function middleware (`start.ts`): `isAllowed` checks the `cf-access-jwt-assertion` header against `ACCESS_TEAM_DOMAIN`'s JWKS, issuer and `ACCESS_AUD`, and fails closed (missing config, missing token, any verification error → 403). It's skipped only under `pnpm dev` (`import.meta.env.DEV`). Function middleware, not request middleware, because the build prerenders the shell without a token; the `/api` handlers in `versions.ts` run the same check themselves, first. `defaultSsr: false` keeps loaders in the browser, so no data is fetched without a token.
 
 **Logging** (`log.ts`, Cloudflare Workers Logs, Traces and Issues; `observability` in `wrangler.jsonc`): only warnings and failures, never the happy path, and no invocation log per request. `failures` (server functions) and `routeFailures` (`/api`) log anything that isn't an answer (`isAnswer`: a `Refusal`, not-found or redirect) with `report('error', …)` and its context (the function and its input, or the method and path), then answer `SERVER_FAILED`, never the raw message. A failure caught and turned into an answer (an R2 part refused, an Access token refused) is `report('warn', …)`. Pass the error itself, never a string of it, so its stack stays source-mapped. Traces sample 1%.
 
@@ -81,7 +82,7 @@ The Worker serves the prerendered SPA shell (no data in it). Every server functi
 - **Artwork** is the one single-request upload: `POST /api/releases/$releaseId/artwork`, the body is the image, streamed straight into R2. PNG or JPG only (what distributors take; never SVG), 20 MB at most (`files.ts`). **One per release:** the new one is stored and recorded first (if the D1 row fails, its object is deleted), then the old row and file are deleted, the same order a replacement in Releases follows. **Its preview** (`<key>.preview.webp`, 1024 px WebP from `env.IMAGES`) is made before the upload answers, made again if missing, and deleted with the original; a failure only warns, and the original is served instead.
 - **Licenses**: `POST /api/tracks/$trackId/license`, the body is a PDF, .docx or .doc (typed by extension), 20 MB at most, read whole so its first bytes must match its type (a page or program renamed `.pdf` is refused), then stored and stacked like a bounce. The browser reads it with pdf.js (no annotation layer) or, for a .docx, as text in a sandboxed frame with no scripts (`LicenseDocument`).
 - **Canvas**: `POST /api/tracks/$trackId/canvas`, the body is an MP4, 32 MB at most, read whole so it must open with an `ftyp` box. Upcoming stacks it (current follows newest). Releases keep one per track: the first ships at once (stamped, pinned); another must name the shipped one in `x-replaces`, which is erased only once the new one is stored.
-- `GET /api/files/$versionId` serves any version exactly as uploaded (`?download` saves it under its filename): range requests for playback, `private, immutable` caching (a version never changes), `nosniff` and a sandboxing CSP. No transcodes and no hidden copies, but artwork's disposable `?preview`.
+- `GET /api/files/$versionId` serves any version exactly as uploaded (`?download` saves it under its filename): range requests for playback, `private, immutable` caching (a version never changes; a license is `no-store`), `nosniff` and a sandboxing CSP. No transcodes and no hidden copies, but artwork's disposable `?preview`.
 - One path in dev and production. No R2 API tokens, CORS, or signed URLs ever reach the browser.
 
 ## 7. Auth
@@ -117,7 +118,7 @@ Deploying and remote migrations touch production: run them only when the user as
 
 ## 11. Anti-Patterns
 
-A server function without the `access` middleware or input validation · raw `env.DB` calls or a hand-written migration · hand-written `typeof` checks where a Zod schema belongs · an S3 client or SDK for R2 · string-built SQL · `UPDATE` on a version beyond its stamps and lane, or an overwrite beyond artwork and a confirmed Releases replacement · whole-file audio or video uploads, or signed URLs · an `/api` handler that reads before `allowed` · `cloudflare:workers` imported outside `server/` · hand-rolled auth, sessions or cookies · tenancy code · editing an applied migration · secrets in `wrangler.jsonc` · stack traces or SQL in error responses · logging a happy path, or a bare `console.*` instead of `report` · `helpers.ts`/`utils.ts` catch-alls.
+A server function without the `access` middleware or input validation · raw `env.DB` calls or a hand-written migration · hand-written `typeof` checks where a Zod schema belongs · an S3 client or SDK for R2 · string-built SQL · `UPDATE` on a version beyond its stamps and lane, or an overwrite beyond artwork and a confirmed Releases replacement · whole-file audio or video uploads, or signed URLs · an `/api` handler that reads before `allowed` · a public read as a server function, or as a flag on `serveFile` · dropping `sameOrigin` or `securityHeaders` from `requestMiddleware` · `cloudflare:workers` imported outside `server/` · hand-rolled auth, sessions or cookies · tenancy code · editing an applied migration · secrets in `wrangler.jsonc` · stack traces or SQL in error responses · logging a happy path, or a bare `console.*` instead of `report` · `helpers.ts`/`utils.ts` catch-alls.
 
 ## 12. Checklist
 

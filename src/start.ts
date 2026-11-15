@@ -1,7 +1,8 @@
-import { createMiddleware, createStart } from '@tanstack/react-start'
+import { createCsrfMiddleware, createMiddleware, createStart } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 
 import { allowed } from '#/server/access'
+import { withSecurityHeaders } from '#/server/headers'
 import { Refusal } from '#/server/input'
 import { isAnswer, report, SERVER_FAILED } from '#/server/log'
 
@@ -9,6 +10,7 @@ import { isAnswer, report, SERVER_FAILED } from '#/server/log'
 // so a misconfigured route or a leaked workers.dev URL can't reach the data. The page shell is public
 // code (it's on GitHub) and isn't checked: the build prerenders it with no token. Skipped in `pnpm dev`.
 // defaultSsr: false keeps loaders in the browser, as SPA mode intends. /api server routes check `isAllowed` themselves (server/versions.ts).
+// Both kinds are origin-checked first (`sameOrigin`).
 export const access = createMiddleware({ type: 'function' }).server(async ({ next }) => {
   if (await allowed(getRequest())) return next()
   throw new Refusal('Forbidden', 403)
@@ -37,4 +39,24 @@ const routeFailures = createMiddleware().server(async ({ next, request }) => {
   }
 })
 
-export const startInstance = createStart(() => ({ defaultSsr: false, requestMiddleware: [routeFailures], functionMiddleware: [access, failures] }))
+// Access's cookie rides on any request the artist's browser makes, so a request that changes something must come
+// from Mixlog's own pages: every server function, and every /api call but a read (an <img>, <audio>, download link
+// or typed address is a read, and has no origin to check). A client with no browser (curl, the later sync helper)
+// sends no origin headers and carries no cookie, so it passes here and is judged by `allowed` alone.
+const sameOrigin = createCsrfMiddleware({
+  filter: ({ handlerType, request }) => handlerType === 'serverFn' || !['GET', 'HEAD'].includes(request.method),
+  allowRequestsWithoutOriginCheck: true,
+})
+
+// First, so a refusal from sameOrigin and a 500 from routeFailures carry the headers too.
+const securityHeaders = createMiddleware().server(async ({ next }) => {
+  const result = await next()
+  withSecurityHeaders(result.response)
+  return result
+})
+
+export const startInstance = createStart(() => ({
+  defaultSsr: false,
+  requestMiddleware: [securityHeaders, sameOrigin, routeFailures],
+  functionMiddleware: [access, failures],
+}))

@@ -37,8 +37,9 @@ export async function serveFile(request: Request, versionId: string): Promise<Re
     'content-type': preview ? PREVIEW_TYPE : version.contentType,
     etag: object.httpEtag,
     'accept-ranges': 'bytes',
-    // A version never changes, so the browser can keep it; private, because it's behind Access.
-    'cache-control': 'private, max-age=31536000, immutable',
+    // A version never changes, so the browser can keep it; private, because it's behind Access. A license is legal
+    // paper: read fresh each time, so it's gone from the device when the session is.
+    'cache-control': version.kind === 'license' ? 'private, no-store' : 'private, max-age=31536000, immutable',
     'x-content-type-options': 'nosniff',
     'content-security-policy': "default-src 'none'; sandbox",
   })
