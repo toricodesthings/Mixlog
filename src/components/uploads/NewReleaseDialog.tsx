@@ -10,14 +10,14 @@ import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { readDuration, uploadArtwork, uploadAudio } from '../../lib/files'
 import { deviceZone, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
-import { Button, DayInput, Input, Led, Meter, Progress, Tip, Transfer } from '../primitives'
+import { Button, DayInput, Input, Led, Meter, Tip, Transfer } from '../primitives'
 import { Composer, ComposerRow, ComposerRows, ValueSelect } from '../shared/Composer'
 import { MetaLine } from '../shared/MetaLine'
 import { formatLength } from '../releases/browse'
 import { ReleaseArt } from '../releases/ReleaseArt'
 import { LaneMenu, TARGET_ICON, TARGET_LABEL } from '../releases/LaneMenu'
 import { FORMAT_LABEL, releaseLink, type Section } from '../releases/sections'
-import { sentOf, sizeOf, timeLeft } from './progress'
+import { sizeOf } from './progress'
 import { readFilename, suggestFinals, suggestFormat } from './suggest'
 import { UploadProgress } from './UploadRow'
 import { saveLate } from '../meters/save'
@@ -124,11 +124,6 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
   const total = rows.length + (cover ? 1 : 0)
   const ready = shownTitle.trim() !== '' && songs.every(Boolean) && (!released || releasedOn !== '')
   const mark = (file: File, next: Progress) => setProgress((m) => new Map(m).set(file, next))
-  // The whole save as one bar: every file's bytes, its share sent.
-  const allFiles = [...rows.map((r) => r.file), ...(cover ? [cover] : [])]
-  const totalBytes = allFiles.reduce((sum, f) => sum + f.size, 0)
-  const sentBytes = allFiles.reduce((sum, f) => sum + (progress.get(f)?.sent ?? 0) * f.size, 0)
-  const startedAt = useRef({ at: 0, sent: 0 })
 
   const add = (picked: File[]) => onFilesChange([...files, ...picked.filter((f) => !files.includes(f))])
   // More files can land on the open dialog until Save; after that the drop is refused, not quietly lost.
@@ -137,7 +132,6 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
   const edit = (file: File, change: { title?: string; target?: Target }) => setEdits((m) => new Map(m).set(file, { ...m.get(file), ...change }))
 
   const save = async () => {
-    startedAt.current = { at: performance.now(), sent: sentBytes }
     setBusy(true)
     setProblem(null)
     let release = created
@@ -198,20 +192,6 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
           {busy ? `Recording · ${stored} of ${total}` : total ? [rows.length && `${rows.length} ${rows.length === 1 ? 'bounce' : 'bounces'}`, cover && 'artwork'].filter(Boolean).join(' · ') : 'Input armed'}
         </>
       }
-      band={
-        busy && totalBytes > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            <Progress value={sentBytes / totalBytes} label="Saving the release" valueText={`${sentOf(sentBytes / totalBytes, totalBytes)} sent`} />
-            <p data-numeric className="readout flex justify-between gap-3 text-ink-muted">
-              <span>{sentOf(sentBytes / totalBytes, totalBytes)}</span>
-              <span>
-                {timeLeft(sentBytes - startedAt.current.sent, totalBytes - startedAt.current.sent, (performance.now() - startedAt.current.at) / 1000) ??
-                  `${Math.round((sentBytes / totalBytes) * 100)}%`}
-              </span>
-            </p>
-          </div>
-        ) : undefined
-      }
       submit={{ label: failures ? 'Try again' : 'Save', onSubmit: () => void save(), disabled: !ready, busy, busyLabel: `Saving ${Math.min(stored + 1, total)} of ${total}…` }}
       closeLabel={created ? 'Close' : 'Cancel'}
       className="gap-5 sm:max-w-2xl [&>*]:min-w-0"
@@ -225,14 +205,14 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
               onClick={() => coverPicker.current?.click()}
               aria-label={coverLabel}
               {...coverDrop}
-              className={cn('group press relative shrink-0 rounded-[1.4rem]', coverOver && 'ring-2 ring-accent', coverProblem && 'ring-2 ring-feedback-error/70')}
+              className={cn('group press relative shrink-0 rounded-3xl', coverOver && 'ring-2 ring-accent', coverProblem && 'ring-2 ring-feedback-error/70')}
             >
               <ReleaseArt title={shownTitle || '♪'} artworkId={null} src={coverUrl ?? undefined} size="cover" className="glow-accent" />
-              <span className={cn('absolute inset-0 flex items-center justify-center rounded-[1.4rem] bg-room-void/60 text-ink transition-opacity duration-(--duration-normal)', coverOver ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100')}>
+              <span className={cn('absolute inset-0 flex items-center justify-center rounded-3xl bg-room-void/60 text-ink transition-opacity duration-(--duration-normal)', coverOver ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100')}>
                 <ImagePlus size={20} aria-hidden="true" />
               </span>
               {cover && progress.get(cover)?.state === 'sending' && (
-                <span className="absolute inset-0 flex items-center justify-center rounded-[1.4rem] bg-room-void/60">
+                <span className="absolute inset-0 flex items-center justify-center rounded-3xl bg-room-void/60">
                   <Transfer direction="up" value={progress.get(cover)!.sent} label="Sending the artwork" className="text-4xl" />
                 </span>
               )}

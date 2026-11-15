@@ -40,6 +40,7 @@ export const Sky = memo(function Sky({ sceneId, fp, zone }: { sceneId: string; f
       {bright.map(([left, top, size, warm, sparkle, twinkle], i) => (
         <span
           key={i}
+          data-signal-read
           className={cn('scene-star', warm && 'scene-star-warm', sparkle && 'scene-sparkle', twinkle && 'scene-twinkle')}
           style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, animationDelay: `${-i * 0.9}s` }}
         />
@@ -72,6 +73,7 @@ export const Sky = memo(function Sky({ sceneId, fp, zone }: { sceneId: string; f
       />
       <svg
         viewBox="-140 -140 280 280"
+        data-signal-read
         className="scene-moon absolute size-72 -translate-x-1/2 -translate-y-1/2"
         style={{ left: `${moonLeft}%`, top: `${moonTop}%` }}
       >

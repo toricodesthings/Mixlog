@@ -25,3 +25,6 @@ export function matchArtists<T extends Pick<ArtistRow, 'name' | 'role'>>(artists
     .filter((a) => words.every((w) => fold(`${a.name} ${a.role ?? ''}`).includes(w)))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }))
 }
+
+/** "1 track", "3 tracks". */
+export const tracksOf = (n: number) => `${n} ${n === 1 ? 'track' : 'tracks'}`

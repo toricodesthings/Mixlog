@@ -72,7 +72,7 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
           disabled={status === 'uploading'}
           onClick={() => input.current?.click()}
           {...drop}
-          className={cn('group press relative', size === 'panel' ? 'block w-full rounded-[1.4rem]' : size === 'stage' ? 'block rounded-[1.4rem] sm:rounded-[1.8rem]' : 'rounded-2xl', status === 'failed' && 'ring-2 ring-feedback-error/70', over === 'files' && 'ring-2 ring-accent glow-accent')}
+          className={cn('group press relative', size === 'panel' ? 'block w-full rounded-2xl' : size === 'stage' ? 'block rounded-3xl sm:rounded-[2rem]' : 'rounded-2xl', status === 'failed' && 'ring-2 ring-feedback-error/70', over === 'files' && 'ring-2 ring-accent glow-accent')}
         >
           <ReleaseArt title={title} id={releaseId} artworkId={artworkId} full={size === 'panel'} size={size} className={size === 'stage' ? 'scene-cover' : undefined} />
           {preview && <img src={preview} alt="" className="absolute inset-0 size-full rounded-[inherit] object-cover" />}

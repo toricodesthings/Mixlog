@@ -80,6 +80,14 @@
   --radius: 1rem;
 }
 
+/* Apple's continuous corner: a squircle, not a circular arc (superellipse 1.5: 1 is a plain arc, 2 the full squircle, which reads sharper at the same radius). Capsules stay true semicircles.
+   Concentric rule everywhere: inner radius = outer radius − padding (card 2rem/p-4 → 1rem; 1.5rem/p-2 → 1rem; 1rem/p-2 → 0.5rem). */
+@supports (corner-shape: squircle) {
+  [class*="rounded-"]:not(.rounded-full, .rounded-none, [class*="rounded-[inherit]"]) { corner-shape: superellipse(1.5); }
+  /* Pseudo-elements (edges, hover glow, sweeps) and rounded-[inherit] children trace the same corner as their host. */
+  [class*="rounded-[inherit]"], ::before, ::after { corner-shape: inherit; }
+}
+
 /* === MOTION, LAYERS & THE ACTIVE PALETTE === */
 :root {
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -898,21 +906,13 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
    and with no floor (scene/palette.ts: a grey cover gives a grey room; the release's id stands in only when there's
    no artwork at all). Only hue and chroma come from the artwork: every lightness is the studio's own, so each token
    keeps its contrast floor whatever the cover. ══ */
-.art-room {
-  --room-k: min(var(--art-k), 1);
+/* `.art-tone`: the room's accent alone, for A/B's controls outside the room (the picker, the bar's switch), so A wears
+   one light wherever it shows; no grounds, no graticule. */
+.art-room, .art-tone {
   /* The lightness at which the hue is most vivid in sRGB (its cusp: red 0.63, violet 0.5, yellow 0.9), fitted to a
      short cosine series. Each light sits at its own hue's cusp, held inside the band where it keeps 4.5:1 on every
      ground, so a red cover lights red, not salmon, a violet one violet, not lavender, a yellow one gold, not murk */
   --art-cusp: calc(0.741 - 0.127 * cos(var(--art-h) * 1deg) + 0.124 * sin(var(--art-h) * 1deg) + 0.036 * cos(var(--art-h) * 2deg) - 0.012 * sin(var(--art-h) * 2deg) + 0.015 * cos(var(--art-h) * 3deg) - 0.063 * sin(var(--art-h) * 3deg));
-  --color-room-void: oklch(0.146 calc(0.023 * var(--room-k)) var(--art-h2));
-  --color-room-deep: oklch(0.176 calc(0.035 * var(--room-k)) var(--art-h2));
-  --color-room-base: oklch(0.204 calc(0.042 * var(--room-k)) var(--art-h2));
-  --color-room-surface: oklch(0.241 calc(0.052 * var(--room-k)) var(--art-h2));
-  --color-room-surface-muted: oklch(0.19 calc(0.036 * var(--room-k)) var(--art-h2));
-  --color-room-surface-hover: oklch(0.268 calc(0.052 * var(--room-k)) var(--art-h2));
-  --color-room-elevated: oklch(0.283 calc(0.062 * var(--room-k)) var(--art-h2));
-  --color-panel: var(--color-room-void);
-  --color-panel-raised: var(--color-room-base);
   --accent: oklch(clamp(0.68, var(--art-cusp), 0.82) clamp(0.012, calc(0.15 * var(--art-k)), 0.19) var(--art-h));
   --accent-soft: color-mix(in oklab, var(--accent) 12%, transparent);
   --accent-dim: color-mix(in oklab, var(--accent) 6%, transparent);
@@ -922,6 +922,25 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-dim: var(--accent-dim);
+}
+[data-theme="daylight"] .art-room, [data-theme="daylight"] .art-tone {
+  --accent: oklch(clamp(0.4, calc(var(--art-cusp) - 0.3), 0.46) clamp(0.015, calc(0.17 * var(--art-k)), 0.19) var(--art-h));
+  --accent-soft: color-mix(in oklab, var(--accent) 8%, transparent);
+  --accent-dim: color-mix(in oklab, var(--accent) 4%, transparent);
+  --accent-glow: color-mix(in oklab, var(--accent) 14%, transparent);
+  --accent-surface: color-mix(in oklab, var(--accent) 2%, transparent);
+}
+.art-room {
+  --room-k: min(var(--art-k), 1);
+  --color-room-void: oklch(0.146 calc(0.023 * var(--room-k)) var(--art-h2));
+  --color-room-deep: oklch(0.176 calc(0.035 * var(--room-k)) var(--art-h2));
+  --color-room-base: oklch(0.204 calc(0.042 * var(--room-k)) var(--art-h2));
+  --color-room-surface: oklch(0.241 calc(0.052 * var(--room-k)) var(--art-h2));
+  --color-room-surface-muted: oklch(0.19 calc(0.036 * var(--room-k)) var(--art-h2));
+  --color-room-surface-hover: oklch(0.268 calc(0.052 * var(--room-k)) var(--art-h2));
+  --color-room-elevated: oklch(0.283 calc(0.062 * var(--room-k)) var(--art-h2));
+  --color-panel: var(--color-room-void);
+  --color-panel-raised: var(--color-room-base);
   --graticule: color-mix(in oklab, var(--accent) 3.5%, transparent);
   position: relative;
   isolation: isolate;
@@ -935,11 +954,6 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --color-room-surface-muted: oklch(0.936 calc(0.014 * var(--room-k)) var(--art-h2));
   --color-room-surface-hover: oklch(0.882 calc(0.018 * var(--room-k)) var(--art-h2));
   --color-room-elevated: oklch(0.864 calc(0.02 * var(--room-k)) var(--art-h2));
-  --accent: oklch(clamp(0.4, calc(var(--art-cusp) - 0.3), 0.46) clamp(0.015, calc(0.17 * var(--art-k)), 0.19) var(--art-h));
-  --accent-soft: color-mix(in oklab, var(--accent) 8%, transparent);
-  --accent-dim: color-mix(in oklab, var(--accent) 4%, transparent);
-  --accent-glow: color-mix(in oklab, var(--accent) 14%, transparent);
-  --accent-surface: color-mix(in oklab, var(--accent) 2%, transparent);
 }
 /* The room's own graticule, in its own light */
 .art-room::before {
@@ -1313,6 +1327,8 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 
 /* While the listening room is open, the Summary underneath keeps no loop running: nothing to see, nothing to pay for */
 body:has([data-listening-room]) .art-scene:not([data-room-scene]) * { animation-play-state: paused; }
+/* A sheet opened from the room (A/B's picker on touch) rises over it, as a dialog does with a mouse */
+body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) { z-index: var(--z-system-dialog); }
 
 /* The listening room's focus: a soft pool of the room's light behind the record, and a night that dims toward its edges */
 .vinyl-halo { background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 14%, transparent), color-mix(in oklab, var(--accent) 5%, transparent) 55%, transparent); }
@@ -1383,6 +1399,72 @@ body:has([data-listening-room]) .art-scene:not([data-room-scene]) * { animation-
 .vinyl-arm-metal { fill: oklch(0.72 0.01 250); }
 .vinyl-arm-base { fill: oklch(0.3 0.01 250); stroke: oklch(0.5 0.01 250); stroke-width: 0.6; }
 .vinyl-arm-cartridge { fill: var(--color-tube); }
+
+/* A/B (player/ListeningRoom): the room split down the middle, a record and a night each side. The half you don't hear
+   is veiled (one backdrop box whose opacity is all that moves), its moon set, its ambient motion still, its record
+   dimmed with the needle up: the same night, moon down. The veil fades toward the divider, so the lit side's light
+   spills a little across it, and carries on into the ground under its half (`.room-ground-veil`), so the land never
+   meets the ground at an edge. Captions keep full ink. */
+.room-divider { background: linear-gradient(180deg, transparent, var(--color-line-strong) 22%, var(--color-line-strong) 78%, transparent); }
+.room-veil, .room-ground-veil {
+  backdrop-filter: saturate(0.35) brightness(0.8);
+  -webkit-backdrop-filter: saturate(0.35) brightness(0.8);
+  opacity: 0;
+  transition: opacity 250ms var(--ease-out-quart);
+}
+/* By day the idle side greys and lifts, rather than dimming into a hole */
+[data-theme="daylight"] :is(.room-veil, .room-ground-veil) { backdrop-filter: saturate(0.3) brightness(1.04); -webkit-backdrop-filter: saturate(0.3) brightness(1.04); }
+.room-half[data-idle] .room-veil, .room-ground-veil[data-idle] { opacity: 1; }
+.room-half[data-side="a"] .room-veil { mask-image: linear-gradient(to left, transparent, #000 22%); -webkit-mask-image: linear-gradient(to left, transparent, #000 22%); }
+.room-half[data-side="b"] .room-veil { mask-image: linear-gradient(to right, transparent, #000 22%); -webkit-mask-image: linear-gradient(to right, transparent, #000 22%); }
+.room-ground-veil[data-side="a"] {
+  mask-image: linear-gradient(180deg, #000, transparent), linear-gradient(to left, transparent, #000 22%);
+  mask-composite: intersect;
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent), linear-gradient(to left, transparent, #000 22%);
+  -webkit-mask-composite: source-in;
+}
+.room-ground-veil[data-side="b"] {
+  mask-image: linear-gradient(180deg, #000, transparent), linear-gradient(to right, transparent, #000 22%);
+  mask-composite: intersect;
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent), linear-gradient(to right, transparent, #000 22%);
+  -webkit-mask-composite: source-in;
+}
+/* A phone's half has no clear sky beside its record: no moon there */
+.room-half[data-compact] .scene-moon { display: none; }
+.room-half .scene-moon { transition: opacity 250ms var(--ease-out-quart), transform 250ms var(--ease-out-quart); }
+.room-half[data-idle] .scene-moon { opacity: 0; transform: translateY(12px); }
+[data-motion="reduced"] .room-half[data-idle] .scene-moon { transform: none; }
+.room-half[data-idle] .room-scene * { animation-play-state: paused; }
+.room-record { transition: opacity 250ms var(--ease-out-quart); }
+.room-half[data-idle] .room-record { opacity: 0.72; }
+.room-half .vinyl-halo { transition: opacity 250ms var(--ease-out-quart); }
+.room-half[data-idle] .vinyl-halo { opacity: 0; }
+.room-empty { border: 1px dashed var(--color-line-strong); background: radial-gradient(circle, transparent 30%, color-mix(in oklab, var(--color-room-void) 40%, transparent)); }
+/* A press that holds must never raise the iOS callout or select text */
+.ab-press { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+/* The light on the floor slides under the deck you hear */
+@property --scene-glow-x { syntax: "<percentage>"; inherits: true; initial-value: 50%; }
+.room-pair-ground { transition: --scene-glow-x 250ms var(--ease-out-quart); }
+/* An empty side's playhead: a flat trace, the scope's "no signal" */
+.room-flat { background: linear-gradient(color-mix(in oklab, var(--accent) 40%, transparent), color-mix(in oklab, var(--accent) 40%, transparent)) center / 100% 1px no-repeat; }
+/* The split ground: one grid, three layouts, so the edges that should meet are the same column's edges */
+.room-ground { container: room-ground / inline-size; }
+.room-console { display: grid; width: 100%; align-items: center; gap: 0.625rem 1rem; }
+.room-console > [data-side="a"] { grid-area: a; }
+.room-console > [data-side="b"] { grid-area: b; }
+.room-console > .ab-switch { grid-area: sw; justify-self: center; }
+.room-console > .room-key-sync { grid-area: sync; justify-self: end; }
+.room-console > .room-key-match { grid-area: match; justify-self: start; }
+.room-console > .room-transport { grid-area: tr; justify-self: center; }
+/* Shares the transport's row and sits at its right end (there are ≥ 188px free either side of the transport) */
+.room-console > .room-volume { grid-area: tr; justify-self: end; }
+.room-console[data-compact] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "b b" "sync match" "sw sw" "tr tr"; }
+.room-console:not([data-compact]) { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "a a a" "b b b" "sync sw match" "tr tr tr"; }
+@container room-ground (min-width: 64rem) {
+  .room-console:not([data-compact]) { grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr); grid-template-areas: "a a sw b b" ". sync tr match vol"; }
+  .room-console:not([data-compact]) > .room-volume { grid-area: vol; }
+  .room-console:not([data-compact]) > [data-side="b"] { flex-direction: row-reverse; }
+}
 
 /* ══ METERS — the loudness waveform (player/LoudnessWave) and the meter bridge (meters/MeterBridge).
    Tokens derive from the room's own; the accent inside `.art-room` is the artwork's, so they follow it. ══ */

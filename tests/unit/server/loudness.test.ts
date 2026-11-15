@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { reading } from '../../support/analysis'
-import { DEFAULT_FINGERPRINT, PLATFORMS, analysisInput, deltaOf, fingerprint, fingerprintOf, normalizationOf, previousOf } from '#/server/loudness'
+import { DEFAULT_FINGERPRINT, PLATFORMS, analysisInput, deltaOf, fingerprint, fingerprintOf, matchOf, normalizationOf, previousOf } from '#/server/loudness'
 
 const platform = (name: string) => PLATFORMS.find((p) => p.name === name)!
 
@@ -78,5 +78,21 @@ describe('deltaOf', () => {
   it('is null across meters or without a reading', () => {
     expect(deltaOf(reading({ meter: 2 }), reading())).toBeNull()
     expect(deltaOf({ meter: 1, unreadable: true }, reading())).toBeNull()
+  })
+})
+
+describe('matchOf', () => {
+  it('trims the louder side down to the quieter one, never up', () => {
+    expect(matchOf(-9.2, -11.3)).toEqual({ a: -2.1, b: 0 })
+    expect(matchOf(-12, -8)).toEqual({ a: 0, b: -4 })
+    expect(matchOf(-10, -10)).toEqual({ a: 0, b: 0 })
+  })
+  it('honours a ceiling when both sides are louder than it', () => {
+    expect(matchOf(-9, -11, -14)).toEqual({ a: -5, b: -3 })
+    expect(matchOf(-9, -16, -14)).toEqual({ a: -7, b: 0 })
+  })
+  it('is null when either side isn’t measured', () => {
+    expect(matchOf(null, -9)).toBeNull()
+    expect(matchOf(-9, null)).toBeNull()
   })
 })

@@ -56,7 +56,7 @@ function ReleaseListPending({ section }: { section: Section }) {
           <div className="surface-card flex flex-col gap-1 rounded-3xl p-2">
             {Array.from({ length: 5 }, (_, i) => (
               <div key={i} style={sweep(i)} className="flex min-h-18 items-center gap-4 p-2 pr-3">
-                <Skeleton className="size-14 rounded-xl" />
+                <Skeleton className="size-14 rounded-lg" />
                 <span className="flex flex-1 flex-col gap-2">
                   <Skeleton className="h-4.5 w-1/2 max-w-64 rounded-md" />
                   <Skeleton className="h-3 w-2/3 max-w-80 rounded-md" />
@@ -67,8 +67,8 @@ function ReleaseListPending({ section }: { section: Section }) {
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] sm:gap-4">
             {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} style={sweep(i)} className="surface-card glass-edge flex flex-col gap-2.5 rounded-[1.5rem] p-2.5">
-                <Skeleton className="aspect-square w-full rounded-[1.4rem]" />
+              <div key={i} style={sweep(i)} className="surface-card glass-edge flex flex-col gap-2.5 rounded-3xl p-3">
+                <Skeleton className="aspect-square w-full rounded-xl" />
                 <span className="flex flex-col gap-1.5 px-1">
                   <Skeleton className="h-4 w-3/4 rounded-md" />
                   <Skeleton className="h-3 w-1/3 rounded-md" />
@@ -130,7 +130,7 @@ function ReleasePending({ section }: { section: Section }) {
 }
 
 function PartPending({ part }: { part?: string }) {
-  if (part === 'artwork') return <Skeleton className="aspect-square w-full max-w-md rounded-[1.4rem]" />
+  if (part === 'artwork') return <Skeleton className="aspect-square w-full max-w-md rounded-2xl" />
   if (part === 'details')
     return (
       <div className="flex max-w-2xl flex-col gap-5">
@@ -150,7 +150,7 @@ function PartPending({ part }: { part?: string }) {
           <div key={lane} style={sweep(lane * 2)} className="flex flex-col gap-1 pl-4">
             <Skeleton className="my-4 h-3 w-20 rounded-md" />
             {Array.from({ length: lane === 0 ? 1 : 2 }, (_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-2xl" />
+              <Skeleton key={i} className="h-14 w-full rounded-xl" />
             ))}
           </div>
         ))}

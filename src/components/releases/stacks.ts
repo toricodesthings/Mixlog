@@ -51,12 +51,39 @@ export function versionLabel(version: Pick<VersionRow, 'kind' | 'number' | 'is_f
 /** What a version's row and its meters call it: what changed (its note), else its filename without the extension. */
 export const nameOf = (version: Pick<VersionRow, 'note' | 'filename'>) => version.note || version.filename.replace(/\.[^.]+$/, '')
 
+/** What A/B can put on a side: a track's audio in a lane or an alternate you'd listen to (stems are a bundle, not a mix). */
+const HEARD = new Set(['mix', 'master', 'instrumental', 'acapella'])
+export const isComparable = (v: Pick<VersionRow, 'track_id' | 'kind' | 'content_type'>) => v.track_id !== null && HEARD.has(v.kind) && v.content_type.startsWith('audio/')
+
+type Bounce = Pick<VersionRow, 'id' | 'track_id' | 'kind' | 'number' | 'is_final' | 'content_type'>
+const sequenceOf = (kind: string) => (kind === 'mix' || kind === 'master' ? 'take' : kind)
+
+/** A track's newest bounce you'd compare and the one before it, newest first: its mixes and masters are one sequence
+ *  (they share their numbers), an alternate's is its kind. A/B's likeliest pair: you bounce, then hear it against the last. */
+export const latestOf = <V extends Bounce>(trackId: string | null, kind: string, versions: V[]): V[] =>
+  versions
+    .filter((v) => v.track_id === trackId && sequenceOf(v.kind) === sequenceOf(kind) && isComparable(v))
+    .sort((a, b) => b.number - a.number)
+    .slice(0, 2)
+
+/** What B opens on beside `a`: the bounce before it when `a` is the newest, else the newest (what landed since); with
+ *  neither, the track's final. */
+export function partnerOf<V extends Bounce>(a: V, versions: V[]): V | null {
+  const [newest, previous] = latestOf(a.track_id, a.kind, versions)
+  return (newest?.id === a.id ? previous : newest) ?? versions.find((v) => v.is_final && v.track_id === a.track_id && v.id !== a.id) ?? null
+}
+
+/** What the version picker searches: the track, the kind (and *final*), `v4`, what changed, the filename and format. */
+export const versionText = (track: Pick<TrackRow, 'title'>, v: Pick<VersionRow, 'kind' | 'number' | 'is_final' | 'note' | 'filename'>) =>
+  [track.title, v.is_final ? 'final' : '', KIND_LABEL[v.kind] ?? v.kind, `v${v.number}`, v.note ?? '', v.filename, formatOf(v.filename)].join(' ')
+
 /** A version as the player names it: "Night Drive", "Final v4 · WAV", and the day it was bounced or went out. */
 export function playableOf(release: ReleaseRow, track: TrackRow, version: VersionRow, zone: Zone): Playable {
   const section = sectionOf(release)
   return {
     versionId: version.id,
     title: track.title,
+    name: nameOf(version),
     label: `${versionLabel(version, section)} · ${formatOf(version.filename)}`,
     day: section === 'released' ? dateLabel(section, release, zone) : `Uploaded ${formatMoment(version.created_at, zone, todayIn(zone))}`,
     released: section === 'released',
@@ -64,6 +91,7 @@ export function playableOf(release: ReleaseRow, track: TrackRow, version: Versio
     releaseId: release.id,
     artworkId: release.artwork_id,
     link: releaseLink(section, release.id),
+    lufs: isMeasured(version.analysis) ? version.analysis.lufs : null,
     wave: isMeasured(version.analysis) ? { bars: version.analysis.wave, ms: version.analysis.ms, loudestMs: version.analysis.loudest?.atMs ?? null } : null,
     sceneId: track.id,
     scene: track.scene,

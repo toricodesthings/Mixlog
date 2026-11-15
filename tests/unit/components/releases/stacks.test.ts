@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { licensesOf, stationsOf, versionLabel } from '#/components/releases/stacks'
+import { isComparable, licensesOf, stationsOf, versionLabel, versionText } from '#/components/releases/stacks'
+import { matchesEvery } from '#/lib/utils'
 import type { ReleaseRow, TrackRow, VersionRow } from '#/server/releases'
 
 const v = (id: string, kind: string, number: number, is_final = 0, track_id = 't') => ({ id, kind, number, is_final, track_id }) as VersionRow
@@ -33,4 +34,17 @@ describe('the signal path', () => {
     expect(read(stationsOf('released', release({ format: 'single' }), tracks.slice(0, 1), rows))[0]).toBe('Final: WAV ●')
     expect(read(stationsOf('upcoming', release({ format: 'single' }), tracks.slice(1), rows))[2]).toBe('Final: Not yet')
   })
+})
+
+it('finds a version by every word, accent-blind: its track, kind, v4, note, filename and format', () => {
+  const text = versionText({ title: 'Café Noir' }, { kind: 'master', number: 4, is_final: 0, note: 'louder vocal', filename: 'cafe_m4.wav' })
+  for (const q of ['cafe', 'master v4', 'WAV vocal', 'NOIR louder', '']) expect(matchesEvery(text, q)).toBe(true)
+  for (const q of ['v3', 'mix', 'mp3']) expect(matchesEvery(text, q)).toBe(false)
+  expect(matchesEvery(versionText({ title: 'X' }, { kind: 'master', number: 5, is_final: 1, note: null, filename: 'x.wav' }), 'final')).toBe(true)
+})
+
+it('compares a track’s mixes, masters and alternates you’d listen to, not stems or video', () => {
+  const at = (kind: string, content_type = 'audio/wav', track_id: string | null = 't') => isComparable({ kind, content_type, track_id })
+  expect([at('mix'), at('master'), at('instrumental'), at('acapella')]).toEqual([true, true, true, true])
+  expect([at('stems', 'application/zip'), at('video', 'video/mp4'), at('master', 'audio/wav', null)]).toEqual([false, false, false])
 })

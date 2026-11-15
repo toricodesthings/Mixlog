@@ -139,7 +139,7 @@ export const getRelease = createServerFn()
   .handler(async ({ data: id }) => {
     const [release] = await releaseQuery().where(eq(releases.id, id))
     if (!release) throw notFound()
-    const [[trackRows, versionRows, [{ pruned }], billed], keep] = await Promise.all([
+    const [[trackRows, versionRows, [{ pruned }], lineup], keep] = await Promise.all([
       db.batch([
         db
           .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, scene: tracks.scene, duration_ms: sql<number | null>`${playLength(outer('tracks', 'id'))}` })
@@ -168,8 +168,8 @@ export const getRelease = createServerFn()
       release: release as ReleaseRow,
       tracks: trackRows as TrackRow[],
       versions: versionRows as VersionRow[],
-      /** Who's billed on each track, in billing order. */
-      artists: billed.map(({ image, ...a }): TrackArtist => ({ ...a, profile_image_url: image ? artistProfileUrl(a.id, image) : null })),
+      /** Each track's artists, in credit order. */
+      artists: lineup.map(({ image, ...a }): TrackArtist => ({ ...a, profile_image_url: image ? artistProfileUrl(a.id, image) : null })),
       /** Versions pruned when it moved to Releases, still waiting out the keep window. */
       pruned,
       /** How long what didn't ship is kept after release (Settings → Releases); null keeps everything. */

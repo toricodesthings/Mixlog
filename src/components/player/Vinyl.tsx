@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 import { cn } from '../../lib/utils'
 import { ReleaseArt } from '../releases/ReleaseArt'
 
@@ -5,12 +7,13 @@ import { ReleaseArt } from '../releases/ReleaseArt'
  * A record on its platter, the release's artwork as its centre label. It turns at 33⅓ (1.8 s a turn, linear, never
  * eased) while it plays, and stops where it is when paused, the way a platter does; the light on it (`.vinyl-sheen`)
  * stays put while the grooves turn under it. The tonearm swings onto the record when it plays and back to its rest
- * when it stops. Decorative: what's playing is said in words beside it. Sized by `className`.
+ * when it stops; in A/B both records turn under Sync but the needle is only on the one you hear (`armDown`).
+ * Decorative: what's playing is said in words beside it. Sized by `className`. Memoised: its props are all plain values.
  */
-export function Vinyl({ title, releaseId, artworkId, spinning, className }: { title: string; releaseId: string; artworkId: string | null; spinning: boolean; className?: string }) {
+export const Vinyl = memo(function Vinyl({ title, releaseId, artworkId, spinning, armDown = spinning, className }: { title: string; releaseId: string; artworkId: string | null; spinning: boolean; armDown?: boolean; className?: string }) {
   return (
     <div aria-hidden="true" className={cn('relative aspect-square', className)}>
-      <div className="vinyl-halo absolute -inset-[22%] rounded-full" />
+      <div data-signal-read className="vinyl-halo absolute -inset-[22%] rounded-full" />
       <div className="vinyl-platter absolute -inset-[3.5%] rounded-full" />
       <div className="vinyl-disc absolute inset-0 rounded-full" data-spinning={spinning || undefined}>
         <div className="absolute inset-[31%] overflow-hidden rounded-full shadow-[0_0_0_2px_rgb(0_0_0/0.5)]">
@@ -19,10 +22,10 @@ export function Vinyl({ title, releaseId, artworkId, spinning, className }: { ti
         <div className="vinyl-spindle absolute inset-[48.6%] rounded-full" />
       </div>
       <div className="vinyl-sheen pointer-events-none absolute inset-0 rounded-full" />
-      <Tonearm down={spinning} />
+      <Tonearm down={armDown} />
     </div>
   )
-}
+})
 
 /** The arm, pivoting top right of the record (in the record's own 0–100 box): on the outer grooves, or lifted clear. */
 function Tonearm({ down }: { down: boolean }) {

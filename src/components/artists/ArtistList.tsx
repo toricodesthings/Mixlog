@@ -11,14 +11,12 @@ import { EmptyState } from '../shared/EmptyState'
 import { MetaLine } from '../shared/MetaLine'
 import { AddArtistDialog, type ArtistDraft } from './AddArtistDialog'
 import { ArtistAvatar } from './ArtistAvatar'
-import { artistSearch, matchArtists, type ArtistSearch } from './browse'
+import { artistSearch, matchArtists, tracksOf, type ArtistSearch } from './browse'
 
 const VIEWS = [
   { value: 'cards', label: <span className="max-sm:sr-only">Cards</span>, icon: <LayoutGrid size={16} aria-hidden="true" /> },
   { value: 'list', label: <span className="max-sm:sr-only">List</span>, icon: <LayoutList size={16} aria-hidden="true" /> },
 ] as const
-
-const tracksOf = (n: number) => `${n} ${n === 1 ? 'track' : 'tracks'}`
 
 /** Artists: everyone who can be on a track. Search (name or role) and the view above them, as portrait cards
  *  (the default) or a list; all of it in the URL (`?q=&view=&add`), like Upcoming. */

@@ -46,6 +46,13 @@ export const listArtists = createServerFn().handler(
       .then((rows) => rows.map(({ profile_image_key, ...row }) => ({ ...row, profile_image_url: profile_image_key ? artistProfileUrl(row.id, profile_image_key) : null }))),
 )
 
+/** A link the artist pasted: https only, with the scheme added when it's left off. */
+const Link = z
+  .string()
+  .trim()
+  .transform((v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`))
+  .pipe(z.string().url('That link doesn’t look right.').max(300, 'Links are 300 characters at most.').refine((v) => v.startsWith('https://'), 'Links start with https://.'))
+
 const artistInput = readWith(
   z.object({
     name: z.string().trim().min(1, 'Give the artist a name.').max(200, 'Artist names are 200 characters at most.'),
@@ -61,7 +68,7 @@ export const createArtist = createServerFn({ method: 'POST' })
     return { id }
   })
 
-export type ArtistProfile = ArtistRow & { tracks: ArtistTrack[] }
+export type ArtistProfile = ArtistRow & { links: string[]; tracks: ArtistTrack[] }
 
 export const getArtist = createServerFn()
   .validator(readWith(z.string().uuid('That artist is not available.')))
@@ -71,13 +78,14 @@ export const getArtist = createServerFn()
         id: artists.id,
         name: artists.name,
         role: artists.role,
+        links: artists.links,
         profile_image_key: artists.profileImageKey,
         track_count: count(trackArtists.trackId),
       })
       .from(artists)
       .leftJoin(trackArtists, eq(trackArtists.artistId, artists.id))
       .where(eq(artists.id, id))
-      .groupBy(artists.id, artists.name, artists.role, artists.profileImageKey)
+      .groupBy(artists.id, artists.name, artists.role, artists.links, artists.profileImageKey)
     if (!artist) throw new Error('Artist not found.')
     const linkedTracks = await db
       .select({
@@ -97,6 +105,7 @@ export const getArtist = createServerFn()
     const { profile_image_key, ...profile } = artist
     return {
       ...profile,
+      links: profile.links ?? [],
       profile_image_url: profile_image_key ? artistProfileUrl(artist.id, profile_image_key) : null,
       tracks: linkedTracks,
     }
@@ -109,11 +118,12 @@ export const updateArtist = createServerFn({ method: 'POST' })
         id: z.string().uuid('That artist is not available.'),
         name: z.string().trim().min(1, 'Give the artist a name.').max(200, 'Artist names are 200 characters at most.'),
         role: z.string().trim().max(100, 'Roles are 100 characters at most.').nullable(),
+        links: z.array(Link).max(12, 'Twelve links at most.'),
       }),
     ),
   )
   .handler(async ({ data }) => {
-    const updated = await db.update(artists).set({ name: data.name, role: data.role || null }).where(eq(artists.id, data.id)).returning({ id: artists.id })
+    const updated = await db.update(artists).set({ name: data.name, role: data.role || null, links: [...new Set(data.links)] }).where(eq(artists.id, data.id)).returning({ id: artists.id })
     if (!updated.length) throw new Error('Artist not found.')
   })
 

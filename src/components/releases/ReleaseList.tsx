@@ -197,9 +197,9 @@ function ReleasePanel({ section, release }: { section: Section; release: Release
       data-lift
       onPointerMove={lean}
       onPointerLeave={settle}
-      className="surface-card glass-edge glass-card group relative flex flex-col gap-2.5 rounded-[1.5rem] p-2.5"
+      className="surface-card glass-edge glass-card group relative flex flex-col gap-2.5 rounded-3xl p-3"
     >
-      <span className="relative block overflow-hidden rounded-[1.4rem]">
+      <span className="relative block overflow-hidden rounded-xl">
         <ReleaseArt title={release.title} id={release.id} artworkId={release.artwork_id} size="panel" className="glass-card-art" />
         <span aria-hidden="true" className="glass absolute right-3 bottom-3 flex items-center rounded-full px-2.5 py-2 opacity-0 transition-opacity duration-(--duration-normal) group-hover:opacity-100 group-focus-visible:opacity-100">
           <Meter className="h-3.5" />

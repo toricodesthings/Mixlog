@@ -290,8 +290,9 @@ function Lanterns({ sceneId, fp, zone }: LandProps) {
 }
 
 /** The land fills its box's width and stands taller than it, bottom-aligned, so its peaks reach into the sky above;
- *  behind whatever floats there (the signal path), in front of the sky and the horizon's glow. */
-export function Land({ sceneId, fp, zone, className }: LandProps) {
+ *  behind whatever floats there (the signal path), in front of the sky and the horizon's glow. Memoised by the scene's
+ *  own key, as Sky is: the player's state changing never re-renders a night. */
+export const Land = memo(function Land({ sceneId, fp, zone, className }: LandProps) {
   const sig = `${useId().replace(/[^\w-]/g, '')}sig`
   return (
     <div className={className}>
@@ -306,4 +307,4 @@ export function Land({ sceneId, fp, zone, className }: LandProps) {
       </div>
     </div>
   )
-}
+}, (a, b) => sameScene(a, b) && a.className === b.className)

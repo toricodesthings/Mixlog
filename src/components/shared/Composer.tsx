@@ -1,6 +1,7 @@
-import type { ComponentProps, ComponentType, ReactNode } from "react";
+import type { ComponentProps, ComponentType, CSSProperties, ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { useShellMode } from "../../hooks/ui/use-shell-mode";
+import { cn } from "../../lib/utils";
 import { Button, Tuning } from "../primitives";
 import * as DropdownMenu from "../primitives/DropdownMenu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../primitives/Dialog";
@@ -38,6 +39,7 @@ export function Composer({
     busy = submit?.busy ?? false,
     className,
     contentProps,
+    tone,
     children,
 }: {
     open?: boolean;
@@ -59,6 +61,8 @@ export function Composer({
     /** The desktop dialog's size and layout. */
     className?: string;
     contentProps?: Omit<ComponentProps<typeof DialogContent>, "className" | "children">;
+    /** A release's light (`useRoomStyle`): its accent alone (`.art-tone`), for A/B's picker. */
+    tone?: CSSProperties;
     children: ReactNode;
 }) {
     const { isCompact } = useShellMode();
@@ -76,6 +80,7 @@ export function Composer({
                 band={band ? <div className="shrink-0 border-b border-line px-4 py-3">{band}</div> : undefined}
                 footer={actions ? <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">{actions}</div> : undefined}
                 confirm={submit && { label: submit.label, onConfirm: submit.onSubmit, disabled: submit.disabled, busy: submit.busy }}
+                tone={tone}
             >
                 {description ? <p className="text-sm text-ink-soft">{description}</p> : null}
                 {children}
@@ -86,7 +91,13 @@ export function Composer({
     const hold = (event: Event) => busy && event.preventDefault();
     return (
         <Dialog open={open} onOpenChange={(next) => !next && close()}>
-            <DialogContent className={className} onEscapeKeyDown={hold} onPointerDownOutside={hold} {...contentProps}>
+            <DialogContent
+                className={cn(className, tone && "art-tone")}
+                onEscapeKeyDown={hold}
+                onPointerDownOutside={hold}
+                {...contentProps}
+                style={tone ? { ...contentProps?.style, ...tone } : contentProps?.style}
+            >
                 <DialogHeader className="gap-1 text-left">
                     {eyebrow ? <p className="readout flex items-center gap-2 text-accent">{eyebrow}</p> : null}
                     <DialogTitle className="flex items-center gap-2.5 font-display text-2xl">

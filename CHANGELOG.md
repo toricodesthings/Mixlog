@@ -6,17 +6,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Changed
+
+- Cards and their contents now share Apple-style continuous, concentric rounded corners.
+- Licenses open in a full-size viewer over the page, with page jumps, zoom and fit to width; full screen on a phone.
+
 ### Added
 
+- The listening room splits in two: your newest bounce against the one before, on one playhead, with no gap.
+- Switch by pressing a record, the A | B switch or a key; tap to stay, hold to listen and come back.
+- Level match plays both sides at the same loudness, shown in dB; off until you turn it on.
+- Pick what's on A or B from the release's versions in their lanes, with search and the newest two bounces marked.
+- A/B stays on when you lower the listening room, and the player bar switches between A and B.
+- The listening room and player bar name the file you hear (what you called it), not just its version.
+- Settings › Listening: what Level match aims for, and whether a hold auditions.
+- Artists can carry social links, each shown with its platform's icon (Spotify, Instagram, YouTube and more).
 - Add artists to each track from Details: pick them from portrait cards, main or featured, or add a new one in place.
 - Artists has search and two views, round portraits or a list, and each artist's tracks link straight to the track.
 - An EP or album takes another track from its Tracks part, then opens its Upload.
 - Each track's Canvas: drop an MP4 on Artwork & Canvas, watch it loop, and see its length and shape against Spotify's.
+- A release's artwork and an artist's picture open full size, with zoom and their measured pixels.
 
 ### Fixed
 
+- The listening room uses far less CPU while music plays, and reopens in its artwork’s colours at once.
 - A new artist picture shows at once instead of the old one for an hour.
 - Search boxes no longer draw a second focus ring inside their own.
+- Opening a license no longer flickers while it loads.
 
 ## [1.4.0] - 2026-11-13
 

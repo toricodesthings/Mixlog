@@ -6,6 +6,7 @@ import { MotionConfig } from 'framer-motion'
 import { useAppearance } from '../../hooks/ui/use-appearance'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { BrandMark, Toaster, Tuning } from '../primitives'
+import { AuditionProvider } from '../player/ABSwitch'
 import { ListeningRoom } from '../player/ListeningRoom'
 import { PlayerProvider } from '../player/Player'
 import { PlayerBar } from '../player/PlayerBar'
@@ -62,19 +63,21 @@ function Shell() {
   return (
     <MotionConfig reducedMotion={reduceMotion ? 'always' : 'user'}>
       <PlayerProvider>
-        <div className="flex h-dvh flex-col overflow-hidden">
-          <div className="flex min-h-0 flex-1">
-            {isDesktop && <IconRail />}
-            <div className="flex min-w-0 flex-1">
-              <Outlet />
+        <AuditionProvider>
+          <div className="flex h-dvh flex-col overflow-hidden">
+            <div className="flex min-h-0 flex-1">
+              {isDesktop && <IconRail />}
+              <div className="flex min-w-0 flex-1">
+                <Outlet />
+              </div>
             </div>
+            <PlayerBar />
+            {!isDesktop && <PhoneDock />}
           </div>
-          <PlayerBar />
-          {!isDesktop && <PhoneDock />}
-        </div>
-        <ListeningRoom />
-        <SettingsDialog />
-        <Toaster />
+          <ListeningRoom />
+          <SettingsDialog />
+          <Toaster />
+        </AuditionProvider>
       </PlayerProvider>
     </MotionConfig>
   )

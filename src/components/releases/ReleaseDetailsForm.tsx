@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { groupIsrc, groupUpc, isrcOf, needsLicense, upcOf } from '#/server/details'
 import { setTrackArtists, type TrackArtist } from '#/server/artists'
 import { updateRelease, type ReleaseFormat, type TrackOrigin } from '#/server/releases'
-import { ArtistPicker, TrackArtistsButton, useArtistsParam } from '../artists/ArtistPicker'
+import { ArtistPicker, TrackArtistsButton, useArtistsParam, type OnTrack } from '../artists/ArtistPicker'
 import { deviceZone, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { Button, DayInput, Input, Led, toast } from '../primitives'
@@ -61,7 +61,8 @@ export function ReleaseDetailsForm({ release, tracks, versions, artists }: Relea
   const changeTrack = (id: string, next: Partial<(typeof form.tracks)[number]>) =>
     change({ tracks: form.tracks.map((t) => (t.id === id ? { ...t, ...next } : t)) })
   const single = form.format === 'single'
-  const billing = useBilling(artists)
+  const lineup = useLineup(artists)
+  const picking = form.tracks.findIndex((t) => t.id === lineup.open)
   // One track: whose song it is goes for the whole release, so it's asked once, up here
   const sole = form.tracks.length === 1 ? form.tracks[0] : null
 
@@ -157,7 +158,7 @@ export function ReleaseDetailsForm({ release, tracks, versions, artists }: Relea
                   {!sole && <OriginControl origin={track.origin} onChange={(origin) => changeTrack(track.id, { origin })} label={`Track ${i + 1} origin`} licenses={licensesOf(track.id, versions)} trackId={track.id} />}
                 </div>
                 {isrcProblem(track) && <p id={`isrc-${track.id}`} className="text-sm text-feedback-error">{isrcProblem(track)}</p>}
-                <div className="pl-9"><TrackArtistsButton trackId={track.id} billed={billing.of(track.id)} label={`Track ${i + 1} artists`} /></div>
+                <div className="pl-9"><TrackArtistsButton trackId={track.id} lineup={lineup.of(track.id)} label={`Track ${i + 1} artists`} /></div>
                 <LyricsPanel trackId={track.id} title={single ? form.title : track.title} initial={tracks[i].lyrics ?? ''} />
               </li>
             ))}
@@ -182,36 +183,36 @@ export function ReleaseDetailsForm({ release, tracks, versions, artists }: Relea
       </div>
     </form>
     <LicenseDialog tracks={tracks} versions={versions} />
-    {billing.open && form.tracks.some((t) => t.id === billing.open) && (
+    {picking >= 0 && (
       <ArtistPicker
-        key={billing.open}
-        trackTitle={single ? form.title : form.tracks.find((t) => t.id === billing.open)!.title}
-        number={form.tracks.findIndex((t) => t.id === billing.open) + 1}
-        billed={billing.of(billing.open)}
-        onDone={(next) => billing.save(billing.open!, next)}
+        key={lineup.open}
+        trackTitle={single ? form.title : form.tracks[picking].title}
+        number={picking + 1}
+        lineup={lineup.of(lineup.open!)}
+        onDone={(next) => lineup.save(lineup.open!, next)}
       />
     )}
-    {billing.problem && <p role="alert" className="px-1 text-sm text-feedback-error">{billing.problem}</p>}
+    {lineup.problem && <p role="alert" className="px-1 text-sm text-feedback-error">{lineup.problem}</p>}
     </>
   )
 }
 
 /** The artists on each track: saved on its own (like lyrics, not with Save), shown changed at once, and put back with
  *  the reason if the save fails. */
-function useBilling(artists: TrackArtist[]) {
+function useLineup(artists: TrackArtist[]) {
   const router = useRouter()
   const { open } = useArtistsParam()
-  const [pending, setPending] = useState(() => new Map<string, Omit<TrackArtist, 'track_id'>[]>())
+  const [pending, setPending] = useState(() => new Map<string, OnTrack[]>())
   const [problem, setProblem] = useState<string | null>(null)
   const forget = (trackId: string) => setPending((m) => (m.delete(trackId), new Map(m)))
   return {
     open,
     problem,
     of: (trackId: string) => pending.get(trackId) ?? artists.filter((a) => a.track_id === trackId),
-    save: (trackId: string, billed: Omit<TrackArtist, 'track_id'>[]) => {
+    save: (trackId: string, lineup: OnTrack[]) => {
       setProblem(null)
-      setPending((m) => new Map(m).set(trackId, billed))
-      setTrackArtists({ data: { trackId, artists: billed.map((a) => ({ id: a.id, role: a.role })) } })
+      setPending((m) => new Map(m).set(trackId, lineup))
+      setTrackArtists({ data: { trackId, artists: lineup.map((a) => ({ id: a.id, role: a.role })) } })
         .then(() => router.invalidate())
         .then(() => forget(trackId))
         .catch((error) => (forget(trackId), setProblem((error instanceof Error && error.message) || 'Couldn’t save the track’s artists. Nothing changed; try again.')))

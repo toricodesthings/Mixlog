@@ -2,7 +2,8 @@ import { isTouchFirst } from '../../hooks/ui/use-shell-mode'
 
 /**
  * The signal: live levels from what's playing, so the meters read the music and the listening room breathes with it.
- * One Web Audio analyser taps the player's <audio> (the file still plays exactly as uploaded; nothing is changed).
+ * One Web Audio analyser taps the player's <audio> elements, each through its own gain (A/B's audible side and Level
+ * match's trim; the file itself is never changed).
  *
  * Desktop only. Routing an <audio> through Web Audio can't be undone, and on iPhone and iPad Safari it has a long
  * record of going silent or stopping when the screen locks: playback never stopping outranks a dancing meter. There
@@ -45,21 +46,38 @@ export function follow(previous: { bass: number; kick: number; average: number }
   }
 }
 
-let graph: { context: AudioContext; analyser: AnalyserNode; audio: HTMLAudioElement } | null = null
+let graph: { context: AudioContext; analyser: AnalyserNode } | null = null
+/** Each tapped <audio>'s own gain (A/B's two decks), into the one analyser, so the meters read what's heard. */
+const gains = new WeakMap<HTMLAudioElement, GainNode>()
 
-/** Taps `audio` (once), and wakes the analyser; null where it's off (touch devices, or no Web Audio). */
+/** Taps `audio` (once each), and wakes the analyser; null where it's off (touch devices, or no Web Audio). */
 export function tap(audio: HTMLAudioElement): AnalyserNode | null {
   if (isTouchFirst() || navigator.maxTouchPoints > 0 || !('AudioContext' in window)) return null
-  if (graph?.audio !== audio) {
-    const context = graph?.context ?? new AudioContext()
-    const analyser = graph?.analyser ?? Object.assign(context.createAnalyser(), { fftSize: 2048, smoothingTimeConstant: 0.6 })
-    if (!graph) analyser.connect(context.destination)
-    context.createMediaElementSource(audio).connect(analyser)
-    graph = { context, analyser, audio }
+  if (!graph) {
+    const context = new AudioContext()
+    const analyser = Object.assign(context.createAnalyser(), { fftSize: 2048, smoothingTimeConstant: 0.6 })
+    analyser.connect(context.destination)
+    graph = { context, analyser }
+  }
+  if (!gains.has(audio)) {
+    // Silent until the player sets it (it does at once): a gain starting at 1 would let the idle deck through for a beat
+    const gain = graph.context.createGain()
+    gain.gain.value = 0
+    graph.context.createMediaElementSource(audio).connect(gain).connect(graph.analyser)
+    gains.set(audio, gain)
   }
   // Every play: a suspended context would be silence, now that the sound runs through it
   void graph.context.resume()
   return graph.analyser
+}
+
+/** Sets a tapped deck's gain (0 silent, 1 as uploaded) over ~10 ms, so a cut never clicks. False when `audio` isn't
+ *  tapped (touch, or not played yet): the caller uses `muted` and `volume` instead. */
+export function setGain(audio: HTMLAudioElement, value: number): boolean {
+  const gain = gains.get(audio)
+  if (!gain) return false
+  gain.gain.setTargetAtTime(value, gain.context.currentTime, 0.003)
+  return true
 }
 
 /** Settings' reduced motion or the system's: `applyAppearance` puts both on `data-motion`. */
@@ -68,30 +86,42 @@ const reduced = () => document.documentElement.dataset.motion === 'reduced'
 /**
  * While playing, every frame: writes the levels as CSS variables (`--level-0`…`--level-4`, `--bass`, `--kick`) and
  * `data-live` on each `[data-signal]` element (the meters, the room), which draw them in CSS. Nothing re-renders.
- * Off under reduced motion, where ambient motion stops. Returns the stop.
+ * A host as large as the room (`data-signal="readers"`) takes `data-live` but passes the levels only to its
+ * `[data-signal-read]` elements: set on the host, they'd restyle every star and hill under it every frame.
+ * Still under reduced motion, where ambient motion stops, from whichever frame it's turned on or off. Returns the stop.
  */
 export function drive(analyser: AnalyserNode): () => void {
-  if (reduced()) return () => {}
+  const clear = () => document.querySelectorAll<HTMLElement>('[data-live]').forEach((el) => delete el.dataset.live)
   const bins = new Uint8Array(analyser.frequencyBinCount)
   const binHz = analyser.context.sampleRate / analyser.fftSize
   let feel = { bass: 0, kick: 0, average: 0 }
   let frame = 0
+  let still = false
   const tick = () => {
+    frame = requestAnimationFrame(tick)
+    // Reduced motion turned on mid-song: still from the next frame (and alive again once it's off), not the next play
+    if (reduced()) return void (still || ((still = true), clear()))
+    still = false
     analyser.getByteFrequencyData(bins)
     const { bands, bass } = levelsOf(bins, binHz)
     feel = follow(feel, bass)
-    for (const el of document.querySelectorAll<HTMLElement>('[data-signal]')) {
-      el.dataset.live = ''
-      bands.forEach((level, i) => el.style.setProperty(`--level-${i}`, level.toFixed(3)))
-      el.style.setProperty('--bass', feel.bass.toFixed(3))
-      el.style.setProperty('--kick', feel.kick.toFixed(3))
+    const levels = bands.map((level) => level.toFixed(3))
+    const [low, kick] = [feel.bass.toFixed(3), feel.kick.toFixed(3)]
+    for (const host of document.querySelectorAll<HTMLElement>('[data-signal]')) {
+      if (!('live' in host.dataset)) host.dataset.live = ''
+      for (const el of host.dataset.signal === 'readers' ? host.querySelectorAll<HTMLElement>('[data-signal-read]') : [host]) {
+        levels.forEach((level, i) => el.style.setProperty(`--level-${i}`, level))
+        el.style.setProperty('--bass', low)
+        el.style.setProperty('--kick', kick)
+      }
     }
-    frame = requestAnimationFrame(tick)
+    // A host that stopped listening (A/B's idle half) goes still, not frozen mid-beat
+    for (const el of document.querySelectorAll<HTMLElement>('[data-live]:not([data-signal])')) delete el.dataset.live
   }
   frame = requestAnimationFrame(tick)
   return () => {
     cancelAnimationFrame(frame)
     // Every element it lit, including meters that have already gone quiet (and dropped data-signal)
-    for (const el of document.querySelectorAll<HTMLElement>('[data-live]')) delete el.dataset.live
+    clear()
   }
 }

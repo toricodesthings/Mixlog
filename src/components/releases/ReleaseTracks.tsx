@@ -119,7 +119,7 @@ function TrackLanes({ data, track, number, link, filesOver, uploads }: { data: R
     <section aria-label={track.title} className="surface-card rounded-3xl p-2 sm:p-3">
       {heading &&
         (link ? (
-          <Link {...link} className="group press flex min-h-12 items-center gap-3 rounded-2xl px-3 transition-colors hover:bg-accent-dim">
+          <Link {...link} className="group press flex min-h-12 items-center gap-3 rounded-2xl px-3 sm:rounded-xl transition-colors hover:bg-accent-dim">
             {heading}
             <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-ink-muted transition-[translate,color] group-hover:translate-x-0.5 group-hover:text-accent" />
           </Link>

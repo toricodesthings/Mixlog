@@ -5,11 +5,11 @@ import { idHue } from '../scene/palette'
 import { cn } from '../../lib/utils'
 
 const SIZES = {
-  row: 'size-14 rounded-xl text-2xl',
+  row: 'size-14 rounded-lg text-2xl',
   header: 'size-14 rounded-2xl text-2xl',
-  panel: 'aspect-square w-full rounded-[1.4rem] text-7xl',
-  cover: 'size-24 rounded-[1.4rem] text-5xl',
-  stage: 'size-28 rounded-[1.4rem] text-6xl sm:size-44 sm:rounded-[1.8rem] sm:text-8xl',
+  panel: 'aspect-square w-full rounded-[inherit] text-7xl',
+  cover: 'size-24 rounded-3xl text-5xl',
+  stage: 'size-28 rounded-3xl text-6xl sm:size-44 sm:rounded-[2rem] sm:text-8xl',
 } as const
 
 /** The first letter or digit of a title, for its monogram. */

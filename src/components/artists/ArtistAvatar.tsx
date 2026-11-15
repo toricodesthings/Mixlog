@@ -12,7 +12,7 @@ const SIZES = {
 } as const
 
 /** Up to two initials, for an artist with no picture. */
-export const initialsOf = (name: string) =>
+const initialsOf = (name: string) =>
   name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((word) => [...word][0]).join('').toLocaleUpperCase() || '?'
 
 /** An artist's round portrait: their picture, or initials pressed in their own hue (the release monogram's grooves).

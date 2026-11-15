@@ -65,6 +65,15 @@ export function normalizationOf(a: Measured, p: Platform): number | null {
   return round1(Math.max(0, Math.min(by, p.ceiling - a.truePeak)))
 }
 
+/** Level match for A/B: both played at the quieter one's loudness (or `ceiling`, when both are louder than it). Down
+ *  only, never up, so nothing can clip and a plain `volume` can do it. The trim in dB for each side; null when either
+ *  side isn't measured. */
+export function matchOf(a: number | null, b: number | null, ceiling: number | null = null): { a: number; b: number } | null {
+  if (a === null || b === null) return null
+  const target = Math.min(a, b, ceiling ?? Infinity)
+  return { a: round1(Math.min(0, target - a)), b: round1(Math.min(0, target - b)) }
+}
+
 type Laned = { id: string; track_id: string | null; kind: string; number: number }
 
 /** The version this one is compared with: the highest-numbered lower one in its lane (Mixes for a mix; Masters, the

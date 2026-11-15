@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/react-router'
 import { useReducedMotionConfig } from 'framer-motion'
-import { Clapperboard, Download, Pause, Play, Replace, Upload } from 'lucide-react'
+import { Download, Pause, Play, Plus, Replace, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { CANVAS_ACCEPT, canvasProblem } from '#/server/files'
@@ -23,7 +23,7 @@ const GLASS_BUTTON = 'glass flex size-9 items-center justify-center rounded-full
 export function CanvasSection({ release, tracks, versions }: ReleaseData) {
   const single = release.format === 'single'
   return (
-    <section aria-labelledby="canvas" className="surface-card glass-edge flex flex-col gap-4 rounded-[2rem] p-4 sm:p-5">
+    <section aria-labelledby="canvas" className="surface-card glass-edge flex flex-col gap-4 rounded-[2rem] p-4">
       <div className="flex items-baseline justify-between gap-3 px-1">
         <h2 id="canvas" className="font-display text-xl font-semibold tracking-tight">Canvas</h2>
         <p className="readout text-ink-muted">MP4 · 3–8 s · 9:16</p>
@@ -111,7 +111,7 @@ function CanvasFrame({ track, number, released, versions }: { track: TrackRow; n
         {...drop.props}
         data-meter-host
         className={cn(
-          'group relative aspect-[9/16] w-full overflow-hidden rounded-[1.6rem] border bg-room-void shadow-[0_18px_40px_-24px_rgb(0_0_0/0.7)] transition-[border-color,box-shadow] duration-(--duration-normal)',
+          'group relative aspect-[9/16] w-full overflow-hidden rounded-2xl border bg-room-void shadow-[0_18px_40px_-24px_rgb(0_0_0/0.7)] transition-[border-color,box-shadow] duration-(--duration-normal)',
           current ? 'border-line-light' : 'border-dashed border-line-strong',
           drop.over && 'border-accent glow-accent',
         )}
@@ -162,10 +162,12 @@ function CanvasFrame({ track, number, released, versions }: { track: TrackRow; n
             className="press flex size-full flex-col items-center justify-center gap-3 px-4 text-center transition-colors hover:bg-accent-dim focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-inset"
           >
             <span className="flex size-12 items-center justify-center rounded-full bg-white/[0.05] text-accent">
-              <Clapperboard size={20} aria-hidden="true" />
+              <Plus size={20} aria-hidden="true" />
             </span>
-            <span className="font-display text-[0.9375rem] font-semibold text-ink">{drop.over ? 'Let go to add it' : 'Add a Canvas'}</span>
-            <span className="text-[0.8125rem] text-ink-muted">Click, or drop an MP4</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="font-display text-[0.9375rem] font-semibold text-ink">{drop.over ? 'Let go to add it' : 'Add a Canvas'}</span>
+              <span className="text-[0.8125rem] text-ink-muted">Click, or drop an MP4</span>
+            </span>
           </button>
         )}
         {busy && (

@@ -281,6 +281,8 @@ export const ZONES = {
   summaryCompact: { x: [0.12, 0.26], y: [0.38, 0.46] } as MoonZone,
   roomDesktop: { x: [0.07, 0.2], y: [0.12, 0.26] } as MoonZone,
   roomCompact: { x: [0.1, 0.22], y: [0.09, 0.15] } as MoonZone,
+  /** Each half of the room split for A/B: in its outer corner, below the header's buttons and beside the record. */
+  roomPair: { x: [0.05, 0.13], y: [0.3, 0.42] } as MoonZone,
 }
 
 const cache = new Map<string, SceneModel>()

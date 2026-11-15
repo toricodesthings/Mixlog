@@ -10,10 +10,10 @@ import { SearchField } from '../primitives/SearchField'
 import { SegmentedControl } from '../primitives/SegmentedControl'
 import { Composer } from '../shared/Composer'
 import { ArtistAvatar } from './ArtistAvatar'
-import { matchArtists } from './browse'
+import { matchArtists, tracksOf } from './browse'
 
 type Search = { artists?: string }
-type Billed = Omit<TrackArtist, 'track_id'>
+export type OnTrack = Omit<TrackArtist, 'track_id'>
 
 const ROLES = [
   { value: 'artist', label: 'Main' },
@@ -35,12 +35,12 @@ const CHIP =
 
 /** A track's artists in Details: one chip each (face, name, and Main or Feat. under it), then Add artist. Any chip
  *  opens the picker, where one is changed or taken off and more are added. */
-export function TrackArtistsButton({ trackId, billed, label }: { trackId: string; billed: Billed[]; label: string }) {
+export function TrackArtistsButton({ trackId, lineup, label }: { trackId: string; lineup: OnTrack[]; label: string }) {
   const { show } = useArtistsParam()
   const open = () => void show(trackId)
   return (
     <ul aria-label={label} className="flex flex-wrap items-center gap-2">
-      {billed.map((a) => (
+      {lineup.map((a) => (
         <li key={a.id} className="min-w-0">
           <button type="button" onClick={open} aria-label={`${a.name}, ${a.role === 'featured' ? 'featured' : 'main artist'}. Change`} className={cn(CHIP, 'border-line-light bg-white/[0.04]')}>
             <ArtistAvatar id={a.id} name={a.name} src={a.profile_image_url} size="chip" className="size-8" />
@@ -56,7 +56,7 @@ export function TrackArtistsButton({ trackId, billed, label }: { trackId: string
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.04] text-accent">
             <UserRoundPlus size={14} aria-hidden="true" />
           </span>
-          <span className="text-sm">{billed.length ? 'Add artist' : 'Add artists'}</span>
+          <span className="text-sm">{lineup.length ? 'Add artist' : 'Add artists'}</span>
         </button>
       </li>
     </ul>
@@ -68,11 +68,11 @@ export function TrackArtistsButton({ trackId, billed, label }: { trackId: string
  * them (main by default), Main or Feat. beside each name, and a name that isn't on the roster yet is one tap to add.
  * Nothing is saved until Done, which hands the artists back at once; the save runs behind it.
  */
-export function ArtistPicker({ trackTitle, number, billed, onDone }: { trackTitle: string; number: number; billed: Billed[]; onDone: (billed: Billed[]) => void }) {
+export function ArtistPicker({ trackTitle, number, lineup, onDone }: { trackTitle: string; number: number; lineup: OnTrack[]; onDone: (lineup: OnTrack[]) => void }) {
   const { close } = useArtistsParam()
   const { isTouch } = useShellMode()
   const [roster, setRoster] = useState<ArtistRow[] | null>(null)
-  const [chosen, setChosen] = useState(billed)
+  const [chosen, setChosen] = useState(lineup)
   const [query, setQuery] = useState('')
   const [adding, setAdding] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -88,8 +88,7 @@ export function ArtistPicker({ trackTitle, number, billed, onDone }: { trackTitl
   const shown = matchArtists(roster ?? [], query)
   const name = query.trim()
   const exact = (roster ?? []).some((a) => fold(a.name) === fold(name))
-  const isChosen = (id: string) => chosen.some((c) => c.id === id)
-  const toggle = (a: Billed) => setChosen((all) => (all.some((c) => c.id === a.id) ? all.filter((c) => c.id !== a.id) : [...all, { ...a, role: 'artist' }]))
+  const toggle = (a: OnTrack) => setChosen((all) => (all.some((c) => c.id === a.id) ? all.filter((c) => c.id !== a.id) : [...all, { ...a, role: 'artist' }]))
   const setRole = (id: string, role: TrackArtistRole) => setChosen((all) => all.map((c) => (c.id === id ? { ...c, role } : c)))
   const addNew = () => {
     setAdding(true)
@@ -153,7 +152,7 @@ export function ArtistPicker({ trackTitle, number, billed, onDone }: { trackTitl
                 </li>
               ))
             : shown.map((a) => {
-                const on = isChosen(a.id)
+                const on = chosen.some((c) => c.id === a.id)
                 return (
                   <li key={a.id}>
                     <button
@@ -161,13 +160,13 @@ export function ArtistPicker({ trackTitle, number, billed, onDone }: { trackTitl
                       aria-pressed={on}
                       onClick={() => toggle({ id: a.id, name: a.name, role: 'artist', profile_image_url: a.profile_image_url })}
                       className={cn(
-                        'press relative flex w-full flex-col items-center gap-2 rounded-2xl border px-2 pt-3 pb-2.5 text-center transition-[border-color,background-color,box-shadow] duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50',
+                        'press relative flex w-full flex-col items-center gap-2 rounded-2xl border px-2 pt-3 pb-2.5 text-center transition-[border-color,background-color,box-shadow] duration-(--duration-normal) focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50',
                         on ? 'border-accent/60 bg-accent/[0.08] shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]' : 'border-transparent hover:border-line hover:bg-white/[0.04]',
                       )}
                     >
                       <ArtistAvatar id={a.id} name={a.name} src={a.profile_image_url} size="pick" />
                       <span className="w-full truncate text-[0.8125rem] font-semibold text-ink">{a.name}</span>
-                      <span className="readout -mt-1.5 w-full truncate text-ink-muted">{a.role ?? `${a.track_count} ${a.track_count === 1 ? 'track' : 'tracks'}`}</span>
+                      <span className="readout -mt-1.5 w-full truncate text-ink-muted">{a.role ?? tracksOf(a.track_count)}</span>
                       {on && <Check size={18} strokeWidth={3} aria-hidden="true" className="absolute top-2 right-2 rounded-full bg-accent p-0.5 text-on-accent" />}
                     </button>
                   </li>

@@ -12,12 +12,12 @@ interface SegmentedOption<T extends string> {
 }
 
 const SIZES = {
-    sm: { root: "rounded-[11px] p-0.5", item: "rounded-lg px-3 py-1 text-[0.8125rem]", lens: "inset-y-0.5 rounded-lg" },
-    md: { root: "min-h-11 rounded-[11px] p-0.5", item: "h-9 rounded-lg px-3.5 text-sm before:absolute before:-inset-y-1 before:content-['']", lens: "top-1/2 h-9 -translate-y-1/2 rounded-lg" },
+    sm: { root: "rounded-xl p-0.5", item: "rounded-[9px] px-3 py-1 text-[0.8125rem]", lens: "inset-y-0.5 rounded-[9px]" },
+    md: { root: "min-h-11 rounded-xl p-0.5", item: "h-[2.375rem] rounded-[9px] px-3.5 text-sm before:absolute before:-inset-y-1 before:content-['']", lens: "top-1/2 h-[2.375rem] -translate-y-1/2 rounded-[9px]" },
 } as const;
 
 /** The chosen/idle look of one segment, shared with other pressed controls (formatting toggles). Needs `--segment-tone` on the element or an ancestor. */
-const SEGMENT_FILL = "border-[color-mix(in_srgb,var(--segment-tone)_25%,transparent)] bg-[color-mix(in_srgb,var(--segment-tone)_18%,transparent)]";
+export const SEGMENT_FILL = "border-[color-mix(in_srgb,var(--segment-tone)_25%,transparent)] bg-[color-mix(in_srgb,var(--segment-tone)_18%,transparent)]";
 const SEGMENT_IDLE = "border-transparent text-ink-soft hover:bg-white/[0.04] hover:text-ink";
 
 /**

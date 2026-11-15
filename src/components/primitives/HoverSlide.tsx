@@ -11,6 +11,7 @@ type Box = { x: number; y: number; width: number; height: number };
  * of each row lighting on its own. Spread `group` on the list (it must be `relative`), render `light` first inside it,
  * and spread `row` on each row (each `relative`, so it paints above the light). A touch shows nothing: there's no hover.
  * The light appears where it's first needed rather than sliding in from a corner, and fades when the pointer leaves.
+ * `to` moves it from code (a listbox's ↑ ↓ highlight), or hides it with null.
  */
 export function useHoverSlide(className = "rounded-2xl bg-accent-dim") {
     const [box, setBox] = useState<Box | null>(null);
@@ -41,5 +42,6 @@ export function useHoverSlide(className = "rounded-2xl bg-accent-dim") {
             transition={box && !shown.current ? { default: { duration: 0 }, opacity: TWEENS.FADE } : { default: TWEENS.FOLLOW, opacity: TWEENS.FADE }}
         />
     );
-    return { group, row, light };
+    const to = (el: HTMLElement | null) => (el ? measure(el) : setBox(null));
+    return { group, row, light, to };
 }

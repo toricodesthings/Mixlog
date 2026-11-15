@@ -1,6 +1,6 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { Check, ChevronLeft, X } from "lucide-react";
 import { useShellMode } from "../../hooks/ui/use-shell-mode";
 import { useKeyboardInset } from "../../hooks/ui/use-keyboard-inset";
@@ -36,6 +36,7 @@ export function UtilitySheet({
     confirm,
     fit = false,
     locked = false,
+    tone,
     children,
 }: {
     title: string;
@@ -57,6 +58,8 @@ export function UtilitySheet({
     fit?: boolean;
     /** While something is saving: no throw, no Escape, no backdrop, no X. */
     locked?: boolean;
+    /** A release's light (`useRoomStyle`): its accent alone (`.art-tone`). */
+    tone?: CSSProperties;
     children: ReactNode;
 }) {
     const shell = useShellMode();
@@ -85,8 +88,8 @@ export function UtilitySheet({
         ? `sheet-up glass-edge safe-bottom fixed inset-x-0 bottom-0 top-auto ${fit ? "" : "h-[min(92dvh,48rem)]"} rounded-t-[2rem] border-t border-line`
         : "sheet-side safe-bottom safe-top inset-y-0 right-0 border-l border-line";
     const style = isMobile
-        ? { y, height: fit ? "auto" : (aboveKeyboard ?? tall), maxHeight: aboveKeyboard ?? tall, bottom: keyboard || undefined, width: "100%", maxWidth: shell.isTablet ? "48rem" : undefined, marginInline: "auto" }
-        : undefined;
+        ? { y, height: fit ? "auto" : (aboveKeyboard ?? tall), maxHeight: aboveKeyboard ?? tall, bottom: keyboard || undefined, width: "100%", maxWidth: shell.isTablet ? "48rem" : undefined, marginInline: "auto", ...tone }
+        : tone;
     const hold = (event: Event) => locked && event.preventDefault();
 
     const closeButton = (
@@ -116,7 +119,7 @@ export function UtilitySheet({
                     <motion.aside
                         ref={setPanel}
                         style={style}
-                        className={`mobile-sheet-shell layer-route-overlay surface-route-overlay fixed flex w-full flex-col shadow-2xl shadow-black/40 ${shape}`}
+                        className={`mobile-sheet-shell layer-route-overlay surface-route-overlay fixed flex w-full flex-col shadow-2xl shadow-black/40 ${shape}${tone ? " art-tone" : ""}`}
                     >
                         {isMobile && (
                             <div data-sheet-handle className="flex h-8 shrink-0 items-center justify-center" aria-hidden="true">

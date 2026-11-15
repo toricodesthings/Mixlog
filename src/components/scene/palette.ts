@@ -158,12 +158,16 @@ export function paletteOf(pixels: Uint8ClampedArray): Record<string, string> {
   return withSpot(props, k)
 }
 
-/** The artwork's colours (above); none until it has loaded, so the title's colours stand in. */
+/** Each artwork's colours, once read. ponytail: one small entry per artwork seen this session, never evicted. */
+const palettes = new Map<string, Record<string, string>>()
+
+/** The artwork's colours (above); none until it has loaded the first time, so the title's colours stand in. */
 function useArtPalette(url: string | null) {
-  const [palette, setPalette] = useState<Record<string, string> | null>(null)
+  const [palette, setPalette] = useState<Record<string, string> | null>(() => (url && palettes.get(url)) || null)
   useEffect(() => {
-    setPalette(null)
-    if (!url) return
+    const known = url ? palettes.get(url) : undefined
+    setPalette(known ?? null)
+    if (!url || known) return
     const image = new Image()
     image.decoding = 'async'
     image.onload = () => {
@@ -173,7 +177,9 @@ function useArtPalette(url: string | null) {
       if (!context) return
       context.imageSmoothingEnabled = false
       context.drawImage(image, 0, 0, SAMPLE, SAMPLE)
-      setPalette(paletteOf(context.getImageData(0, 0, SAMPLE, SAMPLE).data))
+      const read = paletteOf(context.getImageData(0, 0, SAMPLE, SAMPLE).data)
+      palettes.set(url, read)
+      setPalette(read)
     }
     image.src = url
     return () => {

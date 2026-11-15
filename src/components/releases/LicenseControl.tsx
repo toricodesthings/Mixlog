@@ -8,9 +8,9 @@ import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { downloadUrl, uploadLicense } from '../../lib/files'
 import { deviceZone, formatMoment, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
-import { Button, Transfer, Tuning } from '../primitives'
+import { Button, Transfer } from '../primitives'
 import { SegmentedControl } from '../primitives/SegmentedControl'
-import { Composer } from '../shared/Composer'
+import { Viewer, ViewerButton } from '../shared/Viewer'
 import { sizeOf } from '../uploads/progress'
 import { formatOf, licensesOf } from './stacks'
 
@@ -117,54 +117,53 @@ export function LicenseDialog({ tracks, versions }: { tracks: TrackRow[]; versio
   return version ? <LicenseSheet version={version} track={tracks.find((t) => t.id === version.track_id)} stack={licensesOf(version.track_id!, versions)} show={show} close={() => void close()} /> : null
 }
 
+/** The license full size (`Viewer`): which version on top, the license below on its desk. */
 function LicenseSheet({ version, track, stack, show, close }: { version: VersionRow; track?: TrackRow; stack: VersionRow[]; show: (id: string) => void; close: () => void }) {
   const upload = useLicenseUpload(version.track_id!, show)
   const zone = deviceZone()
   return (
-    <Composer
+    <Viewer
+      kind="License"
+      name={track?.title}
+      icon={FileBadge}
       onClose={close}
-      title={`License${track ? ` · ${track.title}` : ''}`}
-      eyebrow={`v${version.number} · ${formatOf(version.filename)} · ${sizeOf(version.size)} · Added ${formatMoment(version.created_at, zone, todayIn(zone))}`}
-      actions={
+      readout={
         <>
-          <span className="mr-auto min-w-0 truncate text-sm text-ink-muted">{version.filename}</span>
+          v{version.number} · {formatOf(version.filename)} · {sizeOf(version.size)}
+          <span className="max-sm:hidden"> · Added {formatMoment(version.created_at, zone, todayIn(zone))}</span>
+        </>
+      }
+      band={stack.length > 1 && <SegmentedControl ariaLabel="License version" size="sm" value={version.id} onChange={show} options={stack.map((v) => ({ value: v.id, label: `v${v.number}` }))} />}
+      status={
+        <>
           <UploadState state={upload.state} />
-          {/* Takes a dropped PDF or Word document too. */}
-          <Button type="button" variant="ghost" onClick={upload.pick} disabled={upload.sending} {...upload.drop} className={cn('gap-1.5', upload.over && 'ring-2 ring-accent')}>
-            <FilePlus2 size={16} aria-hidden="true" />
-            New version
-          </Button>
-          <Button asChild variant="secondary" className="gap-1.5">
-            <a href={downloadUrl(version.id)} download={version.filename}>
-              <Download size={16} aria-hidden="true" />
-              Download
-            </a>
-          </Button>
           {upload.picker}
         </>
       }
-      className="flex max-h-[92dvh] w-[min(56rem,calc(100vw-2rem))] max-w-none flex-col gap-4"
+      actions={
+        <>
+          {/* Takes a dropped PDF or Word document too. */}
+          <ViewerButton icon={FilePlus2} label="New version" variant="ghost" onClick={upload.pick} disabled={upload.sending} {...upload.drop} className={cn(upload.over && 'ring-2 ring-accent')} />
+          <ViewerButton icon={Download} label="Download" name={`Download ${version.filename}`} href={downloadUrl(version.id)} download={version.filename} />
+        </>
+      }
     >
-      {stack.length > 1 && (
-        <SegmentedControl ariaLabel="License version" size="sm" value={version.id} onChange={show} options={stack.map((v) => ({ value: v.id, label: `v${v.number}` }))} />
-      )}
-      <div className="surface-item min-h-[50dvh] flex-1 overflow-y-auto overscroll-contain rounded-2xl">
-        <Suspense fallback={<Reading />}>
-          <LicenseDocument key={version.id} version={version} />
-        </Suspense>
-      </div>
-    </Composer>
+      <Suspense fallback={<Reading arrived={0} />}>
+        <LicenseDocument key={version.id} version={version} />
+      </Suspense>
+    </Viewer>
   )
 }
 
-/** While the license opens: its bytes coming in (`arrived`, the share here so far), else the reader getting ready. */
-export function Reading({ arrived }: { arrived?: number }) {
+/** While the license opens: its bytes coming in (`arrived`, the share here so far), then held full while the first
+ *  page draws. One look from the click to the page, so opening never flickers between loaders. */
+export function Reading({ arrived, className }: { arrived: number; className?: string }) {
   return (
-    <div role="status" className="flex h-full min-h-[50dvh] flex-col items-center justify-center gap-4 p-8 text-center">
-      {arrived === undefined ? <Tuning className="text-3xl" /> : <Transfer direction="down" value={arrived} className="text-5xl" />}
+    <div role="status" className={cn('flex size-full flex-col items-center justify-center gap-4 p-8 text-center', className)}>
+      <Transfer direction="down" value={arrived} className="text-5xl" />
       <p className="readout text-ink-muted">
         Reading the license
-        {arrived !== undefined && <span aria-hidden="true" data-numeric> · {Math.round(arrived * 100)}%</span>}
+        <span aria-hidden="true" data-numeric> · {Math.round(arrived * 100)}%</span>
       </p>
     </div>
   )

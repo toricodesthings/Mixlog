@@ -242,4 +242,16 @@ describe('sceneOf', () => {
       expect(Math.abs(land.glowX - 960)).toBeLessThanOrEqual(480)
     }
   })
+
+  it('keeps the moon inside A/B’s pair zone', () => {
+    const zone = ZONES.roomPair
+    for (const id of ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']) {
+      const { sky } = sceneOf(id, FINGERPRINTS.default, zone)
+      const [left, right] = sky.moon.side === 1 ? [1 - zone.x[1], 1 - zone.x[0]] : zone.x
+      expect(sky.moon.x / 1920).toBeGreaterThanOrEqual(left - 1e-6)
+      expect(sky.moon.x / 1920).toBeLessThanOrEqual(right + 1e-6)
+      expect(sky.moon.y / 300).toBeGreaterThanOrEqual(zone.y[0] - 1e-6)
+      expect(sky.moon.y / 300).toBeLessThanOrEqual(zone.y[1] + 1e-6)
+    }
+  })
 })

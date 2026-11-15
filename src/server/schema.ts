@@ -53,6 +53,7 @@ export const artists = sqliteTable('artists', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   role: text('role'),
+  links: text('links', { mode: 'json' }).$type<string[]>(), // https URLs, in the order the artist put them
   profileImageKey: text('profile_image_key'),
   profileImageType: text('profile_image_type'),
   profileImageSize: integer('profile_image_size'),
@@ -60,7 +61,7 @@ export const artists = sqliteTable('artists', {
 
 export const TRACK_ARTIST_ROLES = ['artist', 'featured'] as const
 
-// A track can have multiple billed artists and separate featured artists, in display order.
+// A track can have several main artists and featured ones, in credit order.
 export const trackArtists = sqliteTable(
   'track_artists',
   {

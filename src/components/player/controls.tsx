@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react'
 import { cn } from '../../lib/utils'
 import { Tip, Transfer } from '../primitives'
 import { formatLength } from '../releases/browse'
+import type { Side } from './ab'
 import { readiness, usePlayer, usePlayhead } from './Player'
 
 /** The transport's controls, shared by the bar and the listening room, so they look and behave the same everywhere. */
@@ -12,8 +13,8 @@ export const clock = (seconds: number) => formatLength(seconds * 1000)
 
 /** While the file is on its way: the download ring around the button's edge, filling as the next seconds arrive, the
  *  arrow coming in. Shared by the transport and a version's own Play, so waiting looks the same everywhere. */
-export function Fetching({ className }: { className?: string }) {
-  return <Transfer direction="down" value={readiness(usePlayhead())} className={className} />
+export function Fetching({ side, className }: { side?: Side; className?: string }) {
+  return <Transfer direction="down" value={readiness(usePlayhead(side))} className={className} />
 }
 
 /** Play or pause what's loaded: the one solid Signal fill in the transport. Waiting on the file, it fetches visibly. */
@@ -59,14 +60,16 @@ export function SkipButton({ by, size = 'md' }: { by: number; size?: 'md' | 'lg'
 
 /**
  * The playhead: a native range (keyboard, screen reader and touch for free) with the time either side, in tabular
- * figures so they never jitter while playing.
+ * figures so they never jitter while playing. `deck`: one A/B side's, standing in for its unmeasured wave (seeking
+ * there listens to it, as the wave does), at the wave's height.
  */
-export function Scrubber({ className }: { className?: string }) {
-  const { seek } = usePlayer()
-  const { time, duration, buffered } = usePlayhead()
+export function Scrubber({ deck, className }: { deck?: Side; className?: string }) {
+  const player = usePlayer()
+  const { time, duration, buffered } = usePlayhead(deck)
   const share = duration ? time / duration : 0
+  const go = (value: number) => (deck ? (player.seekTo((value / 1000) * duration, deck), player.listen(deck)) : player.seek(value / 1000))
   return (
-    <div className={cn('flex w-full items-center gap-3', className)}>
+    <div className={cn('flex w-full items-center gap-3', deck && 'h-[67.2px]', className)}>
       <span data-numeric className="w-10 shrink-0 text-right text-xs text-ink-muted">{clock(time)}</span>
       <input
         type="range"
@@ -74,10 +77,10 @@ export function Scrubber({ className }: { className?: string }) {
         max={1000}
         value={Math.round(share * 1000)}
         disabled={!duration}
-        onChange={(event) => seek(Number(event.target.value) / 1000)}
-        aria-label="Playhead"
+        onChange={(event) => go(Number(event.target.value))}
+        aria-label={deck ? `${deck.toUpperCase()} · Playhead` : 'Playhead'}
         aria-valuetext={`${clock(time)} of ${clock(duration)}`}
-        data-playhead
+        data-playhead={deck ?? true}
         className="scrubber min-w-0 flex-1"
         style={{ '--fill': `${share * 100}%`, '--buffered': `${duration ? (buffered / duration) * 100 : 0}%` } as CSSProperties}
       />
