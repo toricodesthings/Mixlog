@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-15
+
 ### Added
 
 - Release cards show who they're by: each main artist's face and name under the title.
