@@ -57,3 +57,13 @@ export const RadioItem = ({ className = "", children, ...props }: RadixDropdownM
         {children}
     </RadixDropdownMenu.RadioItem>
 );
+
+/** One of several choices that can each be on, styled as `RadioItem`. */
+export const CheckboxItem = ({ className = "", children, ...props }: RadixDropdownMenu.DropdownMenuCheckboxItemProps & { ref?: React.Ref<HTMLDivElement> }) => (
+    <RadixDropdownMenu.CheckboxItem className={`relative flex min-h-11 cursor-pointer items-center rounded-lg py-2 pl-9 pr-3 text-sm text-ink-soft outline-hidden transition-colors ${MENU_HOVER} focus:text-accent data-[state=checked]:font-medium data-[state=checked]:text-accent ${className}`} {...props}>
+        <span className="absolute left-3 flex size-4 items-center justify-center">
+            <RadixDropdownMenu.ItemIndicator><Check size={15} aria-hidden="true" /></RadixDropdownMenu.ItemIndicator>
+        </span>
+        {children}
+    </RadixDropdownMenu.CheckboxItem>
+);

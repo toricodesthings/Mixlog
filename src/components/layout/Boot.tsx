@@ -4,8 +4,9 @@ import { cn } from '../../lib/utils'
 import { BrandMark } from '../primitives'
 import { sceneOf, ZONES } from '../scene/generate'
 
-/** How long the boot takes to fade off the page that has arrived under it (`.boot-leaving` in app.css). */
-const LEAVE_MS = 300
+/** How long the boot takes to fly into the valley and fade off the page that has arrived under it (`.boot-leaving` in
+ *  app.css). The page is live underneath the whole time, so it never waits on this. */
+const LEAVE_MS = 700
 
 /** A sparse night from the listening room's own generator, on a fixed seed so it's the same sky every boot: its bright
  *  and mid tiers only, lifted into the upper screen and kept clear of the mark and the wordmark. */
@@ -17,7 +18,8 @@ const STARS = SCENE.sky.stars.filter(([, , size]) => size > 1)
 
 /** The first thing anyone sees, before the app has arrived (it's in the shell HTML, so CSS alone runs it): a quiet
  *  night over a still valley, and the mark drawing itself in and back out as the room tunes in. It stays over the shell
- *  until the first page is ready (`AppShell`), then fades. */
+ *  until the first page is ready (`AppShell`), then flies in: each depth grows from the crest's peak, nearer ones more,
+ *  like a drone pushing into the valley, as it fades. */
 export function Boot({ leaving, onLeft }: { leaving: boolean; onLeft: () => void }) {
   useEffect(() => {
     if (!leaving) return
@@ -28,13 +30,15 @@ export function Boot({ leaving, onLeft }: { leaving: boolean; onLeft: () => void
   return (
     <div role="status" className={cn('boot bg-atmosphere layer-loading-screen fixed inset-0 overflow-hidden', leaving && 'boot-leaving')}>
       <div aria-hidden="true" className="boot-sky absolute inset-0">
-        {STARS.map(([left, top, size, warm], i) => (
-          <span
-            key={i}
-            className={cn('boot-star', warm && 'boot-star-warm', i === 0 && 'boot-sparkle', i % 8 === 4 && 'boot-twinkle')}
-            style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, animationDelay: `${-i * 1.3}s` }}
-          />
-        ))}
+        <div className="boot-depth boot-depth-sky absolute inset-0">
+          {STARS.map(([left, top, size, warm], i) => (
+            <span
+              key={i}
+              className={cn('boot-star', warm && 'boot-star-warm', i === 0 && 'boot-sparkle', i % 8 === 4 && 'boot-twinkle')}
+              style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, animationDelay: `${-i * 1.3}s` }}
+            />
+          ))}
+        </div>
         <Ground />
       </div>
       <div className="boot-stage relative flex h-full flex-col items-center justify-center gap-8">
@@ -103,6 +107,14 @@ function Tube({ side, inset, s, b, tone }: (typeof TUBES)[number]) {
   )
 }
 
+/** One depth of the valley: a box the size of the ground, grown from the crest's peak as the boot flies in (`--depth`,
+ *  1 farthest). */
+const Depth = ({ depth, children }: { depth: number; children: React.ReactNode }) => (
+  <div className="boot-depth absolute inset-0" style={{ '--depth': depth } as React.CSSProperties}>
+    {children}
+  </div>
+)
+
 /** Two ranges deep in the room's language (the generator's own back and distant peaks, flattened), mist lying between
  *  them, the lit crest with amp tubes at its edges, and a still lake holding the glow. Every layer shares one viewBox and
  *  the box keeps the viewBox's height in view (`.boot-ground`), so the mist's HTML band lines up between the ranges.
@@ -111,60 +123,70 @@ function Ground() {
   const { land } = SCENE
   return (
     <div className="boot-ground absolute inset-x-0 bottom-0">
-      <svg {...ground}>
-        <g transform="translate(0 130) scale(1 .65)">
-          <path d={land.back} fill="var(--boot-land-back)" />
-          <path d={land.backRim} fill="none" stroke="var(--boot-rim)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" opacity=".5" />
-        </g>
-      </svg>
-      <div className="boot-mist absolute inset-x-0" />
-      <svg {...ground}>
-        <defs>
-          <radialGradient id="boot-glow" cx="960" cy="266" r="700" gradientTransform="translate(0 266) scale(1 .16) translate(0 -266)" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="var(--boot-glow)" />
-            <stop offset="1" stopColor="var(--boot-glow)" stopOpacity="0" />
-          </radialGradient>
-          <linearGradient id="boot-trace" x1="0" x2="1">
-            <stop offset=".08" stopColor="var(--boot-trace)" stopOpacity="0" />
-            <stop offset=".5" stopColor="var(--boot-trace)" />
-            <stop offset=".92" stopColor="var(--boot-trace)" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="boot-near" x1="0" y1="262" x2="0" y2="340" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="var(--boot-land-near)" />
-            <stop offset="1" stopColor="var(--boot-land-foot)" />
-          </linearGradient>
-          {/* Each tube's light (orange or pink) eases toward the other's at its rim, so neighbouring halos blend */}
-          {(['tube', 'rose'] as const).map((tone) => (
-            <Fragment key={tone}>
-              <radialGradient id={`boot-halo-${tone}`}>
-                <stop offset="0" stopColor={`var(--boot-light-${tone})`} stopOpacity=".34" />
-                <stop offset=".55" stopColor="var(--boot-light-blend)" stopOpacity=".17" />
-                <stop offset="1" stopColor="var(--boot-light-blend)" stopOpacity="0" />
-              </radialGradient>
-              <radialGradient id={`boot-core-${tone}`}>
-                <stop offset=".2" stopColor={`var(--boot-light-${tone})`} stopOpacity=".8" />
-                <stop offset="1" stopColor={`var(--boot-light-${tone})`} stopOpacity="0" />
-              </radialGradient>
-            </Fragment>
-          ))}
-          {/* The lake holds the glow as a long, soft column under the crest's peak */}
-          <radialGradient id="boot-sheen" cx="960" cy="340" r="420" gradientTransform="translate(960 340) scale(1 .18) translate(-960 -340)" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="var(--boot-glow)" />
-            <stop offset="1" stopColor="var(--boot-glow)" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <g transform="translate(0 175) scale(1 .6)">
-          <path d={land.distant} fill="var(--boot-land-distant)" />
-          <path d={land.distantRim} fill="none" stroke="var(--boot-rim)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" opacity=".35" />
-        </g>
-        <rect width="1920" height="400" fill="url(#boot-glow)" />
-        <path d={`${CREST}V400H0Z`} fill="url(#boot-near)" />
-        <path d={CREST} fill="none" stroke="url(#boot-trace)" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
-        <rect y="340" width="1920" height="60" fill="var(--boot-lake)" />
-        <path d="M0 340.5H1920" stroke="url(#boot-trace)" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity=".35" />
-        <rect y="340" width="1920" height="60" fill="url(#boot-sheen)" />
-      </svg>
-      {TUBES.map((tube) => <Tube key={`${tube.side}${tube.s}`} {...tube} />)}
+      <Depth depth={1}>
+        <svg {...ground}>
+          <g transform="translate(0 130) scale(1 .65)">
+            <path d={land.back} fill="var(--boot-land-back)" />
+            <path d={land.backRim} fill="none" stroke="var(--boot-rim)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" opacity=".5" />
+          </g>
+        </svg>
+      </Depth>
+      <Depth depth={2}>
+        <div className="boot-mist absolute inset-x-0" />
+      </Depth>
+      <Depth depth={3}>
+        <svg {...ground}>
+          <g transform="translate(0 175) scale(1 .6)">
+            <path d={land.distant} fill="var(--boot-land-distant)" />
+            <path d={land.distantRim} fill="none" stroke="var(--boot-rim)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" opacity=".35" />
+          </g>
+        </svg>
+      </Depth>
+      <Depth depth={5}>
+        <svg {...ground}>
+          <defs>
+            <radialGradient id="boot-glow" cx="960" cy="266" r="700" gradientTransform="translate(0 266) scale(1 .16) translate(0 -266)" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="var(--boot-glow)" />
+              <stop offset="1" stopColor="var(--boot-glow)" stopOpacity="0" />
+            </radialGradient>
+            <linearGradient id="boot-trace" x1="0" x2="1">
+              <stop offset=".08" stopColor="var(--boot-trace)" stopOpacity="0" />
+              <stop offset=".5" stopColor="var(--boot-trace)" />
+              <stop offset=".92" stopColor="var(--boot-trace)" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="boot-near" x1="0" y1="262" x2="0" y2="340" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="var(--boot-land-near)" />
+              <stop offset="1" stopColor="var(--boot-land-foot)" />
+            </linearGradient>
+            {/* Each tube's light (orange or pink) eases toward the other's at its rim, so neighbouring halos blend */}
+            {(['tube', 'rose'] as const).map((tone) => (
+              <Fragment key={tone}>
+                <radialGradient id={`boot-halo-${tone}`}>
+                  <stop offset="0" stopColor={`var(--boot-light-${tone})`} stopOpacity=".34" />
+                  <stop offset=".55" stopColor="var(--boot-light-blend)" stopOpacity=".17" />
+                  <stop offset="1" stopColor="var(--boot-light-blend)" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id={`boot-core-${tone}`}>
+                  <stop offset=".2" stopColor={`var(--boot-light-${tone})`} stopOpacity=".8" />
+                  <stop offset="1" stopColor={`var(--boot-light-${tone})`} stopOpacity="0" />
+                </radialGradient>
+              </Fragment>
+            ))}
+            {/* The lake holds the glow as a long, soft column under the crest's peak */}
+            <radialGradient id="boot-sheen" cx="960" cy="340" r="420" gradientTransform="translate(960 340) scale(1 .18) translate(-960 -340)" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="var(--boot-glow)" />
+              <stop offset="1" stopColor="var(--boot-glow)" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <rect width="1920" height="400" fill="url(#boot-glow)" />
+          <path d={`${CREST}V400H0Z`} fill="url(#boot-near)" />
+          <path d={CREST} fill="none" stroke="url(#boot-trace)" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+          <rect y="340" width="1920" height="60" fill="var(--boot-lake)" />
+          <path d="M0 340.5H1920" stroke="url(#boot-trace)" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity=".35" />
+          <rect y="340" width="1920" height="60" fill="url(#boot-sheen)" />
+        </svg>
+        {TUBES.map((tube) => <Tube key={`${tube.side}${tube.s}`} {...tube} />)}
+      </Depth>
     </div>
   )
 }

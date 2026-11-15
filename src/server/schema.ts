@@ -52,8 +52,9 @@ export const tracks = sqliteTable('tracks', {
 export const artists = sqliteTable('artists', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  role: text('role'),
-  links: text('links', { mode: 'json' }).$type<string[]>(), // https URLs, in the order the artist put them
+  role: text('role'), // their main role
+  otherRoles: text('other_roles', { mode: 'json' }).$type<string[]>(), // supporting roles: metadata only
+  links: text('links', { mode: 'json' }).$type<string[]>(), // https or mailto: URLs, in the order the artist put them
   profileImageKey: text('profile_image_key'),
   profileImageType: text('profile_image_type'),
   profileImageSize: integer('profile_image_size'),

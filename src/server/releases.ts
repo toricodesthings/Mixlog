@@ -11,7 +11,7 @@ import { Id, idInput, readWith, Refusal } from '#/server/input'
 import { analysisInput, fingerprintOf, isMeasured, type Analysis, type Fingerprint, type Measured } from '#/server/loudness'
 import { artistProfileUrl, type TrackArtist } from '#/server/artists'
 import { artists, currentPins, releases, stampNow, trackArtists, tracks, versions } from '#/server/schema'
-import { keepDays } from '#/server/settings'
+import { defaultArtist, keepDays } from '#/server/settings'
 import { LANES, lanesOf, moveProblem } from '#/server/lanes'
 import { moveBackWindow, prunedOf, shippedOf } from '#/server/shipping'
 
@@ -35,6 +35,27 @@ export type ReleaseRow = {
   /** Its night (1.3.0): its first measured song's fingerprint; null before anything's measured. An EP or album's own. */
   scene: Fingerprint | null
 }
+/** A main artist on a release's tracks, for its card: each once, in track then credit order. */
+export type ReleaseArtist = { id: string; name: string; profile_image_url: string | null }
+export type ListedRelease = ReleaseRow & { artists: ReleaseArtist[] }
+
+/** Each listed release's main artists, in one query for the whole list. */
+const withArtists = createServerOnlyFn(async (rows: ReleaseRow[]): Promise<ListedRelease[]> => {
+  const on = rows.length
+    ? await db
+        .select({ release_id: tracks.releaseId, id: artists.id, name: artists.name, key: artists.profileImageKey })
+        .from(trackArtists)
+        .innerJoin(tracks, eq(tracks.id, trackArtists.trackId))
+        .innerJoin(artists, eq(artists.id, trackArtists.artistId))
+        .where(and(eq(trackArtists.role, 'artist'), inArray(tracks.releaseId, rows.map((r) => r.id))))
+        .orderBy(asc(tracks.position), asc(trackArtists.position))
+    : []
+  return rows.map((release) => ({
+    ...release,
+    artists: [...new Map(on.filter((a) => a.release_id === release.id).map((a) => [a.id, { id: a.id, name: a.name, profile_image_url: a.key ? artistProfileUrl(a.id, a.key) : null }])).values()],
+  }))
+})
+
 export type TrackRow = { id: string; title: string; isrc: string | null; lyrics: string | null; origin: TrackOrigin; duration_ms: number | null; scene: Fingerprint | null }
 
 /** One file in a stack, for the log and the summary. Track versions carry `track_id`; the artwork carries neither. */
@@ -96,11 +117,11 @@ export const releaseQuery = createServerOnlyFn(() =>
 
 /** Upcoming: newest started first. Releases: newest out first. The list page re-sorts on this device. */
 export const listUpcoming = createServerFn().handler(
-  (): Promise<ReleaseRow[]> => releaseQuery().where(isNull(releases.releasedAt)).orderBy(desc(releases.createdAt)),
+  async (): Promise<ListedRelease[]> => withArtists(await releaseQuery().where(isNull(releases.releasedAt)).orderBy(desc(releases.createdAt))),
 )
 
 export const listReleased = createServerFn().handler(
-  (): Promise<ReleaseRow[]> => releaseQuery().where(isNotNull(releases.releasedAt)).orderBy(desc(releases.releasedAt)),
+  async (): Promise<ListedRelease[]> => withArtists(await releaseQuery().where(isNotNull(releases.releasedAt)).orderBy(desc(releases.releasedAt))),
 )
 
 const tracksOf = (releaseId: string) => db.select({ id: tracks.id }).from(tracks).where(eq(tracks.releaseId, releaseId))
@@ -177,17 +198,26 @@ export const getRelease = createServerFn()
     }
   })
 
-type NewRelease = { title: string; format: ReleaseFormat; tracks: string[]; releasedOn: LocalDate | null }
+type NewRelease = { title: string; format: ReleaseFormat; tracks: string[]; releasedOn: LocalDate | null; artistId?: string | null }
 
 
 /** A release's title and format, and its tracks' titles in order. A single is its one track, named like it.
  *  `releasedOn` adds one that's already out, straight to Releases: a day no later than today in the artist's `zone`. */
 const newReleaseInput: (input: unknown) => NewRelease = readWith(
   z
-    .object({ title: Title, format: Format, tracks: z.array(Title).max(100, 'A release has at most 100 tracks.'), releasedOn: LocalDay.nullish(), zone: z.string().optional() })
+    .object({ title: Title, format: Format, tracks: z.array(Title).max(100, 'A release has at most 100 tracks.'), releasedOn: LocalDay.nullish(), zone: z.string().optional(), artistId: Id('That artist is not available.').nullish() })
     .refine((r) => r.releasedOn == null || (isZone(r.zone) && r.releasedOn <= todayIn(r.zone)), 'The release day is a day that has come.')
-    .transform((r) => ({ title: r.title, format: r.format, tracks: r.format === 'single' ? [r.title] : r.tracks, releasedOn: r.releasedOn ?? null })),
+    .transform((r) => ({ title: r.title, format: r.format, tracks: r.format === 'single' ? [r.title] : r.tracks, releasedOn: r.releasedOn ?? null, artistId: r.artistId })),
 )
+
+/** The artist every new track starts with, as its main artist: the one given (the new-release dialog's), else Settings'
+ *  default; none when they don't exist (any more). */
+const startingArtist = createServerOnlyFn(async (given?: string | null) => {
+  if (given === undefined) return defaultArtist()
+  if (given === null) return null
+  const [row] = await db.select({ id: artists.id }).from(artists).where(eq(artists.id, given))
+  return row?.id ?? null
+})
 
 /** Starts a release with its tracks, all in one batch: it's there whole or not at all. Upcoming, unless it's already out. */
 export const createRelease = createServerFn({ method: 'POST' })
@@ -195,10 +225,12 @@ export const createRelease = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const id = crypto.randomUUID()
     const trackIds = data.tracks.map(() => crypto.randomUUID())
+    const artistId = await startingArtist(data.artistId)
     // Already out: its day is the release day, and it's stamped released now.
     await db.batch([
       db.insert(releases).values({ id, title: data.title, format: data.format, releaseDate: data.releasedOn, releasedAt: data.releasedOn ? stampNow : null }),
       ...data.tracks.map((title, i) => db.insert(tracks).values({ id: trackIds[i], releaseId: id, position: i + 1, title })),
+      ...(artistId ? trackIds.map((trackId) => db.insert(trackArtists).values({ trackId, artistId, role: 'artist', position: 1 })) : []),
     ])
     return { id, trackIds }
   })
@@ -215,7 +247,11 @@ export const addTrack = createServerFn({ method: 'POST' })
     if (!release) throw notFound()
     if (release.format === 'single') throw new Refusal('A single has one track. Make it an EP in Details to add another.')
     const id = crypto.randomUUID()
-    await db.insert(tracks).values({ id, releaseId: data.releaseId, position: (release.last ?? 0) + 1, title: data.title })
+    const artistId = await defaultArtist()
+    await db.batch([
+      db.insert(tracks).values({ id, releaseId: data.releaseId, position: (release.last ?? 0) + 1, title: data.title }),
+      ...(artistId ? [db.insert(trackArtists).values({ trackId: id, artistId, role: 'artist', position: 1 })] : []),
+    ])
     return { id }
   })
 

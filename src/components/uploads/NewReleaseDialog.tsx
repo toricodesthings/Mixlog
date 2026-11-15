@@ -1,9 +1,11 @@
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { Album, CalendarClock, CalendarDays, ChevronDown, Disc3, FilePlus2, ImagePlus, X } from 'lucide-react'
+import { Album, CalendarClock, CalendarDays, ChevronDown, Disc3, FilePlus2, ImagePlus, UserRound, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { ARTWORK_ACCEPT, AUDIO_ACCEPT, FINAL_ACCEPT, MAX_AUDIO_BYTES, artworkProblem, audioTypeOf, isFinal, type AudioKind } from '#/server/files'
 import { createRelease, type ReleaseFormat } from '#/server/releases'
+import { listArtists, type ArtistRow } from '#/server/artists'
+import { getSettings } from '#/server/settings'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { useFileDrop } from '../../hooks/ui/use-file-drop'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
@@ -59,6 +61,13 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
   const [created, setCreated] = useState<{ id: string; trackIds: string[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  // Who's on every track: Settings' default artist until another (or none) is picked here.
+  const [roster, setRoster] = useState<ArtistRow[]>([])
+  const [artist, setArtist] = useState<string | null | undefined>(undefined)
+  useEffect(() => {
+    void listArtists().then(setRoster).catch(() => {})
+    void getSettings().then((s) => setArtist((a) => (a === undefined ? s.defaultArtist : a))).catch(() => {})
+  }, [])
 
   // Sorting the drop: audio becomes bounces; the rest is left out with a reason. Artwork only goes in on the cover.
   const { bounces, leftOut } = useMemo(() => {
@@ -136,7 +145,7 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
     setProblem(null)
     let release = created
     try {
-      release ??= await createRelease({ data: { title: shownTitle, format: shownFormat, tracks: songs, releasedOn: released ? releasedOn : null, zone: deviceZone() } })
+      release ??= await createRelease({ data: { title: shownTitle, format: shownFormat, tracks: songs, releasedOn: released ? releasedOn : null, zone: deviceZone(), artistId: artist } })
       setCreated(release)
     } catch (error) {
       setProblem(errorOf(error, 'Couldn’t start the release. Nothing was saved; try again.'))
@@ -235,6 +244,15 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
         <ComposerRows>
           <ComposerRow icon={Album} label="Format">
             <ValueSelect label="Format" value={shownFormat} onChange={setFormat} options={FORMATS} disabled={locked} />
+          </ComposerRow>
+          <ComposerRow icon={UserRound} label="Artist">
+            <ValueSelect
+              label="Artist"
+              value={artist ?? 'none'}
+              onChange={(next) => setArtist(next === 'none' ? null : next)}
+              options={[{ value: 'none', label: roster.length ? 'None' : 'No artists yet' }, ...roster.map((a) => ({ value: a.id, label: a.name }))]}
+              disabled={locked}
+            />
           </ComposerRow>
           {released && (
             <ComposerRow icon={CalendarDays} label="Out on">

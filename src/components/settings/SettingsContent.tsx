@@ -10,8 +10,8 @@ import { ReleasesTab } from './tabs/ReleasesTab'
 export const SETTINGS_CATEGORIES = [
   { label: 'Preferences', isHeader: true },
   { id: 'appearance', label: 'Appearance', icon: Paintbrush, keywords: ['theme', 'blue hour', 'daylight', 'dark', 'light', 'system', 'motion', 'animation'] },
-  { id: 'listening', label: 'Listening', icon: Headphones, keywords: ['a/b', 'compare', 'match to', 'level match', 'quieter', 'streaming level', 'lufs', 'hold to audition'] },
-  { id: 'releases', label: 'Releases', icon: Disc3, keywords: ['after a release', 'keep', 'older versions', 'mixes', 'erase', 'prune', 'week', 'month', 'keep everything'] },
+  { id: 'listening', label: 'Listening', icon: Headphones, keywords: ['a/b', 'compare', 'match to', 'level match', 'quieter', 'streaming level', 'custom', 'lufs', 'hold to audition'] },
+  { id: 'releases', label: 'Releases', icon: Disc3, keywords: ['after a release', 'keep', 'older versions', 'mixes', 'erase', 'prune', 'week', 'month', 'keep everything', 'default artist', 'new tracks'] },
   { label: 'Mixlog', isHeader: true },
   { id: 'about', label: 'About Mixlog', icon: Info, keywords: ['version', 'license', 'source', 'github', 'open source', 'sign out', 'access'] },
 ] as const

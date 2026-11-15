@@ -833,9 +833,23 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --boot-rim: rgb(30 41 59 / 0.18);
   --boot-glass: rgb(255 255 255 / 0.35);
 }
-.boot-leaving { pointer-events: none; animation: boot-fade 300ms var(--ease-out-quart) reverse forwards; }
-.boot-leaving .boot-stage { animation: boot-lift 300ms var(--ease-out-quart) forwards; }
-@keyframes boot-lift { to { scale: 1.03; } }
+/* Leaving, the camera pushes into the valley like a drone: every depth grows from the crest's peak (the vanishing point,
+   66.5% down the ground), nearer ones more (`--depth`), the mark rises past and goes first, and the whole room fades
+   into the page in the second half. 700ms, but the page under it is live from the first frame. Reduced motion: the
+   fade alone, in 300ms. */
+.boot { --fly: 700ms; --fly-ease: cubic-bezier(0.5, 0, 0.3, 1); }
+.boot-leaving { pointer-events: none; animation: boot-out var(--fly) cubic-bezier(0.4, 0, 0.7, 1) forwards; }
+@keyframes boot-out { 0%, 30% { opacity: 1; } 100% { opacity: 0; } }
+.boot-depth { transform-origin: 50% 66.5%; }
+/* The sky's box is the whole screen: its origin is the same peak, 33.5% of the ground's height up from the bottom */
+.boot-depth-sky { --depth: 0.5; transform-origin: 50% calc(100% - 0.335 * max(36%, 20.84vw)); }
+.boot-leaving .boot-depth { animation: boot-fly var(--fly) var(--fly-ease) forwards; }
+@keyframes boot-fly { to { scale: calc(1 + 0.04 * var(--depth)); } }
+.boot-leaving .boot-stage { animation: boot-pass var(--fly) var(--fly-ease) forwards; }
+/* The mark holds a beat as it starts to rise, then fades as it passes overhead */
+@keyframes boot-pass { 0%, 20% { opacity: 1; } 70%, 100% { opacity: 0; } 100% { scale: 1.1; translate: 0 -3%; } }
+:root[data-motion="reduced"] .boot-leaving { animation-duration: 300ms !important; }
+:root[data-motion="reduced"] .boot-leaving :is(.boot-depth, .boot-stage) { animation: none; }
 .boot-sky { animation: boot-fade 1.2s ease-out both; }
 @keyframes boot-fade { from { opacity: 0; } }
 .boot-stage { animation: boot-in 700ms var(--ease-out-expo) both; }

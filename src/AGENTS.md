@@ -48,7 +48,7 @@ React 19 · TanStack Start + Router (file routes) · Tailwind CSS v4 (tokens in 
 
 - `routes/__root.tsx` is the HTML shell. `APPEARANCE_BOOT` in the head sets the theme before first paint (hence `suppressHydrationWarning` on `<html>`). Root `validateSearch` owns `?settings=`, `?listen` and the room's `&b=` and `&pick=`.
 - `router.tsx` preloads on intent, restores scroll, and shows one pending page after 200ms (`releases/Pending`'s `PagePending`). `routeTree.gen.ts` is generated; never edit it.
-- `layout/AppShell` wraps everything in `MotionConfig` (reduced motion from Settings or the OS) and renders `IconRail` or `PhoneDock`, the page `Outlet` and `SettingsDialog`. Beside it, `layout/Boot` (in the shell HTML, CSS only: sparse stars, a valley with amp tubes at its edges, the mark drawing in and out) stays over the shell until the first page's loader settles or 1.6s from navigation start, then fades.
+- `layout/AppShell` wraps everything in `MotionConfig` (reduced motion from Settings or the OS) and renders `IconRail` or `PhoneDock`, the page `Outlet` and `SettingsDialog`. Beside it, `layout/Boot` (in the shell HTML, CSS only: sparse stars, a valley with amp tubes at its edges, the mark drawing in and out) stays over the shell until the first page's loader settles or 1.6s from navigation start, then flies into the valley (each depth grows from the crest, nearer ones more) as it fades.
 - The app version reaches the UI as `__APP_VERSION__` (`globals.d.ts`), defined from `package.json`.
 
 ## 4. Routes (`routes/`)
@@ -175,6 +175,7 @@ The room is a studio (`app.css` "SIGNAL GIMMICKS"). Reach for these before inven
 - `IconRail` on desktop and `PhoneDock` on compact (Cadence's floating glass dock with a gliding lens tab that scrubs under the finger; the mini player rides on top; scrolling down tucks it, `use-dock-tucked`). Both read `lib/nav.ts`, the one list of destinations: Upcoming, Releases, Artists, Trash. Settings sits with them as `SETTINGS_ENTRY` but opens over the page. Nothing else lists destinations.
 - Under `pnpm dev` only, the rail adds a Developer menu (`server/dev.ts`); a build drops it.
 - Every route sets its `<title>` through `head` (`Name · Mixlog`), and a new path lands focus on the page's `h1`.
+- A page with unsaved changes asks before another page replaces it (`shared/LeaveGuard`'s `useLeaveGuard`; a search change passes), and the browser asks before the tab closes.
 - Every page is `layout/Page`: `title` plus `crumbs` (the pages above it, never itself; compact shows only the way back up). `lead` sits before the title (a release's cover), `meta` under it (its `MetaLine`).
 - Empty is normal: an empty section is `shared/EmptyState` (a scope, a `readout`, a title, one next step), never an error. Pass `flat` when there's no signal yet.
 
@@ -185,8 +186,10 @@ Both always have two forms, **Panels** (the default) and **List** (`releases/Rel
 - **Every release wears its cover** (`ReleaseArt`): its current artwork (its small WebP preview; only the Artwork part loads the original), or a monogram of the title's first letter in the title's own hue.
 - **One artwork per release, and only through its cover:** click it, or drop a PNG or JPG on it (`use-drop-target`). A new one replaces the old. An image dropped anywhere else is left out, with the reason.
 - **The date** is the day it was started in Upcoming and the day it went out in Releases (*Started Oct 12*, *Released Oct 12*), through `lib/time.ts`. Never a clock time.
+- **Who it's by:** each main artist's face and name (`listUpcoming`/`listReleased`'s `artists`): its own line under a panel's title (the chips pin to the foot, so a row's panels line up), the line's lead in List.
 - **Facts** follow in a `MetaLine`, split by lit dots: date · format · tracks · length. An unknown fact is left out, never shown as zero. Each fact is said once per form.
 - **Both take music.** Files dropped anywhere on the page (`DropOverlay`, the screen's Phantom moment) or picked from **Upload** open `uploads/NewReleaseDialog`: a new release on Upcoming, one already out on Releases (it also asks the day it went out).
+  - Its **Artist** row starts on Settings' default artist; every track starts with whoever it says (or none).
   - Dropping never saves; only **Save** creates the release, then sends artwork and bounces one at a time with a light and words per file. A failure keeps what made it, and **Try again** sends only the rest.
   - Filenames suggest the title, the format (one song a single, two to four an EP, five or more an album) and each bounce's lane, shown and correctable through the shared `LaneMenu` (`uploads/suggest.ts`). Images are left out (artwork goes on the cover).
   - On Releases every file is its track's final; tests or a second final are left out with the reason.
@@ -241,14 +244,14 @@ Two `<audio>` in the shell (the second is A/B's and has no file until the room s
 
 ### Artists (`artists/`)
 
-Everyone who can be on a track: portraits (the default, no card around the circle) or a list, searched by name or role, all in the URL (`?q=&view=list&add`, `browse.ts`, unit-tested). An artist's page holds their picture (click or drop; one, replaced; its corner button opens it full size at `?full`), name and role, and every track they're on.
+Everyone who can be on a track: portraits (the default, no card around the circle) or a list, searched by name or role, all in the URL (`?q=&view=list&add`, `browse.ts`, unit-tested). An artist's page holds their picture (click or drop; one, replaced; its corner button opens it full size at `?full`), name, main role and supporting roles, links (web addresses or emails), and every track they're on, each wearing its release's artwork when there is one.
 
 ## 8. Settings
 
 - Opens over any page from `?settings=<tab>` (`use-settings-param.ts`: opening pushes, switching tabs replaces, so Back closes it). `SettingsDialog` on desktop (searchable; each category's `keywords` are its row titles, kept in step with the tab); `SettingsSheet` on compact.
 - Tabs live in `settings/tabs/`, registered in `SettingsContent.tsx`; each setting has one home.
-- **Releases** keeps what didn't ship for a week, two weeks (default), a month, or forever, each shorter choice saying how many versions it would erase tonight. It lives in the Worker (`getSettings`/`saveKeepDays`), not the device, because the cleanup cron reads it.
-- **Listening** (what Level match aims for, whether a hold auditions) is per device (`use-listening.ts`, with the room's own Sync and Level match).
+- **Releases** holds the default artist on every new track (`saveDefaultArtist`), and keeps what didn't ship for a week, two weeks (default), a month, or forever, each shorter choice saying how many versions it would erase tonight. It lives in the Worker (`getSettings`/`saveKeepDays`), not the device, because the cleanup cron reads it.
+- **Listening** (what Level match aims for: the quieter one, streaming's −14 or a custom −32…0 LUFS, typed loosely through `lufsOf`; whether a hold auditions) is per device (`use-listening.ts`, with the room's own Sync and Level match).
 - **Appearance** (theme, reduced motion) is per device (`use-appearance.ts`), applied before first paint by `APPEARANCE_BOOT`.
 - Browser storage holds per-device conveniences only, every read and write in `try`/`catch`. Anything that must survive goes through the server.
 

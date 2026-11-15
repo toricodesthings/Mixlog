@@ -13,6 +13,7 @@ import { SegmentedControl } from '../primitives/SegmentedControl'
 import { LicenseControl, LicenseDialog } from './LicenseControl'
 import type { ReleaseData } from './loaders'
 import { LyricsPanel } from './LyricsPanel'
+import { useLeaveGuard } from '../shared/LeaveGuard'
 import { DETAILS_FORM, FORMAT_LABEL, SECTIONS, releaseLink, sectionOf } from './sections'
 import { licensesOf } from './stacks'
 
@@ -57,6 +58,7 @@ export function ReleaseDetailsForm({ release, tracks, versions, artists }: Relea
   const upcProblem = touched.upc && form.upc && !upcOf(form.upc) ? 'A UPC is 12 digits (13 for an EAN), ending in its check digit.' : null
   const isrcProblem = (t: { id: string; isrc: string }) => (touched[t.id] && t.isrc && !isrcOf(t.isrc) ? 'An ISRC looks like CC-XXX-YY-NNNNN.' : null)
   const dirty = JSON.stringify(form) !== JSON.stringify(initial)
+  const { guard, allow } = useLeaveGuard(dirty, `${form.title.trim() || 'this release'}’s details`)
   const change = (next: Partial<typeof form>) => (setForm((f) => ({ ...f, ...next })), setState({ status: 'idle' }))
   const changeTrack = (id: string, next: Partial<(typeof form.tracks)[number]>) =>
     change({ tracks: form.tracks.map((t) => (t.id === id ? { ...t, ...next } : t)) })
@@ -95,11 +97,12 @@ export function ReleaseDetailsForm({ release, tracks, versions, artists }: Relea
           }
         })
     }
-    if (exit) void navigate(SECTIONS[sectionOf(release)].index)
+    if (exit) (allow(), void navigate(SECTIONS[sectionOf(release)].index))
   }
 
   return (
     <>
+    {guard}
     <form
       id={DETAILS_FORM}
       className="flex flex-col gap-4"

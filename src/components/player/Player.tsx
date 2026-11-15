@@ -3,7 +3,7 @@ import { useNavigate, useRouter, useSearch } from '@tanstack/react-router'
 import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 
 import { matchOf, type Fingerprint } from '#/server/loudness'
-import { STREAMING_LUFS, useListening } from '../../hooks/ui/use-listening'
+import { ceilingOf, useListening } from '../../hooks/ui/use-listening'
 import { fileUrl } from '../../lib/files'
 import { clampTo, driftedOf, gainOf, other, putOf, type Side } from './ab'
 import { drive, setGain, tap } from './signal'
@@ -139,7 +139,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [canTrim] = useState(() => typeof window !== 'undefined' && volumeSticks())
   const prefs = useListening()
 
-  const trim = decks.split && prefs.match && canTrim && decks.a && decks.b ? matchOf(decks.a.lufs, decks.b.lufs, prefs.matchTo === 'streaming' ? STREAMING_LUFS : null) : null
+  const trim = decks.split && prefs.match && canTrim && decks.a && decks.b ? matchOf(decks.a.lufs, decks.b.lufs, ceilingOf(prefs)) : null
   /** What the gains read, kept current for the handlers that run between renders. */
   const live = useRef({ playing, volume, muted, sync: prefs.sync, trim })
   live.current = { playing, volume, muted, sync: prefs.sync, trim }

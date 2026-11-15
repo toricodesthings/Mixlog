@@ -1,10 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
-import { asc, count, eq } from 'drizzle-orm'
+import { asc, count, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/server/db'
 import { Id, Refusal, readWith } from '#/server/input'
-import { TRACK_ARTIST_ROLES, artists, releases, trackArtists, tracks } from '#/server/schema'
+import { TRACK_ARTIST_ROLES, artists, currentPins, releases, trackArtists, tracks, versions } from '#/server/schema'
 
 export type ArtistRow = {
   id: string
@@ -21,6 +21,8 @@ export type ArtistTrack = {
   release_title: string | null
   release_format: 'single' | 'ep' | 'album' | null
   released_at: string | null
+  /** Its release's current artwork, or null (the row keeps its track glyph). */
+  artwork_id: string | null
   role: TrackArtistRole
 }
 
@@ -46,12 +48,22 @@ export const listArtists = createServerFn().handler(
       .then((rows) => rows.map(({ profile_image_key, ...row }) => ({ ...row, profile_image_url: profile_image_key ? artistProfileUrl(row.id, profile_image_key) : null }))),
 )
 
-/** A link the artist pasted: https only, with the scheme added when it's left off. */
+/** An email address as typed or pasted (`name@gmail.com`, or already `mailto:`). */
+export const EMAIL = /^(mailto:)?[^\s@/:]+@[^\s@/:]+\.[^\s@/:]+$/i
+
+/** A link the artist pasted: an email (kept as `mailto:`), else https only, with the scheme added when it's left off. */
 const Link = z
   .string()
   .trim()
-  .transform((v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`))
-  .pipe(z.string().url('That link doesn’t look right.').max(300, 'Links are 300 characters at most.').refine((v) => v.startsWith('https://'), 'Links start with https://.'))
+  .transform((v) => (EMAIL.test(v) ? `mailto:${v.replace(/^mailto:/i, '')}` : /^https?:\/\//i.test(v) ? v : `https://${v}`))
+  .pipe(
+    z
+      .string()
+      .max(300, 'Links are 300 characters at most.')
+      .refine((v) => v.startsWith('mailto:') || (v.startsWith('https://') && URL.canParse(v)), 'That link doesn’t look right.'),
+  )
+
+const Role = z.string().trim().max(100, 'Roles are 100 characters at most.')
 
 const artistInput = readWith(
   z.object({
@@ -68,7 +80,7 @@ export const createArtist = createServerFn({ method: 'POST' })
     return { id }
   })
 
-export type ArtistProfile = ArtistRow & { links: string[]; tracks: ArtistTrack[] }
+export type ArtistProfile = ArtistRow & { other_roles: string[]; links: string[]; tracks: ArtistTrack[] }
 
 export const getArtist = createServerFn()
   .validator(readWith(z.string().uuid('That artist is not available.')))
@@ -78,6 +90,7 @@ export const getArtist = createServerFn()
         id: artists.id,
         name: artists.name,
         role: artists.role,
+        other_roles: artists.otherRoles,
         links: artists.links,
         profile_image_key: artists.profileImageKey,
         track_count: count(trackArtists.trackId),
@@ -85,7 +98,7 @@ export const getArtist = createServerFn()
       .from(artists)
       .leftJoin(trackArtists, eq(trackArtists.artistId, artists.id))
       .where(eq(artists.id, id))
-      .groupBy(artists.id, artists.name, artists.role, artists.links, artists.profileImageKey)
+      .groupBy(artists.id, artists.name, artists.role, artists.otherRoles, artists.links, artists.profileImageKey)
     if (!artist) throw new Error('Artist not found.')
     const linkedTracks = await db
       .select({
@@ -95,6 +108,10 @@ export const getArtist = createServerFn()
         release_title: releases.title,
         release_format: releases.format,
         released_at: releases.releasedAt,
+        // The release's current artwork: its pin, else its newest not pruned (releases.ts's `current`).
+        artwork_id: sql<string | null>`COALESCE(
+          (SELECT p.version_id FROM ${currentPins} p WHERE p.release_id = ${releases.id} AND p.kind = 'artwork'),
+          (SELECT n.id FROM ${versions} n WHERE n.release_id = ${releases.id} AND n.kind = 'artwork' AND n.pruned_at IS NULL ORDER BY n.number DESC LIMIT 1))`,
         role: trackArtists.role,
       })
       .from(trackArtists)
@@ -105,6 +122,7 @@ export const getArtist = createServerFn()
     const { profile_image_key, ...profile } = artist
     return {
       ...profile,
+      other_roles: profile.other_roles ?? [],
       links: profile.links ?? [],
       profile_image_url: profile_image_key ? artistProfileUrl(artist.id, profile_image_key) : null,
       tracks: linkedTracks,
@@ -117,13 +135,14 @@ export const updateArtist = createServerFn({ method: 'POST' })
       z.object({
         id: z.string().uuid('That artist is not available.'),
         name: z.string().trim().min(1, 'Give the artist a name.').max(200, 'Artist names are 200 characters at most.'),
-        role: z.string().trim().max(100, 'Roles are 100 characters at most.').nullable(),
+        role: Role.nullable(),
+        otherRoles: z.array(Role.min(1)).max(12, 'Twelve roles at most.').optional(),
         links: z.array(Link).max(12, 'Twelve links at most.'),
       }),
     ),
   )
   .handler(async ({ data }) => {
-    const updated = await db.update(artists).set({ name: data.name, role: data.role || null, links: [...new Set(data.links)] }).where(eq(artists.id, data.id)).returning({ id: artists.id })
+    const updated = await db.update(artists).set({ name: data.name, role: data.role || null, ...(data.otherRoles && { otherRoles: [...new Set(data.otherRoles)].filter((r) => r !== data.role) }), links: [...new Set(data.links)] }).where(eq(artists.id, data.id)).returning({ id: artists.id })
     if (!updated.length) throw new Error('Artist not found.')
   })
 

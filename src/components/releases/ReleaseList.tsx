@@ -2,7 +2,8 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Album, ArrowUpDown, ChevronRight, LayoutGrid, LayoutList, ListMusic, Music, Timer, Upload, type LucideIcon } from 'lucide-react'
 import { useState, type PointerEvent } from 'react'
 
-import type { ReleaseRow } from '#/server/releases'
+import type { ListedRelease } from '#/server/releases'
+import { ArtistAvatar } from '../artists/ArtistAvatar'
 import { useFileDrop } from '../../hooks/ui/use-file-drop'
 import { Button, Meter, useHoverSlide } from '../primitives'
 import * as DropdownMenu from '../primitives/DropdownMenu'
@@ -15,6 +16,7 @@ import { DropOverlay } from '../uploads/DropOverlay'
 import { NewReleaseDialog } from '../uploads/NewReleaseDialog'
 import { ReleaseArt } from './ReleaseArt'
 import { deviceZone } from '../../lib/time'
+import { cn } from '../../lib/utils'
 import { SORTS, browse, listSearch, dateLabel, formatLength, releaseFacts, sortOf, type FormatFilter, type ListSearch, type View } from './browse'
 import { FORMAT_LABEL, SECTIONS, releaseLink, type Section } from './sections'
 
@@ -36,7 +38,7 @@ const VIEWS = [
 ] as const
 
 /** Upcoming or Releases: search, filter and sort above the releases, as a list or as panels. */
-export function ReleaseList({ section, releases }: { section: Section; releases: ReleaseRow[] }) {
+export function ReleaseList({ section, releases }: { section: Section; releases: ListedRelease[] }) {
   // Everything here lives in the URL (`?q=&format=&sort=&view=&upload`), so a refresh, Back or a link keeps it.
   const search: ListSearch = useSearch({ strict: false })
   const navigate = useNavigate()
@@ -155,13 +157,13 @@ function SortMenu({ section, sort, onSort }: { section: Section; sort: string; o
 }
 
 /** Like a streaming app's track row: the cover, the title large, the facts under it. */
-function ReleaseRowLink({ section, release }: { section: Section; release: ReleaseRow }) {
+function ReleaseRowLink({ section, release }: { section: Section; release: ListedRelease }) {
   return (
     <Link {...releaseLink(section, release.id)} className="group playhead-sweep press flex min-h-18 items-center gap-4 rounded-2xl p-2 pr-3">
       <ReleaseArt title={release.title} id={release.id} artworkId={release.artwork_id} size="row" />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate font-display text-lg font-semibold tracking-tight text-ink">{release.title}</span>
-        <MetaLine facts={[dateLabel(section, release, deviceZone()), ...releaseFacts(release, FORMAT_LABEL[release.format])]} className="text-sm" />
+        <ByLine release={release} facts={[dateLabel(section, release, deviceZone()), ...releaseFacts(release, FORMAT_LABEL[release.format])]} className="text-sm" />
       </span>
       <ChevronRight size={18} aria-hidden="true" className="shrink-0 text-ink-muted transition-[translate,color] group-hover:translate-x-0.5 group-hover:text-accent" />
     </Link>
@@ -184,7 +186,7 @@ function lean(event: PointerEvent<HTMLElement>) {
 const settle = (event: PointerEvent<HTMLElement>) => ['--rx', '--ry'].forEach((p) => event.currentTarget.style.removeProperty(p))
 
 /** The cover first, then lit chips: format, tracks, length (each named for screen readers; the icon says it at a glance). */
-function ReleasePanel({ section, release }: { section: Section; release: ReleaseRow }) {
+function ReleasePanel({ section, release }: { section: Section; release: ListedRelease }) {
   const tiles: { icon: LucideIcon; label: string; value: string }[] = [
     { icon: release.format === 'single' ? Music : Album, label: 'Format', value: FORMAT_LABEL[release.format] },
     { icon: ListMusic, label: 'Tracks', value: String(release.track_count) },
@@ -197,7 +199,7 @@ function ReleasePanel({ section, release }: { section: Section; release: Release
       data-lift
       onPointerMove={lean}
       onPointerLeave={settle}
-      className="surface-card glass-edge glass-card group relative flex flex-col gap-2.5 rounded-3xl p-3"
+      className="surface-card glass-edge glass-card group relative flex h-full flex-col gap-2.5 rounded-3xl p-3"
     >
       <span className="relative block overflow-hidden rounded-xl">
         <ReleaseArt title={release.title} id={release.id} artworkId={release.artwork_id} size="panel" className="glass-card-art" />
@@ -207,9 +209,10 @@ function ReleasePanel({ section, release }: { section: Section; release: Release
       </span>
       <span className="flex min-w-0 flex-col gap-0.5 px-1">
         <span className="truncate font-display text-base font-semibold tracking-tight text-ink">{release.title}</span>
+        {release.artists.length > 0 && <Artists artists={release.artists} className="mt-0.5 text-[0.8125rem]" />}
         <MetaLine facts={[dateLabel(section, release, deviceZone())]} className="text-[0.8125rem]" />
       </span>
-      <dl className="flex flex-wrap gap-1.5">
+      <dl className="mt-auto flex flex-wrap gap-1.5">
         {tiles.map(({ icon: Icon, label, value }) => (
           <div key={label} className="surface-item flex min-w-0 items-center gap-1.5 rounded-xl px-2.5 py-1.5">
             <dt>
@@ -223,5 +226,34 @@ function ReleasePanel({ section, release }: { section: Section; release: Release
         ))}
       </dl>
     </Link>
+  )
+}
+
+/** Their faces overlapped (three at most), then their names. */
+function Artists({ artists, className }: { artists: ListedRelease['artists']; className?: string }) {
+  return (
+    <span className={cn('flex min-w-0 items-center gap-2', className)}>
+      <span className="flex shrink-0 -space-x-1.5">
+        {artists.slice(0, 3).map((a) => (
+          <ArtistAvatar key={a.id} id={a.id} name={a.name} src={a.profile_image_url} size="tiny" className="shadow-none ring-2 ring-room-base" />
+        ))}
+      </span>
+      <span className="min-w-0 truncate text-ink-soft">{artists.map((a) => a.name).join(', ')}</span>
+    </span>
+  )
+}
+
+/** Who it's by, as a streaming app says it under a title: their faces overlapped (three at most) and their names, the
+ *  the facts giving way first. Without artists, just the facts, on the same one line. */
+function ByLine({ release, facts, className }: { release: ListedRelease; facts: (string | null)[]; className?: string }) {
+  const by = release.artists
+  if (!by.length) return <MetaLine facts={facts} className={className} />
+  return (
+    <span className={cn('flex min-w-0 items-center gap-2 text-ink-muted', className)}>
+      <Artists artists={by} className="max-w-[50%] shrink-0" />
+      <span aria-hidden="true" className="size-[3px] shrink-0 rounded-full bg-accent/70 shadow-[0_0_6px_var(--accent)]" />
+      <span className="sr-only">, </span>
+      <MetaLine facts={facts} className={cn('min-w-0 flex-1', className)} />
+    </span>
   )
 }

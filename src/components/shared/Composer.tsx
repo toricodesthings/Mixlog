@@ -147,6 +147,8 @@ export function ComposerRow({ icon: RowIcon, label, children }: { icon?: Icon; l
     );
 }
 
+const VALUE_TRIGGER = "flex min-h-11 max-w-full cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-right text-sm text-ink-soft transition-colors hover:bg-white/[0.06] hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50 disabled:cursor-not-allowed disabled:opacity-40 data-[state=open]:bg-white/[0.06]";
+
 /** A row's value that opens a menu of choices (Cadence's): the choice in words and a chevron, the menu under it. */
 export function ValueSelect<T extends string>({ label, value, onChange, options, disabled }: {
     label: string;
@@ -157,11 +159,7 @@ export function ValueSelect<T extends string>({ label, value, onChange, options,
 }) {
     return (
         <DropdownMenu.Root>
-            <DropdownMenu.Trigger
-                aria-label={label}
-                disabled={disabled}
-                className="flex min-h-11 max-w-full cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-right text-sm text-ink-soft transition-colors hover:bg-white/[0.06] hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50 disabled:cursor-not-allowed disabled:opacity-40 data-[state=open]:bg-white/[0.06]"
-            >
+            <DropdownMenu.Trigger aria-label={label} disabled={disabled} className={VALUE_TRIGGER}>
                 <span className="truncate">{options.find((o) => o.value === value)?.label}</span>
                 <ChevronDown size={14} className="shrink-0 text-ink-muted" aria-hidden />
             </DropdownMenu.Trigger>
@@ -169,6 +167,37 @@ export function ValueSelect<T extends string>({ label, value, onChange, options,
                 <DropdownMenu.RadioGroup value={value} onValueChange={(next) => onChange(next as T)}>
                     {options.map((o) => <DropdownMenu.RadioItem key={o.value} value={o.value}>{o.label}</DropdownMenu.RadioItem>)}
                 </DropdownMenu.RadioGroup>
+            </DropdownMenu.Content>
+        </DropdownMenu.Root>
+    );
+}
+
+/** `ValueSelect` for several at once: each choice toggles, the menu stays open, and the row reads them in order. */
+export function ValuesSelect({ label, values, onChange, options, empty }: {
+    label: string;
+    values: string[];
+    onChange: (values: string[]) => void;
+    options: readonly string[];
+    /** What the row says with none chosen. */
+    empty: string;
+}) {
+    return (
+        <DropdownMenu.Root>
+            <DropdownMenu.Trigger aria-label={label} className={VALUE_TRIGGER}>
+                <span className="truncate">{values.length ? options.filter((o) => values.includes(o)).join(", ") : empty}</span>
+                <ChevronDown size={14} className="shrink-0 text-ink-muted" aria-hidden />
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content align="end" className="min-w-40">
+                {options.map((o) => (
+                    <DropdownMenu.CheckboxItem
+                        key={o}
+                        checked={values.includes(o)}
+                        onSelect={(event) => event.preventDefault()}
+                        onCheckedChange={(on) => onChange(on ? [...values, o] : values.filter((v) => v !== o))}
+                    >
+                        {o}
+                    </DropdownMenu.CheckboxItem>
+                ))}
             </DropdownMenu.Content>
         </DropdownMenu.Root>
     );

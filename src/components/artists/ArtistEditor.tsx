@@ -1,6 +1,6 @@
 import { Link, useRouter } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BadgeCheck, ChevronRight, Download, ImagePlus, ListMusic, Plus, Save, UserRound, X } from 'lucide-react'
+import { BadgeCheck, BadgePlus, ChevronRight, Download, ImagePlus, ListMusic, Plus, Save, UserRound, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { updateArtist, type ArtistProfile } from '#/server/artists'
@@ -11,14 +11,16 @@ import { SPRINGS } from '../../lib/constants/motion'
 import { cn } from '../../lib/utils'
 import { Button, Input, Led, Scope, Tip, Transfer, useHoverSlide } from '../primitives'
 import { Page } from '../layout/Page'
-import { ComposerRow, ComposerRows, ValueSelect } from '../shared/Composer'
+import { ComposerRow, ComposerRows, ValueSelect, ValuesSelect } from '../shared/Composer'
+import { useLeaveGuard } from '../shared/LeaveGuard'
+import { ReleaseArt } from '../releases/ReleaseArt'
 import { MetaLine } from '../shared/MetaLine'
 import { ImageStage, ViewButton, Viewer, ViewerButton, useFullParam } from '../shared/Viewer'
 import { sectionOf, trackLink } from '../releases/sections'
-import { ROLE_OPTIONS } from './AddArtistDialog'
+import { ROLES, ROLE_OPTIONS } from './AddArtistDialog'
 import { ArtistAvatar } from './ArtistAvatar'
 import { tracksOf } from './browse'
-import { SocialIcon, asLink, platformIn, socialOf } from './socials'
+import { SocialIcon, asLink, linkLabel, platformIn, socialOf } from './socials'
 
 /** An artist's page: their portrait, name and role (saved together), then every track they're on, each a link to it. */
 export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
@@ -26,6 +28,8 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
   const input = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(artist.name)
   const [role, setRole] = useState(artist.role ?? '')
+  const [otherRoles, setOtherRoles] = useState(artist.other_roles)
+  const [savedRoles, setSavedRoles] = useState(artist.other_roles)
   const [links, setLinks] = useState(artist.links)
   const [draft, setDraft] = useState('')
   const [profile, setProfile] = useState<File | null>(null)
@@ -38,7 +42,9 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
   const typed = platformIn(draft)
   const slide = useHoverSlide()
   const full = useFullParam()
-  const dirty = name.trim() !== shownName || role !== (artist.role ?? '') || profile !== null || links.join() !== artist.links.join() || draft.trim() !== ''
+  const dirty = name.trim() !== shownName || role !== (artist.role ?? '') || otherRoles.join() !== savedRoles.join() || profile !== null || links.join() !== artist.links.join() || draft.trim() !== ''
+
+  const { guard, allow } = useLeaveGuard(dirty && !busy, shownName)
 
   useEffect(() => {
     if (!profile) return setPreview(null)
@@ -76,7 +82,9 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
     setProblem(null)
     setSaved(true)
     setShownName(name.trim())
-    updateArtist({ data: { id: artist.id, name, role: role || null, links: next } })
+    setSavedRoles(otherRoles)
+    allow()
+    updateArtist({ data: { id: artist.id, name, role: role || null, otherRoles, links: next } })
       .then(async () => {
         if (!picture) return
         setBusy(true)
@@ -87,6 +95,7 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
       .then(() => router.invalidate())
       .catch((error) => {
         setShownName(before)
+        setSavedRoles(artist.other_roles)
         setSaved(false)
         setProblem(error instanceof Error ? error.message : 'Couldn’t save the artist.')
       })
@@ -139,7 +148,10 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
           </label>
           <ComposerRows>
             <ComposerRow icon={BadgeCheck} label="Role">
-              <ValueSelect label="Role" value={role || 'none'} onChange={(next) => (setRole(next === 'none' ? '' : next), setSaved(false))} options={ROLE_OPTIONS} />
+              <ValueSelect label="Role" value={role || 'none'} onChange={(next) => (setRole(next === 'none' ? '' : next), setOtherRoles((all) => all.filter((r) => r !== next)), setSaved(false))} options={ROLE_OPTIONS} />
+            </ComposerRow>
+            <ComposerRow icon={BadgePlus} label="Also">
+              <ValuesSelect label="Supporting roles" values={otherRoles} empty="None" options={ROLES.filter((r) => r !== role)} onChange={(next) => (setOtherRoles(next), setSaved(false))} />
             </ComposerRow>
           </ComposerRows>
           <div className="flex flex-col">
@@ -158,7 +170,7 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
                       transition={SPRINGS.GLIDE}
                       className="group relative"
                     >
-                      <Tip side="top" label={<span className="flex flex-col"><span className="font-semibold">{name}</span><span className="text-ink-muted">{url.replace(/^https:\/\/(www\.)?/, '')}</span></span>}>
+                      <Tip side="top" label={<span className="flex flex-col"><span className="font-semibold">{name}</span><span className="text-ink-muted">{linkLabel(url)}</span></span>}>
                         <a
                           href={url}
                           target="_blank"
@@ -260,9 +272,13 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
               {artist.tracks.map((track) => {
                 const body = (
                   <>
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] text-accent">
-                      <ListMusic size={18} aria-hidden="true" />
-                    </span>
+                    {track.artwork_id ? (
+                      <ReleaseArt title={track.release_title ?? track.title} id={track.release_id ?? undefined} artworkId={track.artwork_id} size="row" className="size-11 rounded-xl" />
+                    ) : (
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] text-accent">
+                        <ListMusic size={18} aria-hidden="true" />
+                      </span>
+                    )}
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="truncate font-display font-semibold text-ink">{track.title}</span>
                       <MetaLine facts={[track.release_format === 'single' ? 'Single' : track.release_title, track.released_at ? 'Released' : 'Upcoming']} className="text-[0.8125rem]" />
@@ -287,6 +303,7 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
           )}
         </section>
       </div>
+      {guard}
       {full.open && artist.profile_image_url && <PictureViewer name={shownName} src={artist.profile_image_url} onClose={() => void full.close()} />}
     </Page>
   )

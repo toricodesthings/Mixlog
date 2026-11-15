@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- Release cards show who they're by: each main artist's face and name under the title.
+- A default artist in Settings › Releases, put on every new track; pick another (or none) when starting a release.
+- An artist can have supporting roles beside their main one.
+- An artist's links take email addresses, shown with an envelope.
+- Level match can aim for a custom level, from −32 to 0 LUFS.
+- Leaving a page with unsaved changes asks first.
+
+### Changed
+
+- An artist's tracks wear their release's artwork when it has one.
+
 ## [1.6.0] - 2026-11-15
 
 ### Changed

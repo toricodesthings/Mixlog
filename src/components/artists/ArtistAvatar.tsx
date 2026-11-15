@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils'
 import { idHue } from '../scene/palette'
 
 const SIZES = {
+  tiny: 'size-[1.125rem] text-[0.4375rem]',
   chip: 'size-7 text-[0.6875rem]',
   row: 'size-12 text-base',
   pick: 'size-16 text-xl',

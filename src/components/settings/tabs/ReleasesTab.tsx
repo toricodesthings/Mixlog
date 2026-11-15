@@ -1,11 +1,13 @@
 import { useRouter } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
-import { getSettings, saveKeepDays } from '#/server/settings'
+import { listArtists, type ArtistRow } from '#/server/artists'
+import { getSettings, saveDefaultArtist, saveKeepDays } from '#/server/settings'
 import { DEFAULT_KEEP_DAYS, KEEP_CHOICES, type KeepDays } from '#/server/shipping'
 import { cn } from '../../../lib/utils'
 import { Led, Skeleton } from '../../primitives'
-import { SettingsSection } from '../SettingsLayout'
+import { ValueSelect } from '../../shared/Composer'
+import { SettingsRow, SettingsSection } from '../SettingsLayout'
 
 const CHOICE: Record<string, { title: string; says: string }> = {
   7: { title: 'A week', says: 'Other masters and mixes are erased a week after it goes out.' },
@@ -24,10 +26,13 @@ export function ReleasesTab() {
   // What a window would erase tonight: the set-aside versions already older than it.
   const erases = (days: KeepDays) => (days === null ? 0 : setAside.filter((at) => Date.now() - Date.parse(at) > days * 86_400_000).length)
   const [problem, setProblem] = useState<string | null>(null)
+  const [artist, setArtist] = useState<string | null | undefined>(undefined)
+  const [roster, setRoster] = useState<ArtistRow[]>([])
 
   useEffect(() => {
+    void listArtists().then(setRoster).catch(() => {})
     getSettings()
-      .then((s) => (setKeep(s.keepDays), setSetAside(s.setAside)))
+      .then((s) => (setKeep(s.keepDays), setSetAside(s.setAside), setArtist(s.defaultArtist)))
       .catch(() => setProblem('Couldn’t read this setting. Close Settings and try again.'))
   }, [])
 
@@ -44,9 +49,32 @@ export function ReleasesTab() {
     }
   }
 
+  const chooseArtist = async (id: string | null) => {
+    const before = artist
+    setArtist(id)
+    setProblem(null)
+    try {
+      await saveDefaultArtist({ data: id })
+    } catch {
+      setArtist(before)
+      setProblem('Couldn’t save that. Nothing changed; try again.')
+    }
+  }
+
   return (
     <div>
       <h2 className="mb-10 font-display text-2xl font-semibold text-ink">Releases</h2>
+      <SettingsSection title="New tracks">
+        <SettingsRow title="Default artist" description="Every new track starts with them as its main artist. Change it on any track in Details, or when you start a release.">
+          <ValueSelect
+            label="Default artist"
+            value={artist ?? 'none'}
+            disabled={artist === undefined}
+            onChange={(next) => void chooseArtist(next === 'none' ? null : next)}
+            options={[{ value: 'none', label: 'None' }, ...roster.map((a) => ({ value: a.id, label: a.name }))]}
+          />
+        </SettingsRow>
+      </SettingsSection>
       <SettingsSection title="After a release goes out">
         <p className="text-[0.8125rem] leading-relaxed text-ink-muted">
           Each track keeps what shipped; the rest is set aside. Until it's erased, the release can move back to Upcoming with all of them. Kept for every device.

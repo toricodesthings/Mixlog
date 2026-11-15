@@ -497,13 +497,13 @@ function SyncToggle({ className }: { className?: string }) {
 
 /** Its label never changes (so its width never does): when it can't act, the reason is its tip, a tap away on touch. */
 function MatchToggle({ ab, className }: { ab: AB; className?: string }) {
-  const { match, matchTo, set } = useListening()
+  const { match, matchTo, customLufs, set } = useListening()
   const { canTrim } = usePlayer()
   const width = useKeyWidth()
   const measured = ab.a.lufs !== null && ab.b !== null && ab.b.lufs !== null
   const can = canTrim && measured
   const reason = !canTrim ? 'Can’t trim on this device' : !measured ? 'Not measured yet' : null
-  const tip = reason ?? (matchTo === 'streaming' ? 'Both at streaming level, or the quieter one' : 'Both at the quieter one’s loudness')
+  const tip = reason ?? (matchTo === 'streaming' ? 'Both at streaming level, or the quieter one' : matchTo === 'custom' ? `Both at ${customLufs} LUFS, or the quieter one` : 'Both at the quieter one’s loudness')
   const lit = can && match
   return (
     <Tip label={tip} side="top" toggle={!can}>

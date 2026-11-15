@@ -57,7 +57,7 @@ export const SORTS: Record<Section, { value: SortMode; label: string; icon: Luci
 export const sortOf = (section: Section, saved: string | null): SortMode => SORTS[section].find((s) => s.value === saved)?.value ?? 'newest'
 
 /** Search (title, any word order, any case), then the format filter, then the order. Never mutates its input. */
-export function browse(section: Section, releases: ReleaseRow[], { query, format, sort, zone }: { query: string; format: FormatFilter; sort: SortMode; zone: Zone }) {
+export function browse<R extends ReleaseRow>(section: Section, releases: R[], { query, format, sort, zone }: { query: string; format: FormatFilter; sort: SortMode; zone: Zone }) {
   const words = fold(query).split(/\s+/).filter(Boolean)
   const shown = releases.filter(
     (r) => (format === 'all' || r.format === format) && words.every((w) => fold(r.title).includes(w)),
