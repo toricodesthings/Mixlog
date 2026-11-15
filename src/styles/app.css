@@ -801,6 +801,126 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 :is(.brand-live, [data-meter-host]:hover) .brand-hold { stroke-dasharray: 1.02 2; animation: brand-hold 900ms var(--ease-out-expo) backwards; }
 @keyframes brand-hold { from { stroke-dashoffset: 1.02; } }
 
+/* ── BOOT (layout/Boot): the room before the app arrives, far quieter than the listening room it borrows from. Pure CSS,
+   since it runs in the shell HTML before any script. */
+.boot {
+  --boot-star: #d6e4ff;
+  --boot-star-warm: #f3dcb6;
+  --boot-trace: color-mix(in oklab, var(--accent) 55%, transparent);
+  --boot-glow: color-mix(in oklab, var(--accent) 9%, transparent);
+  --boot-land-back: #111a31;
+  --boot-land-distant: #0c1427;
+  --boot-land-near: #080d1a;
+  --boot-land-foot: var(--color-room-void);
+  --boot-haze: rgb(62 84 138 / 0.4);
+  --boot-lake: #070b16;
+  --boot-rim: rgb(201 216 245 / 0.35);
+  --boot-glass: rgb(201 216 245 / 0.06);
+  /* The tubes' two lights and where they meet */
+  --boot-light-tube: var(--color-tube);
+  --boot-light-rose: var(--color-mark-rose);
+  --boot-light-blend: color-mix(in oklab, var(--color-tube), var(--color-mark-rose));
+}
+[data-theme="daylight"] .boot {
+  --boot-trace: color-mix(in oklab, var(--accent) 35%, transparent);
+  --boot-glow: color-mix(in oklab, var(--accent) 5%, transparent);
+  --boot-land-back: #e9e4dd;
+  --boot-land-distant: #e1dbd2;
+  --boot-land-near: #d8d0c5;
+  --boot-land-foot: #d3cbbf;
+  --boot-haze: rgb(255 255 255 / 0.45);
+  --boot-lake: #ddd6cc;
+  --boot-rim: rgb(30 41 59 / 0.18);
+  --boot-glass: rgb(255 255 255 / 0.35);
+}
+.boot-leaving { pointer-events: none; animation: boot-fade 300ms var(--ease-out-quart) reverse forwards; }
+.boot-leaving .boot-stage { animation: boot-lift 300ms var(--ease-out-quart) forwards; }
+@keyframes boot-lift { to { scale: 1.03; } }
+.boot-sky { animation: boot-fade 1.2s ease-out both; }
+@keyframes boot-fade { from { opacity: 0; } }
+.boot-stage { animation: boot-in 700ms var(--ease-out-expo) both; }
+@keyframes boot-in { from { opacity: 0; scale: 0.96; } }
+
+/* Stars: still, but for three that breathe slowly and one with the room's 4-point sparkle. Gone by day. */
+.boot-star { position: absolute; border-radius: 9999px; background: var(--boot-star); box-shadow: 0 0 4px var(--boot-star); opacity: 0.8; }
+.boot-star-warm { background: var(--boot-star-warm); box-shadow: 0 0 4px var(--boot-star-warm); }
+.boot-twinkle { animation: boot-twinkle 7s ease-in-out infinite; }
+@keyframes boot-twinkle { 50% { opacity: 0.2; } }
+.boot-sparkle::before, .boot-sparkle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 1px;
+  translate: -50% -50%;
+  background: linear-gradient(90deg, transparent, var(--boot-star), transparent);
+  opacity: 0.55;
+}
+.boot-sparkle::after { rotate: 90deg; }
+[data-theme="daylight"] .boot-star { display: none; }
+
+/* The valley (Boot's Ground): tall enough that its viewBox's height always shows (1920 × 400, so ≥ 20.84vw), which
+   keeps the mist's band (y 152–240 of 400) between the ranges at every width */
+.boot-ground { height: max(36%, 20.84vw); }
+.boot-mist {
+  top: 38%;
+  height: 22%;
+  background: linear-gradient(180deg, transparent, var(--boot-haze) 55%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent);
+  animation: boot-mist 60s ease-in-out infinite alternate;
+}
+@keyframes boot-mist { from { translate: -16px 0; } to { translate: 16px 0; } }
+/* A tube's box: 80 × 130 of the ground's 400 units, so it scales with the valley */
+.boot-tube { height: 32.5%; aspect-ratio: 80 / 130; }
+/* An amp tube warming: the filament's light swells and settles, slowly, the two layers out of step */
+.boot-tube-light { animation: boot-tube 5.5s ease-in-out infinite alternate; }
+.boot-tube-light-b { animation-delay: -2.9s; }
+@keyframes boot-tube { from { opacity: 1; } to { opacity: 0.5; } }
+[data-theme="daylight"] :is(.boot-tube-light, .boot-reflection) { display: none; }
+
+/* The wordmark, flanked by two rules fading away from it */
+.boot-rule { width: 3.5rem; height: 1px; background: linear-gradient(90deg, transparent, var(--boot-trace)); }
+.boot-rule-r { rotate: 180deg; }
+.boot-wordmark { animation: boot-in 700ms var(--ease-out-expo) 120ms both; }
+
+/* The mark draws itself in (1s), holds (0.5s), plays itself back out (1s) and rests (0.7s). One number, --boot-g, runs
+   0 → 1 → 0; each part takes its own slice of it, smoothstepped: the bars rise from their centre line left to right,
+   the fermata draws across them, the whole note is drawn round last. So the way out is the way in, reversed. Still (reduced motion,
+   or no @property): --boot-g stays 1 and the whole mark shows. */
+@property --boot-g { syntax: "<number>"; inherits: true; initial-value: 1; }
+.boot-mark { animation: boot-grow 3.2s linear infinite; }
+@keyframes boot-grow {
+  0%, 100% { --boot-g: 0; }
+  31.25%, 46.875% { --boot-g: 1; }
+  78.125% { --boot-g: 0; }
+}
+.brand-boot :is(.brand-bar, .brand-hold, .brand-note-pen, .brand-light) {
+  --t: clamp(0, (var(--boot-g) - var(--from, 0)) / var(--span, 1), 1);
+  --e: calc(var(--t) * var(--t) * (3 - 2 * var(--t)));
+}
+/* The bars rise from a sliver (a meter at −∞, never quite gone) and shrink back to it; they also sway softly, like the
+   mark singing under its breath */
+.brand-boot .brand-bar { --from: calc(var(--i) * 0.09); --span: 0.5; --s: calc(0.05 + 0.95 * var(--e)); scale: 1 var(--s); animation: brand-sway var(--period) ease-in-out var(--delay) infinite alternate; }
+/* One property: on an SVG shape Chrome drops `scale` while a `transform` animates, so the sway rides on --s itself */
+@keyframes brand-sway { from { scale: 1 var(--s); } to { scale: 1 calc(var(--s) * 0.84); } }
+.brand-boot .brand-hold { --from: 0.3; --span: 0.55; stroke-dasharray: 1.02 2; stroke-dashoffset: calc(1.02 * (1 - var(--e))); opacity: calc(var(--t) * 40); }
+/* The whole note is drawn around its ring by its pen (BrandMark's mask), and its light comes up with it */
+.brand-boot :is(.brand-note-pen, .brand-light) { --from: 0.72; --span: 0.28; }
+.brand-boot .brand-note-pen { stroke-dasharray: 1.02 2; stroke-dashoffset: calc(1.02 * (1 - var(--e))); opacity: calc(var(--t) * 40); }
+.brand-boot .brand-light { opacity: var(--e); }
+/* Its light breathes with it: faint while bare, full once drawn */
+.boot-aura {
+  position: absolute;
+  inset: -70%;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 16%, transparent), transparent);
+  opacity: calc(0.3 + 0.7 * var(--boot-g));
+  scale: calc(0.88 + 0.12 * var(--boot-g));
+}
+[data-theme="daylight"] .boot-aura { background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 8%, transparent), transparent); }
+:root[data-motion="reduced"] :is(.boot-mark, .brand-boot .brand-bar, .boot-twinkle, .boot-mist, .boot-tube-light) { animation: none; }
+
 /* Scope trace (primitives/Scope): the line draws itself in, then a pulse of signal keeps travelling it. */
 /* The dash runs past the path's end (1.2 of a pathLength of 1): with a non-scaling stroke, Chrome measures it on screen,
    so a band drawn larger than 1:1 would otherwise stop short of its edge */

@@ -48,7 +48,7 @@ React 19 · TanStack Start + Router (file routes) · Tailwind CSS v4 (tokens in 
 
 - `routes/__root.tsx` is the HTML shell. `APPEARANCE_BOOT` in the head sets the theme before first paint (hence `suppressHydrationWarning` on `<html>`). Root `validateSearch` owns `?settings=`, `?listen` and the room's `&b=` and `&pick=`.
 - `router.tsx` preloads on intent, restores scroll, and shows one pending page after 200ms (`releases/Pending`'s `PagePending`). `routeTree.gen.ts` is generated; never edit it.
-- `layout/AppShell` wraps everything in `MotionConfig` (reduced motion from Settings or the OS) and renders `IconRail` or `PhoneDock`, the page `Outlet` and `SettingsDialog`.
+- `layout/AppShell` wraps everything in `MotionConfig` (reduced motion from Settings or the OS) and renders `IconRail` or `PhoneDock`, the page `Outlet` and `SettingsDialog`. Beside it, `layout/Boot` (in the shell HTML, CSS only: sparse stars, a valley with amp tubes at its edges, the mark drawing in and out) stays over the shell until the first page's loader settles or 1.6s from navigation start, then fades.
 - The app version reaches the UI as `__APP_VERSION__` (`globals.d.ts`), defined from `package.json`.
 
 ## 4. Routes (`routes/`)
@@ -136,7 +136,7 @@ The room is a studio (`app.css` "SIGNAL GIMMICKS"). Reach for these before inven
 - **`primitives/Scope`:** an oscilloscope screen; `flat` is *no signal*. Tops every `EmptyState`.
 - **`primitives/Led`:** a console light, `accent` / `tube` / `phantom`, optionally `breathe`. For the current destination, an upload waiting its turn, a saving state, a track's final.
 - **Waiting** has three instruments, never a stock spinner or pulse:
-  - `Tuning`: the studio works without a file moving (a page, a save, a move, the boot screen).
+  - `Tuning`: the studio works without a file moving (a page, a save, a move).
   - `Transfer` (`up` or `down`): file bytes (every upload, a license being read, Play while the file arrives).
   - `Skeleton`: where the shape is known (pending pages, a cover until its artwork loads, PDF pages).
 - **The meters** (`meters/MeterBridge`, `player/LoudnessWave`): a version's loudness as capsule bars on one fixed amplitude scale everywhere (`player/wave.ts`), then three folds: **Readings** (open), **Penalty** (open; platform logos from `simple-icons` in ink, never brand colour) and **More** (folded). A change since the version before reads in Haze, never green or red; true peak over −1 dBTP lights Tube. Tokens `--wave-*`, `--meter-*`.

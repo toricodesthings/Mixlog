@@ -8,6 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ### Changed
 
+- A calmer, larger loading screen: the mark draws itself in under a quiet night, and the first page arrives whole.
 - Cards and their contents now share Apple-style continuous, concentric rounded corners.
 - Licenses open in a full-size viewer over the page, with page jumps, zoom and fit to width; full screen on a phone.
 

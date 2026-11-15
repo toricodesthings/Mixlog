@@ -26,7 +26,7 @@ export function BrandMark({ live = false, className }: { live?: boolean; classNa
     const bar = (i: number, fill?: string) => {
         const b = BARS[i];
         return <rect key={i} className="brand-bar" x={b.x} y={b.y} width="8" height={b.h} rx="4" fill={fill}
-            style={{ "--period": `${b.period}ms`, "--delay": `${b.delay}ms` } as React.CSSProperties} />;
+            style={{ "--period": `${b.period}ms`, "--delay": `${b.delay}ms`, "--i": i } as React.CSSProperties} />;
     };
     return (
         <svg viewBox="0 0 64 64" aria-hidden="true" className={cn("brand-mark h-6 w-6", live && "brand-live", className)}>
@@ -43,16 +43,22 @@ export function BrandMark({ live = false, className }: { live?: boolean; classNa
                     <stop offset=".25" stopOpacity=".5" style={stop("mark-phantom")} />
                     <stop offset="1" stopOpacity="0" style={stop("mark-phantom")} />
                 </radialGradient>
+                {/* A pen around the whole note's ring (its centre, a band from inside its hole to past its rim), starting on
+                    its left where the fermata begins: drawn whole at rest, so it only shows when the boot draws it in */}
+                <mask id={`${id}m`}>
+                    <circle className="brand-note-pen" cx="18.44" cy="16.09" r="3.05" transform="rotate(180 18.44 16.09)" pathLength="1"
+                        fill="none" stroke="white" strokeWidth="3.6" />
+                </mask>
                 <radialGradient id={`${id}n`} cx="16.03" cy="13.79" r="7.2" gradientUnits="userSpaceOnUse">
                     <stop offset="0" style={stop("mark-rose")} />
                     <stop offset=".7" style={stop("mark-phantom")} />
                 </radialGradient>
             </defs>
             <g transform={FRAME} fill={`url(#${id}v)`}>{[0, 1, 2, 4].map((i) => bar(i))}</g>
-            <g transform={FRAME}>{bar(1, `url(#${id}l)`)}</g>
+            <g transform={FRAME} className="brand-light">{bar(1, `url(#${id}l)`)}</g>
             <path className="brand-hold" d={HOLD} pathLength="1" fill="none" stroke={`url(#${id}h)`} strokeWidth="3.7" strokeLinecap="round" />
             <g transform={FRAME} fill={`url(#${id}v)`}>{bar(3)}</g>
-            <path d={NOTE} fillRule="evenodd" fill={`url(#${id}n)`} />
+            <path className="brand-note" d={NOTE} fillRule="evenodd" fill={`url(#${id}n)`} mask={`url(#${id}m)`} />
         </svg>
     );
 }
