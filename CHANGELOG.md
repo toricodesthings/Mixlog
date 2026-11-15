@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-15
+
 ### Changed
 
 - A calmer, larger loading screen: the mark draws itself in under a quiet night, and the first page arrives whole.
