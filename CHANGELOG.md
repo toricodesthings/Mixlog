@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.7.3] - 2026-11-16
+
 ### Changed
 
 - Every release draws its own constellation: a ring of stars, sometimes with a tail, in a place of its own.
