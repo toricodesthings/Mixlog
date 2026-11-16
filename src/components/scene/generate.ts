@@ -19,7 +19,7 @@ import { DEFAULT_FINGERPRINT, fingerprint, type Fingerprint } from '#/server/lou
  * Bump `SCENE` with any change that moves a pixel; every night redraws once, on purpose.
  */
 
-export const SCENE = 6
+export const SCENE = 7
 
 export type Pt = readonly [number, number]
 export type MoonZone = { x: [number, number]; y: [number, number] }
@@ -264,6 +264,105 @@ export type Landmark = 'mast' | 'lighthouse' | 'dome' | 'windmill' | 'bridge'
 export type Depth = 'far' | 'mid' | 'near'
 export type Window = { x: number; y: number; depth: Depth }
 export type House = { x: number; base: number; ground: number; window: Pt; far?: boolean }
+/** A tapered limb from (x0, y0) to (x1, y1), `w0` to `w1` either side of its line, bowed by `bend`. Always wound the
+ *  same way round, so limbs in one path never cut holes where they cross. */
+function limb(x0: number, y0: number, x1: number, y1: number, w0: number, w1: number, bend = 0) {
+  const [dx, dy] = [x1 - x0, y1 - y0]
+  const l = Math.hypot(dx, dy) || 1
+  const [nx, ny] = [-dy / l, dx / l]
+  const [cx, cy, wm] = [(x0 + x1) / 2 + nx * bend, (y0 + y1) / 2 + ny * bend, (w0 + w1) / 2]
+  return `M${pt(x0 + nx * w0, y0 + ny * w0)}Q${pt(cx + nx * wm, cy + ny * wm)} ${pt(x1 + nx * w1, y1 + ny * w1)}L${pt(x1 - nx * w1, y1 - ny * w1)}Q${pt(cx - nx * wm, cy - ny * wm)} ${pt(x0 - nx * w0, y0 - ny * w0)}Z`
+}
+
+/**
+ * D. The framing tree, cosy rather than bare: a full, rounded canopy of overlapping lobes around an oval, a trunk that
+ * flares into its roots and forks into limbs under the leaves, a low bough reaching into the frame (`lean`) with a
+ * clump of its own, and on some nights a rope swing from it. Drawn as layers in land units: `tree` the silhouette
+ * (every subpath wound clockwise, so nothing cuts a hole), `treeRim` the moonlit edge behind it, `treeLeaves` the inner
+ * canopy a tone lighter (the underside stays dark), `treeLimbs` the bough, limbs and swing over the leaves, `treeLit`
+ * small tufts catching the moon on top. Its own random stream, so the tree's detail never moves the rest of the night.
+ */
+function cosyTree(tx: number, lean: -1 | 1, moon: -1 | 1, rand: () => number) {
+  const R = 50 + rand() * 14
+  const [cx, cy] = [tx + lean * (14 + rand() * 18), 104 + rand() * 18]
+  const base = cy + R * 0.5
+  const trunk =
+    `M${pt(tx - 20, FLOOR)}Q${pt(tx - 9, FLOOR - 10)} ${pt(tx - 8, 250)}Q${pt(tx - 7, 214)} ${pt(cx - 10, base)}` +
+    `L${pt(cx + 10, base)}Q${pt(tx + 8, 214)} ${pt(tx + 8, 250)}Q${pt(tx + 9, FLOOR - 10)} ${pt(tx + 22, FLOOR)}Z`
+  // The canopy: lobes around an oval (smaller underneath), its middle filled
+  const n = 10 + Math.floor(rand() * 4)
+  const lobes = Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2 + (rand() - 0.5) * 0.35
+    const under = Math.sin(a) > 0.35
+    return { a, x: cx + Math.cos(a) * R * 0.95, y: cy + Math.sin(a) * R * (under ? 0.5 : 0.62), r: R * (0.34 + rand() * 0.12) * (under ? 0.85 : 1), under }
+  })
+  const middle = [[-0.3, -0.05], [0.3, 0], [0, -0.25], [0, 0.15]].map(([u, v]) => ({ x: cx + u * R, y: cy + v * R, r: R * 0.55 }))
+  // The bough and its clump
+  const [bx, by] = [tx + lean * R * 1.55, cy + R * 0.55]
+  const bough = limb(tx + lean * 4, 214, bx, by, 4.5, 1.6, -lean * 6)
+  const clump = Array.from({ length: 5 }, () => ({ x: bx + lean * (rand() - 0.3) * 22, y: by - 4 - rand() * 10, r: R * (0.2 + rand() * 0.1) }))
+  const all = [...middle, ...lobes, ...clump]
+  const tree = trunk + all.map(({ x, y, r }) => disc(x, y, r)).join('')
+  const treeRim = [...lobes.filter((l) => !l.under), ...clump].map(({ x, y, r }) => disc(x + moon * 2.5, y - 2, r)).join('')
+  // Inside: the upper lobes pulled in toward the middle and up, a tone lighter, leaving a dark rim and underside
+  const inner = lobes.filter((l) => !l.under).map((l) => ({ x: l.x + (cx - l.x) * 0.24 + moon * l.r * 0.12, y: l.y + (cy - l.y) * 0.24 - l.r * 0.16, r: l.r * 0.72, l }))
+  const treeLeaves = [...inner, ...clump.slice(0, 3).map((c) => ({ x: c.x, y: c.y - c.r * 0.2, r: c.r * 0.6 }))].map(({ x, y, r }) => disc(x, y, r)).join('')
+  const treeLit = inner.filter(({ l }) => Math.sin(l.a) < -0.2 && Math.cos(l.a) * moon > -0.3).map(({ x, y, r }) => disc(x + moon * r * 0.25, y - r * 0.3, r * 0.42)).join('')
+  // Limbs reaching up from the fork into the leaves, dark against the lighter canopy
+  const [fx, fy] = [cx, base + 4]
+  let treeLimbs = bough + [-0.55, 0.05, 0.5].map((u, i) => limb(fx, fy, cx + u * R, cy - (i === 1 ? 0.3 : 0.02) * R, 3.4, 0.8, (u || 0.2) * 5)).join('')
+  // A rope swing from the bough, on some nights: two ropes and a plank, wound as the limbs are
+  if (rand() < 0.55) {
+    const sx = tx + lean * R * 0.62
+    const ropeTop = 214 + (by - 214) * ((sx - tx) / (bx - tx)) + 1
+    const seat = 240 + rand() * 8
+    const rect = (x0: number, y0: number, x1: number, y1: number) => `M${pt(x0, y0)}V${n1(y1)}H${n1(x1)}V${n1(y0)}Z`
+    treeLimbs += rect(sx - 7.5, ropeTop, sx - 6.7, seat) + rect(sx + 6.7, ropeTop, sx + 7.5, seat) + rect(sx - 10, seat, sx + 10, seat + 2.6)
+  }
+  return { tree, treeRim, treeLeaves, treeLimbs, treeLit }
+}
+
+/** The release's own star sign: its stars (in % of the scene) and the hairlines joining them (pairs of indexes). */
+export type Constellation = { stars: (readonly [left: number, top: number])[]; edges: (readonly [number, number])[] }
+
+/**
+ * U4. A constellation of its own, seeded by the release: a closed ring of 5–8 stars (a cycle; ordered by angle around
+ * its centre, so the ring never crosses itself), half the time with a tail of one or two running out from its farthest
+ * star. Turned, stretched and placed at random in the upper sky, clear of the moon. A % of the width is about twice
+ * a % of the height in a wide scene, so the ring is drawn taller in % to look round; on a phone it isn't.
+ */
+export function constellationOf(rand: () => number, moonLeft: number, moonTop: number, phone: boolean): Constellation {
+  const n = 5 + Math.floor(rand() * 4)
+  const rx = (phone ? 10 : 5) + rand() * 2.5
+  const ry = rx * (phone ? 0.75 : 1.8) * (0.75 + rand() * 0.5)
+  let [cx, cy] = [50, 20]
+  for (let guard = 0; guard < 60; guard++) {
+    ;[cx, cy] = [rx + 6 + rand() * (88 - 2 * rx), ry + 4 + rand() * Math.max(0, 34 - 2 * ry)]
+    if (Math.hypot((cx - moonLeft) * 1.6, cy - moonTop) > 24 + rx * 1.6) break
+  }
+  const turn = rand() * Math.PI * 2
+  const stars: [number, number][] = Array.from({ length: n }, (_, i) => {
+    const a = turn + (i / n) * Math.PI * 2 + (rand() - 0.5) * (Math.PI / n) * 0.9
+    const r = 0.6 + rand() * 0.4
+    return [n1(cx + Math.cos(a) * rx * r), n1(cy + Math.sin(a) * ry * r)]
+  })
+  const edges: [number, number][] = stars.map((_, i) => [i, (i + 1) % n])
+  if (rand() < 0.5) {
+    const far = stars.reduce((b, s, i) => (Math.hypot((s[0] - cx) / rx, (s[1] - cy) / ry) > Math.hypot((stars[b][0] - cx) / rx, (stars[b][1] - cy) / ry) ? i : b), 0)
+    let [x, y] = stars[far]
+    let a = Math.atan2((y - cy) / ry, (x - cx) / rx)
+    for (let t = 0, from = far, len = 1 + Math.round(rand()); t < len; t++) {
+      a += (rand() - 0.5) * 0.7
+      ;[x, y] = [n1(x + Math.cos(a) * rx * 0.7), n1(y + Math.sin(a) * ry * 0.7)]
+      if (x < 2 || x > 98 || y < 2 || y > 44) break
+      stars.push([x, y])
+      edges.push([from, stars.length - 1])
+      from = stars.length - 1
+    }
+  }
+  return { stars, edges }
+}
+
 /** A cloud in the sky, in % of the scene (left, top, width), its shape in its own `w × h` box. */
 export type Cloud = { left: number; top: number; width: number; w: number; h: number; d: string; drift: number; near: boolean }
 export type Cirrus = { left: number; top: number; width: number; height: number; angle: number; opacity: number }
@@ -316,6 +415,10 @@ export type SceneModel = {
     woods: string
     tree: string
     treeRim: string
+    /** The canopy's lighter inside, the limbs and swing drawn over it, and the moonlit tufts on top (`cosyTree`). */
+    treeLeaves: string
+    treeLimbs: string
+    treeLit: string
     /** The tree's trunk foot, for its lean. */
     treeFoot: Pt
     knoll: string
@@ -334,7 +437,7 @@ export type SceneModel = {
     moon: Moon
     stars: Star[]
     band: (readonly [left: number, top: number, size: number])[]
-    constellation: (readonly [left: number, top: number])[]
+    constellation: Constellation
     clouds: Cloud[]
     cirrus: Cirrus[]
     meteors: Meteor[]
@@ -652,22 +755,7 @@ function buildScene(id: string, song: Fingerprint, zone: MoonZone, frame: number
     open === 1 ? '' : grove(NEAR_E, woodsAt(1), 10 + Math.floor(rand() * 7), (170 + rand() * 100) * k, 24 + rand() * 8, seed ^ 0x5e),
   ].join('')
   const tx = Math.max(120, Math.min(W - 120, hamletSide === 1 ? W * 0.1 + rand() * 80 * k : W * 0.9 - rand() * 80 * k))
-  const lean = hamletSide
-  const crownX = tx + lean * (20 + rand() * 30)
-  const crownY = 96 + rand() * 30
-  const [crownW, crownH] = [56 + rand() * 30, 26 + rand() * 12]
-  const trunk =
-    `M${pt(tx - 9, FLOOR)}Q${pt(tx - 4, 220)} ${pt(crownX - 3, crownY + 30)}L${pt(crownX + 3, crownY + 30)}Q${pt(tx + 6, 220)} ${pt(tx + 9, FLOOR)}Z` +
-    `M${pt(tx + lean * 6, 200)}Q${pt(tx + lean * 40, 180)} ${pt(tx + lean * 70, 168)}L${pt(tx + lean * 70, 172)}Q${pt(tx + lean * 40, 186)} ${pt(tx + lean * 5, 208)}Z`
-  const clump = (cx: number, cy: number, rx: number, ry: number, n: number, r: number) =>
-    Array.from({ length: n }, () => {
-      const a = rand() * Math.PI * 2
-      const d = Math.sqrt(rand())
-      return [cx + Math.cos(a) * rx * d, cy + Math.sin(a) * ry * d * (Math.sin(a) > 0 ? 0.6 : 1), r * (1.15 - d * 0.6) * (0.8 + rand() * 0.4)] as [number, number, number]
-    })
-  const masses = [...clump(crownX, crownY, crownW, crownH, Math.round(crownW * 0.37), 24 + rand() * 10), ...clump(tx + lean * 80, 162, 30, 12, 9, 16)]
-  const tree = trunk + masses.map(([x, y, r]) => disc(x, y, r)).join('')
-  const treeRim = masses.map(([x, y, r]) => disc(x + side * 2.5, y - 2, r)).join('')
+  const { tree, treeRim, treeLeaves, treeLimbs, treeLit } = cosyTree(tx, hamletSide, side, rng(seed ^ 0x7ee5))
 
   // D3. A place to stand: a knoll in the tree's corner, reeds along the bottom edge, the amp tube on the knoll's crest
   const knollDir = tx < W / 2 ? -1 : 1
@@ -715,25 +803,27 @@ function buildScene(id: string, song: Fingerprint, zone: MoonZone, frame: number
   const lanterns: Lantern[] = weather < 0.5 ? [] : Array.from({ length: 1 + Math.round(dyn * 2) }, () => ({ x: hearthX + (own() - 0.5) * 240, delay: own() * 70, duration: 46 + own() * 30 }))
   const fireflies: Firefly[] = weather < 0.5 ? Array.from({ length: 3 }, () => ({ x: amp[0] + (own() - 0.5) * 220, y: 250 + own() * 40, delay: own() * 12 })) : []
 
-  // C2. Clouds in three depths: cirrus always, far cumulus (fewer, quieter), one or two near banks
+  // C2. Clouds in three depths: cirrus always, far cumulus, one or two near banks. Never fewer than three cumulus, and
+  // all of them high: nothing in the sky comes down to the land (the low bank between the ranges is fog, not cloud)
   const moonLeft = (moon.x / W) * 100
   const phone = W < 1000
+  const nearCount = phone ? 1 : weather > 0.6 ? 2 : 1
   const slots = [6, 26, 66, 86].filter((s) => Math.abs(s + 4 - moonLeft) > 14)
-  const want = Math.min(slots.length, phone ? 1 : 1 + Math.round(weather * 2))
+  const want = Math.min(slots.length, Math.max(3 - nearCount, phone ? 2 : 1 + Math.round(weather * 2)))
   const order = [...slots].sort(() => own() - 0.5).slice(0, want).sort((a, b) => a - b)
   const clouds: Cloud[] = order.map((slot) => {
     const w = 160 + rand() * 120
     const h = w * (0.42 + rand() * 0.1)
     const cw = 9 + rand() * 3
-    return { left: slot + rand() * (14 - cw), top: 8 + rand() * 14, width: cw, w, h, d: cumulus(w, h, rand), drift: 6 + rand() * 8, near: false }
+    return { left: slot + rand() * (14 - cw), top: 5 + rand() * 12, width: cw, w, h, d: cumulus(w, h, rand), drift: 6 + rand() * 8, near: false }
   })
-  for (let q = 0, n = phone ? 1 : weather > 0.6 ? 2 : 1; q < n; q++) {
+  for (let q = 0; q < nearCount; q++) {
     const w = 320 + rand() * 160
     const h = w * 0.36
     const cw = 18 + rand() * 8
     // Away from the moon's side, allowed off the edge
     const left = q === 0 ? (side === -1 ? 100 - cw * 0.7 : -cw * 0.3) : 30 + rand() * 30
-    clouds.push({ left, top: 26 + rand() * 12, width: cw, w, h, d: cumulus(w, h, rand), drift: 18, near: true })
+    clouds.push({ left, top: 10 + rand() * 8, width: cw, w, h, d: cumulus(w, h, rand), drift: 18, near: true })
   }
   const tilt = Math.tan(((own() - 0.5) * 50 * Math.PI) / 180) * 0.4
   const cirrus: Cirrus[] = Array.from({ length: 2 + Math.floor(own() * 3) }, () => ({ left: own() * 70, top: 4 + own() * 22, width: 25 + own() * 20, height: 0.6 + own() * 0.6, angle: (Math.atan(tilt) * 180) / Math.PI, opacity: 0.1 + own() * 0.06 }))
@@ -741,17 +831,8 @@ function buildScene(id: string, song: Fingerprint, zone: MoonZone, frame: number
   // Stars: tier counts scale with dynamics, thinning and dimming toward the horizon; 45% warm
   const starRand = rng(hash32(id) ^ 0x55)
   const stars: Star[] = []
-  // U4. The song's constellation first: seven bright stars tracing the envelope's seven most prominent turns
-  const turns = env.map((v, i) => ({ i, v, p: i === 0 || i === env.length - 1 ? 0 : Math.abs(v - (env[i - 1] + env[i + 1]) / 2) + (v > env[i - 1] === v > env[i + 1] ? 0.3 : 0) }))
-  const seven = [...turns].sort((a, b) => b.p - a.p).slice(0, 7).sort((a, b) => a.i - b.i)
-  const constellation: (readonly [number, number])[] = []
-  const cLeft = 30 + (side === -1 ? 20 : 0) + starRand() * 6
-  for (const [n, t] of seven.entries()) {
-    const left = n1(cLeft + n * (32 / 6) * (phone ? 1.4 : 1) - (phone ? 6 : 0))
-    const top = n1(8 + (1 - t.v) * 18)
-    constellation.push([left, top])
-    stars.push([left, top, 2.2, n % 3 === 0, false, false])
-  }
+  const constellation = constellationOf(starRand, moonLeft, (moon.y / H) * 100, phone)
+  for (const [n, [left, top]] of constellation.stars.entries()) stars.push([left, top, 2.2, n % 3 === 0, false, false])
   for (const [n, size] of [[Math.round(13 * (0.8 + 0.4 * dyn)), 2.2], [Math.round(34 * (0.8 + 0.4 * dyn)), 1.4], [Math.round(54 * (0.8 + 0.4 * dyn)), 0.9]] as const) {
     for (let placed = 0, guard = 0; placed < n && guard < 4000; guard++) {
       const left = 2 + starRand() * 96
@@ -835,6 +916,9 @@ function buildScene(id: string, song: Fingerprint, zone: MoonZone, frame: number
       woods,
       tree,
       treeRim,
+      treeLeaves,
+      treeLimbs,
+      treeLit,
       treeFoot: [tx, H],
       knoll,
       reeds,

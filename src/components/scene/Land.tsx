@@ -149,8 +149,9 @@ const Terrain = memo(function Terrain({ m, uid, sig }: ModelProps & { sig: strin
       <div data-pointer-read className="scene-depth pointer-events-none absolute inset-0" style={{ '--shift': 2.5 } as CSSProperties}>
         <div className="scene-cloud-bank scene-lowbank absolute inset-0">
           <svg {...svgProps(W)}>
-            <g transform={`translate(${lb.x},${lb.y})`} opacity=".7">
-              <path d={lb.d} fill={u('lowbank')} filter={u('cloud')} />
+            {/* Near the land a cloud is barely there: a sheet of fog more than a cloud */}
+            <g transform={`translate(${lb.x},${lb.y})`} opacity=".28">
+              <path d={lb.d} fill={u('lowbank')} filter={u('haze')} />
             </g>
           </svg>
         </div>
@@ -223,7 +224,7 @@ const Terrain = memo(function Terrain({ m, uid, sig }: ModelProps & { sig: strin
 
 /** The framing tree, the knoll and the reeds: the darkest thing on screen, crisp, nearest of all. The tree leans
  *  toward the pointer from its trunk's foot and breathes on its own at rest. */
-const Foreground = memo(function Foreground({ m, seat }: ModelProps) {
+const Foreground = memo(function Foreground({ m, uid, seat }: ModelProps) {
   const { land, frame: W } = m
   const foot = `${(land.treeFoot[0] / W) * 100}% 100%`
   return (
@@ -232,6 +233,11 @@ const Foreground = memo(function Foreground({ m, seat }: ModelProps) {
         <svg {...svgProps(W)}>
           <path d={land.treeRim} fill="var(--land-rim)" opacity={Math.min(1, 0.2 * land.light)} />
           <path d={land.tree} fill="var(--land-fore)" />
+          {/* The canopy a tone lighter inside (softened, so it reads as foliage, not discs), the limbs dark across it,
+              and a soft glow where the top catches the moon */}
+          <path d={land.treeLeaves} fill="color-mix(in oklab, var(--land-fore) 60%, var(--land-valley))" filter={`url(#${uid}soft)`} />
+          <path d={land.treeLimbs} fill="var(--land-fore)" />
+          <path d={land.treeLit} fill="var(--land-rim)" opacity={Math.min(1, 0.12 * land.light)} filter={`url(#${uid}haze)`} />
         </svg>
       </div>
       <svg {...svgProps(W)}>

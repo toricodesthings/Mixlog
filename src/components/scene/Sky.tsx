@@ -42,9 +42,12 @@ function SkyBody({ m, outgoing }: { m: SceneModel; outgoing?: boolean }) {
         <g fill="var(--scene-star-cool)" opacity=".55">
           {sky.band.map(([left, top, size], i) => <circle key={i} cx={`${left}%`} cy={`${top}%`} r={size / 2} />)}
         </g>
-        {/* The song's constellation: its envelope's turns as a star sign, joined by hairlines that fade in once */}
-        <g className="scene-constellation" stroke="var(--scene-star-cool)" strokeWidth=".6" opacity=".18">
-          {sky.constellation.slice(1).map(([l, t], i) => <line key={i} x1={`${sky.constellation[i][0]}%`} y1={`${sky.constellation[i][1]}%`} x2={`${l}%`} y2={`${t}%`} />)}
+        {/* The release's constellation: a ring of stars (and sometimes a tail), joined by hairlines that fade in once */}
+        <g className="scene-constellation" stroke="var(--scene-star-cool)" strokeWidth=".6" strokeLinecap="round" opacity=".18">
+          {sky.constellation.edges.map(([a, b]) => {
+            const [[x1, y1], [x2, y2]] = [sky.constellation.stars[a], sky.constellation.stars[b]]
+            return <line key={`${a}-${b}`} x1={`${x1}%`} y1={`${y1}%`} x2={`${x2}%`} y2={`${y2}%`} />
+          })}
         </g>
       </svg>
       {bright.map(([left, top, size, warm, sparkle, twinkle], i) => (
@@ -65,7 +68,7 @@ function SkyBody({ m, outgoing }: { m: SceneModel; outgoing?: boolean }) {
         />
       ))}
       {/* Cirrus: long thin streaks high up, at the star band's angle; they may cross the moon */}
-      <div {...lean(1)} className="scene-depth absolute inset-0">
+      <div {...lean(2)} className="scene-depth absolute inset-0">
         {sky.cirrus.map((c, i) => (
           <span key={i} className="scene-cirrus scene-cloud-bank absolute" style={{ left: `${c.left}%`, top: `${c.top}%`, width: `${c.width}%`, height: `${c.height}%`, rotate: `${c.angle}deg`, opacity: c.opacity, '--drift': '4px', '--duration': '140s' } as CSSProperties} />
         ))}
@@ -75,7 +78,7 @@ function SkyBody({ m, outgoing }: { m: SceneModel; outgoing?: boolean }) {
         // A near bank is lit along the edge that faces the moon
         const moonLeftOf = (sky.moon.x / W) * 100 < c.left + c.width / 2
         return (
-          <div key={i} {...lean(c.near ? 2 : 1)} className="scene-depth absolute inset-0">
+          <div key={i} {...lean(c.near ? 7 : 4)} className="scene-depth absolute inset-0">
             <div className="scene-cloud-bank absolute" style={{ left: `${c.left}%`, top: `${c.top}%`, width: `${c.width}%`, '--drift': `${c.drift}px`, '--duration': c.near ? '70s' : '90s', opacity: c.near ? 1 : 0.67 } as CSSProperties}>
               <svg viewBox={`${-pad} ${-pad} ${c.w + 2 * pad} ${c.h + 2 * pad}`} className="block w-full">
                 <defs>

@@ -61,11 +61,11 @@ describe('sceneOf', () => {
     for (const [id, fp, zone] of SWEEP) {
       for (const frame of [1920, 1280, 840]) {
         const { land } = sceneOf(id, fp, zone, frame)
-        for (const d of [land.back, land.distant, land.far, land.signal, land.banks, land.near, land.tree, land.knoll]) expect(d).toMatch(/^[MLQHVZAa\d\s,.\-]+$/)
+        for (const d of [land.back, land.distant, land.far, land.signal, land.banks, land.near, land.tree, land.treeLeaves, land.treeLimbs, land.treeLit, land.knoll]) expect(d).toMatch(/^[MLQHVZAa\d\s,.\-]+$/)
         for (const d of [land.back, land.distant, land.far, land.signal]) expect(ridgeOf(d).length, `${id}@${frame}`).toBeGreaterThanOrEqual(12)
       }
     }
-  })
+  }, 20_000) // 1,500 scenes: past the default 5 s when the whole suite runs at once
 
   it('lets the song drive most of the night: a different reading changes at least half of everything drawn', () => {
     const fields = (m: ReturnType<typeof sceneOf>) => ({ ...m.land, ...m.sky }) as Record<string, unknown>
@@ -158,7 +158,7 @@ describe('sceneOf', () => {
 
   it('is pinned for three fixtures, so no change moves a pixel by accident (bump SCENE and these on purpose)', () => {
     const pin = (id: string, fp: Fingerprint | null) => hash32(JSON.stringify(sceneOf(id, fp, ZONES.summaryDesktop)))
-    expect([pin('pin-1', null), pin('pin-2', FINGERPRINTS.loud), pin('pin-3', FINGERPRINTS.quiet)]).toEqual([2556180398, 551902231, 1936559744])
+    expect([pin('pin-1', null), pin('pin-2', FINGERPRINTS.loud), pin('pin-3', FINGERPRINTS.quiet)]).toEqual([3553717185, 765927938, 26953507])
   })
 
   // 500 songs, each measured differently, on every screen's zone
@@ -211,10 +211,35 @@ describe('sceneOf', () => {
     for (const lm of ['mast', 'lighthouse', 'dome', 'windmill', 'bridge']) expect(nights.some((n) => n.land.landmark === lm), lm).toBe(true)
   })
 
-  it('draws the song’s constellation from its envelope: seven stars, left to right', () => {
-    const { constellation } = sceneOf('k', FINGERPRINTS.loud, ZONE).sky
-    expect(constellation).toHaveLength(7)
-    constellation.slice(1).forEach(([l], i) => expect(l).toBeGreaterThan(constellation[i][0]))
+  it('draws each release its own constellation: a closed ring of 5–8 stars that never crosses itself, maybe a tail', () => {
+    const cross = (a: readonly number[], b: readonly number[], c: readonly number[], d: readonly number[]) => {
+      const o = (p: readonly number[], q: readonly number[], r: readonly number[]) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]))
+      return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0
+    }
+    const places = new Set<string>()
+    for (const [id, fp, zone] of SWEEP.slice(0, 200)) {
+      const { constellation: { stars, edges }, moon } = sceneOf(id, fp, zone).sky
+      const n = edges.findIndex(([, b]) => b === 0) + 1 // the ring closes back on its first star
+      expect(n, id).toBeGreaterThanOrEqual(5)
+      expect(n, id).toBeLessThanOrEqual(8)
+      // Every star joined, the ring closed: as many edges as stars
+      expect(edges.length, id).toBe(stars.length)
+      expect(edges.slice(0, n).every(([a, b], i) => a === i && b === (i + 1) % n), id).toBe(true)
+      for (const [i, [a, b]] of edges.entries())
+        for (const [c, d] of edges.slice(i + 1)) if (new Set([a, b, c, d]).size === 4) expect(cross(stars[a], stars[b], stars[c], stars[d]), id).toBe(false)
+      for (const [l, t] of stars) expect(Math.hypot((l - (moon.x / 1920) * 100) * 1.6, t - (moon.y / 300) * 100), id).toBeGreaterThan(12)
+      places.add(stars.map(([l, t]) => `${Math.round(l)},${Math.round(t)}`).join(' '))
+    }
+    expect(places.size).toBe(200)
+  })
+
+  it('keeps at least three clouds, all high in the sky, never down on the land', () => {
+    for (const [id, fp, zone] of SWEEP) {
+      const { clouds } = sceneOf(id, fp, zone).sky
+      expect(clouds.length, id).toBeGreaterThanOrEqual(3)
+      for (const c of clouds) expect(c.top, id).toBeLessThanOrEqual(18)
+    }
+    expect(sceneOf('p', FINGERPRINTS.loud, ZONE, 840).sky.clouds.length).toBeGreaterThanOrEqual(3)
   })
 
   it('never makes two songs the same place: the ranges of 200 songs differ pairwise (U6)', () => {

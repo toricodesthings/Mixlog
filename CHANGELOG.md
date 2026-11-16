@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Changed
+
+- Every release draws its own constellation: a ring of stars, sometimes with a tail, in a place of its own.
+- Clouds stay high in the sky, at least three a night, and drift with the pointer; the one near the land is a fog.
+- The tree over the night is fuller and cosier: a rounded canopy catching the moon, a bough, sometimes a swing.
+
 ## [1.7.2] - 2026-11-16
 
 ### Added
