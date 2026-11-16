@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-11-16
+
 ### Added
 
 - A Changelog page lists every release, newest first, opened from Settings → About.
