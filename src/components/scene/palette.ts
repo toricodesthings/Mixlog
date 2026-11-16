@@ -170,35 +170,63 @@ export function paletteOf(pixels: Uint8ClampedArray): Record<string, string> {
 
 /** Each artwork's colours, once read. ponytail: one small entry per artwork seen this session, never evicted. */
 const palettes = new Map<string, Record<string, string>>()
+const reading = new Map<string, Promise<Record<string, string>>>()
 
-/** The artwork's colours (above); none until it has loaded the first time, so the title's colours stand in. */
-function useArtPalette(url: string | null) {
-  const [palette, setPalette] = useState<Record<string, string> | null>(() => (url && palettes.get(url)) || null)
-  useEffect(() => {
-    const known = url ? palettes.get(url) : undefined
-    setPalette(known ?? null)
-    if (!url || known) return
-    let live = true
+/** Reads an artwork's colours once per session (a list's cover calls this as it loads, so opening its release is a
+ *  cache hit). A failed decode is forgotten, so the next ask tries again. */
+export function readPalette(url: string): Promise<Record<string, string>> {
+  const known = palettes.get(url)
+  if (known) return Promise.resolve(known)
+  let pending = reading.get(url)
+  if (!pending) {
     const image = new Image()
     image.src = url
     // Decoded off the main thread first, so drawing it to the sample is a copy, not a decode
-    image.decode().then(() => {
-      if (!live) return
+    pending = image.decode().then(() => {
       const canvas = document.createElement('canvas')
       canvas.width = canvas.height = SAMPLE
       const context = canvas.getContext('2d', { willReadFrequently: true })
-      if (!context) return
+      if (!context) throw new Error('no canvas')
       context.imageSmoothingEnabled = false
       context.drawImage(image, 0, 0, SAMPLE, SAMPLE)
       const read = paletteOf(context.getImageData(0, 0, SAMPLE, SAMPLE).data)
       palettes.set(url, read)
-      setPalette(read)
-    }, () => {})
+      return read
+    })
+    pending.catch(() => {}).finally(() => reading.delete(url))
+    reading.set(url, pending)
+  }
+  return pending
+}
+
+/** The artwork's colours (above), and whether they've settled: read, failed, absent, or 300 ms passed. A failed read
+ *  tries once more when the page regains focus. */
+function useArtPalette(url: string | null) {
+  const [palette, setPalette] = useState<Record<string, string> | null>(() => (url && palettes.get(url)) || null)
+  const [settled, setSettled] = useState(() => !url || palettes.has(url))
+  useEffect(() => {
+    const known = url ? palettes.get(url) : undefined
+    setPalette(known ?? null)
+    setSettled(!url || Boolean(known))
+    if (!url || known) return
+    let live = true
+    const timer = setTimeout(() => live && setSettled(true), 300)
+    const attempt = (retry: boolean) =>
+      readPalette(url).then(
+        (read) => live && (setPalette(read), setSettled(true)),
+        () => {
+          if (!live) return
+          setSettled(true)
+          if (retry) window.addEventListener('focus', () => live && void attempt(false), { once: true })
+        },
+      )
+    void attempt(true)
     return () => {
       live = false
+      clearTimeout(timer)
     }
   }, [url])
-  return palette
+  return { palette, settled }
 }
 
 /** A release's own hue, stable across visits and a rename: cyan through violet to magenta, the Blue Hour family.
@@ -215,7 +243,13 @@ export function idHue(id: string) {
  * is read, or when the release has no artwork at all.
  */
 export function useRoomStyle(id: string, artworkId: string | null) {
-  const palette = useArtPalette(artworkId && previewUrl(artworkId))
+  return useRoom(id, artworkId).style
+}
+
+/** The room's style and whether its colours have settled: the scene holds back until they have, so a night never
+ *  pops from the stand-in hue to the artwork's. */
+export function useRoom(id: string, artworkId: string | null) {
+  const { palette, settled } = useArtPalette(artworkId && previewUrl(artworkId))
   const hue = idHue(id)
-  return { '--art-h': hue, '--art-h2': hue - 20, '--art-k': 1, ...palette } as CSSProperties
+  return { style: { '--art-h': hue, '--art-h2': hue - 20, '--art-k': 1, ...palette } as CSSProperties, settled }
 }

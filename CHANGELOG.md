@@ -6,6 +6,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- A Changelog page lists every release, newest first, opened from Settings → About.
+
+### Changed
+
+- Every song's night is its own: its mountains follow its sound, and a wide or big song gets a coast or highlands.
+- The night is warmer and deeper: an afterglow, a lit hearth with smoke, fog in layers, clouds and meteors in depth.
+- On a desktop the night leans gently as you move the pointer; the hearth and the amp breathe with the music.
+- A phone now sees a song's whole night, recomposed, instead of the middle of it.
+
+### Fixed
+
+- The mountains no longer turn into a flat slab when the window is short or the player bar docks.
+- A song's night now updates once its first bounce is measured, with no refresh, and no longer flashes its colours.
+
 ## [1.7.1] - 2026-11-16
 
 ### Fixed
@@ -107,7 +123,7 @@ Mixlog answers before the server does: every change instant, every page named, e
 - Raised controls get a little volume, and wells get depth.
 - Reduced motion keeps colour and light changes and stops only what travels.
 - On a phone, every dialog is one glass sheet: close on the left, the title centred, ✓ to save on the right.
-- A release's format, its day out and an artist's role are picked from one card of rows; on a phone the day opens its wheel.
+- A release's format, day out and an artist's role are picked from one card of rows; on a phone the day opens a wheel.
 
 - The Mixlog mark holds its peak as a whole note under a hand-drawn fermata, cool bars under one warm stroke.
 
@@ -167,7 +183,7 @@ Meters: every bounce measured for loudness, true peak, phase and dynamics.
 
 ### Changed
 
-- Covers load a small preview of the artwork, so lists and the player stay quick; the Artwork part still shows the original.
+- Covers load a small preview, so lists and the player stay quick; the Artwork part still shows the original.
 
 ### Fixed
 

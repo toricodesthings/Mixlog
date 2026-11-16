@@ -1,4 +1,5 @@
-import { ExternalLink, LogOut } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { ExternalLink, History, LogOut } from 'lucide-react'
 
 import { BrandMark, Button } from '../../primitives'
 import { SettingsList, SettingsRow, SettingsSection } from '../SettingsLayout'
@@ -25,6 +26,13 @@ export function AboutTab() {
 
       <SettingsSection title="Your Mixlog">
         <SettingsList>
+          <SettingsRow title="Changelog" description="What changed in every release, newest first." inline>
+            <Button asChild variant="secondary" size="md">
+              <Link to="/changelog" className="gap-2">
+                <History size={14} aria-hidden="true" /> What's new
+              </Link>
+            </Button>
+          </SettingsRow>
           <SettingsRow title="Open source" description="AGPL-3.0. Read exactly how your music is stored, or fork your own." inline>
             <Button asChild variant="secondary" size="md">
               <a href={SOURCE_URL} target="_blank" rel="noreferrer" className="gap-2">

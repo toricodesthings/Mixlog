@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { AudioLines, ChevronDown, ChevronsUpDown, Disc3, Link2, Plus, Scale, SquareSplitHorizontal, Upload } from 'lucide-react'
@@ -14,9 +14,11 @@ import { Dialog, DialogStage, DialogTitle } from '../primitives/Dialog'
 import { loadRelease, type ReleaseData } from '../releases/loaders'
 import { isComparable, partnerOf } from '../releases/stacks'
 import { VersionPicker, playableFrom } from '../releases/VersionPicker'
-import { ZONES, sceneOf } from '../scene/generate'
+import { useScenePointer } from '../../hooks/ui/use-scene-pointer'
+import type { Fingerprint } from '#/server/loudness'
+import { ZONES, frameOf, sceneOf } from '../scene/generate'
 import { Land } from '../scene/Land'
-import { useRoomStyle } from '../scene/palette'
+import { useRoom } from '../scene/palette'
 import { Sky } from '../scene/Sky'
 import { ABSwitch, Said, TONE, useAuditionContext } from './ABSwitch'
 import type { Side } from './ab'
@@ -59,6 +61,20 @@ export function ListeningRoom() {
   )
 }
 
+/** A song's night as the loaded release now has it: the player carries the fingerprint it had when Play was pressed,
+ *  so a measurement that lands while it plays reaches the room the moment the release reloads. */
+function useFreshScene(p: { sceneId: string; scene: Fingerprint | null }) {
+  return useRouterState({
+    select: (state) => {
+      for (const match of state.matches) {
+        const track = (match.loaderData as Partial<ReleaseData> | undefined)?.tracks?.find((t) => t.id === p.sceneId)
+        if (track) return track.scene ?? p.scene
+      }
+      return p.scene
+    },
+  })
+}
+
 function Room({ onLower }: { onLower: () => void }) {
   const player = usePlayer()
   const { playing } = player
@@ -68,8 +84,12 @@ function Room({ onLower }: { onLower: () => void }) {
   const lead = last.current.item
   const ab = player.item ? player.ab : last.current.ab
   const listen = useListenParam()
-  const { isDesktop } = useShellMode()
-  const room = useRoomStyle(lead.releaseId, lead.artworkId)
+  const { isDesktop, mode } = useShellMode()
+  const frame = frameOf(mode)
+  const leadScene = useFreshScene(lead)
+  const roomRef = useRef<HTMLDivElement>(null)
+  useScenePointer(roomRef)
+  const { style: room, settled } = useRoom(lead.releaseId, lead.artworkId)
   // A swipe down lowers it, the way it came; the gesture wakes once it has risen (it starts off-screen).
   const [sheet, setSheet] = useState<HTMLDivElement | null>(null)
   const [risen, setRisen] = useState(false)
@@ -93,9 +113,9 @@ function Room({ onLower }: { onLower: () => void }) {
         exit={{ y: below, transition: FALL }}
         onAnimationComplete={(definition) => definition && typeof definition === 'object' && 'y' in definition && definition.y === 0 && setRisen(true)}
       >
-        <div className="art-room h-full" style={room}>
+        <div ref={roomRef} className="art-room h-full" data-palette={settled ? undefined : 'pending'} style={room}>
           <div data-signal={ab ? undefined : 'readers'} className="art-scene @container relative isolate flex h-full flex-col overflow-hidden" data-room-scene>
-            {!ab && <Sky sceneId={lead.sceneId} fp={lead.scene} zone={isDesktop ? ZONES.roomDesktop : ZONES.roomCompact} />}
+            {!ab && <Sky sceneId={lead.sceneId} fp={leadScene} zone={isDesktop ? ZONES.roomDesktop : ZONES.roomCompact} frame={frame} />}
             {/* The night dims toward the edges, so the eye lands on the record */}
             <div aria-hidden="true" data-signal-read className="room-vignette pointer-events-none absolute inset-0 z-[1]" />
 
@@ -152,7 +172,7 @@ function Room({ onLower }: { onLower: () => void }) {
                   </motion.figure>
                 </div>
                 {/* Low and quiet under the record (scene-calm), and melting into the ground the transport stands on */}
-                <Land sceneId={lead.sceneId} fp={lead.scene} zone={isDesktop ? ZONES.roomDesktop : ZONES.roomCompact} className="scene-calm relative block h-[clamp(8rem,10.5cqw,13.5rem)] w-full shrink-0" />
+                <Land sceneId={lead.sceneId} fp={leadScene} zone={isDesktop ? ZONES.roomDesktop : ZONES.roomCompact} frame={frame} className="scene-calm relative block h-[clamp(8rem,10.5cqw,13.5rem)] w-full shrink-0" />
               </>
             )}
 
@@ -326,9 +346,11 @@ function Half({ side, ab, playing, sync, isDesktop }: { side: Side; ab: AB; play
   const heard = ab.live === side
   // The other side's night stands in until B has a version of its own
   const scene = deck ?? ab.a
+  const fresh = useFreshScene(scene)
+  const frame = frameOf(useShellMode().mode)
   const name = side.toUpperCase()
   // The mirror follows the moon, not the side: A wants it on the left, B on the right, each in its outer corner
-  const moonRight = sceneOf(scene.sceneId, scene.scene, ZONES.roomPair).sky.moon.side === 1
+  const moonRight = sceneOf(scene.sceneId, fresh, ZONES.roomPair, frame).sky.moon.side === 1
   const mirrored = (side === 'a') === moonRight ? '-scale-x-100' : undefined
   // The header ends at 4.5rem on desktop; on a phone it's pushed down by the safe area, so the record is too. The
   // caption takes exactly 5rem under it (the gap, the 44 px chip, the gap, the 20 px readout line; 6.25rem on a phone, where it's two lines); the record keeps 92% of what's left, so the ground below has some air.
@@ -344,7 +366,7 @@ function Half({ side, ab, playing, sync, isDesktop }: { side: Side; ab: AB; play
       style={toned(side)}
     >
       <div className={cn('room-scene absolute inset-0 -z-10', mirrored)}>
-        <Sky sceneId={scene.sceneId} fp={scene.scene} zone={ZONES.roomPair} />
+        <Sky sceneId={scene.sceneId} fp={fresh} zone={ZONES.roomPair} frame={frame} />
       </div>
       {/* A figure, so the caption under the record is its caption */}
       <figure className={cn('relative z-[2] flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-3 pb-1 [container-type:size]', isDesktop ? 'pt-[4.5rem]' : 'pt-[calc(4rem+env(safe-area-inset-top))]')}>
@@ -379,7 +401,7 @@ function Half({ side, ab, playing, sync, isDesktop }: { side: Side; ab: AB; play
         )}
         <Caption side={side} ab={ab} isDesktop={isDesktop} />
       </figure>
-      <Land sceneId={scene.sceneId} fp={scene.scene} zone={ZONES.roomPair} className={cn('room-scene scene-calm relative block w-full shrink-0', isDesktop ? 'h-[clamp(4rem,7cqw,8rem)]' : 'h-14', mirrored)} />
+      <Land sceneId={scene.sceneId} fp={fresh} zone={ZONES.roomPair} frame={frame} className={cn('room-scene scene-calm relative block w-full shrink-0', isDesktop ? 'h-[clamp(4rem,7cqw,8rem)]' : 'h-14', mirrored)} />
       {/* Over its night only, never the record or its words */}
       <div aria-hidden="true" className="room-veil pointer-events-none absolute inset-0 z-[1]" />
     </section>

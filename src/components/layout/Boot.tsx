@@ -3,6 +3,7 @@ import { Fragment, useEffect } from 'react'
 import { cn } from '../../lib/utils'
 import { BrandMark } from '../primitives'
 import { sceneOf, ZONES } from '../scene/generate'
+import { TubeBody } from '../scene/Tube'
 
 /** How long the boot takes to fly into the valley and fade off the page that has arrived under it (`.boot-leaving` in
  *  app.css). The page is live underneath the whole time, so it never waits on this. */
@@ -85,10 +86,7 @@ function Tube({ side, inset, s, b, tone }: (typeof TUBES)[number]) {
     >
       <svg {...TUBE_BOX}>
         <g transform={`scale(${s})`}>
-          <path d="M-5 -6V-22A5 5 0 0 1 5 -22V-6Z" fill="var(--boot-glass)" stroke="var(--boot-rim)" strokeWidth=".8" />
-          <circle cy="-27.6" r="1" fill="var(--boot-rim)" />
-          <rect x="-2.6" y="-19" width="5.2" height="9" rx=".8" fill="var(--boot-land-near)" opacity=".7" />
-          <rect x="-6" y="-6" width="12" height="6" rx="1.5" fill="var(--boot-land-near)" />
+          <TubeBody glass="var(--boot-glass)" rim="var(--boot-rim)" base="var(--boot-land-near)" />
         </g>
         <path
           className="boot-reflection"

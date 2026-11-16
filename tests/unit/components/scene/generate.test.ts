@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { DEFAULT_FINGERPRINT, fingerprintOf, type Fingerprint } from '#/server/loudness'
 import { reading } from '../../../support/analysis'
-import { hash32, sceneOf, TOP, ZONES, type MoonZone } from '#/components/scene/generate'
+import { archetypeOf, hash32, sceneOf, TOP, ZONES, type MoonZone } from '#/components/scene/generate'
 
 const ZONE: MoonZone = { x: [0.08, 0.2], y: [0.12, 0.24] }
 
@@ -39,12 +39,32 @@ describe('sceneOf', () => {
     expect(a).toEqual(b)
   })
 
-  it('gives two songs that measure exactly alike the same land but each its own sky', () => {
+  it('gives two songs that measure exactly alike the same big shapes but their own small ones and sky', () => {
     const a = sceneOf('track-1', FINGERPRINTS.default, ZONE)
     const b = sceneOf('track-2', FINGERPRINTS.default, ZONE)
-    // The sky lanterns ride on the land but are the id's, like the stars
-    expect({ ...a.land, lanterns: [] }).toEqual({ ...b.land, lanterns: [] })
+    expect(a.land.back).not.toBe(b.land.back)
+    expect(a.archetype).toBe(b.archetype)
+    expect(a.land.landmark).toBe(b.land.landmark)
+    expect(a.land.beacon[0]).toBe(b.land.beacon[0])
     expect(a.sky.stars).not.toEqual(b.sky.stars)
+  })
+
+  it('draws the default night for anything that is not a fingerprint', () => {
+    const fallback = sceneOf('bad', null, ZONE)
+    const { peak: _, ...missing } = FINGERPRINTS.loud
+    for (const bad of [missing, { ...FINGERPRINTS.loud, env: FINGERPRINTS.loud.env.slice(0, 22) }, JSON.stringify(FINGERPRINTS.loud)]) {
+      expect(sceneOf('bad', bad as unknown as Fingerprint, ZONE).land.back).toBe(fallback.land.back)
+    }
+  })
+
+  it('never draws a NaN or a collapsed line for 500 songs, at every frame', () => {
+    for (const [id, fp, zone] of SWEEP) {
+      for (const frame of [1920, 1280, 840]) {
+        const { land } = sceneOf(id, fp, zone, frame)
+        for (const d of [land.back, land.distant, land.far, land.signal, land.banks, land.near, land.tree, land.knoll]) expect(d).toMatch(/^[MLQHVZAa\d\s,.\-]+$/)
+        for (const d of [land.back, land.distant, land.far, land.signal]) expect(ridgeOf(d).length, `${id}@${frame}`).toBeGreaterThanOrEqual(12)
+      }
+    }
   })
 
   it('lets the song drive most of the night: a different reading changes at least half of everything drawn', () => {
@@ -138,7 +158,7 @@ describe('sceneOf', () => {
 
   it('is pinned for three fixtures, so no change moves a pixel by accident (bump SCENE and these on purpose)', () => {
     const pin = (id: string, fp: Fingerprint | null) => hash32(JSON.stringify(sceneOf(id, fp, ZONES.summaryDesktop)))
-    expect([pin('pin-1', null), pin('pin-2', FINGERPRINTS.loud), pin('pin-3', FINGERPRINTS.quiet)]).toEqual([3353591344, 3154139558, 1022282046])
+    expect([pin('pin-1', null), pin('pin-2', FINGERPRINTS.loud), pin('pin-3', FINGERPRINTS.quiet)]).toEqual([2556180398, 551902231, 1936559744])
   })
 
   // 500 songs, each measured differently, on every screen's zone
@@ -158,21 +178,69 @@ describe('sceneOf', () => {
     }
   })
 
-  it('shows a phone the story for 500 songs: the beacon, a lit window and a sky lantern inside the core (x 760–1160)', () => {
-    const core = (x: number) => x >= 760 && x <= 1160
+  it('shows a phone the whole story for 500 songs: its own frame holds the beacon, the hearth and a lit window', () => {
+    for (const [id, fp, zone] of SWEEP) {
+      const { land } = sceneOf(id, fp, zone, 840)
+      const inside = (x: number) => x >= 0 && x <= 840
+      expect(inside(land.beacon[0]), id).toBe(true)
+      expect(inside(land.hearth.x), id).toBe(true)
+      expect(land.windows.some((w) => inside(w.x)), id).toBe(true)
+    }
+  })
+
+  it('keeps the light budget for 500 songs: 5–11 points, the hearth on a third, no two groups within 140 units', () => {
     for (const [id, fp, zone] of SWEEP) {
       const { land } = sceneOf(id, fp, zone)
-      expect(core(land.beacon[0])).toBe(true)
-      expect(land.hamlet.some((h) => core(h.window[0]))).toBe(true)
-      expect(land.lanterns.some((l) => core(l.x))).toBe(true)
+      const points = land.windows.length + land.shore.length + land.lanterns.length + land.fireflies.length + 1
+      expect(points, id).toBeGreaterThanOrEqual(5)
+      expect(points, id).toBeLessThanOrEqual(11)
+      expect(Math.abs(Math.abs(land.hearth.x / 1920 - 0.5) - 0.14), id).toBeLessThanOrEqual(0.02)
+      const groups = land.hamlet.filter((h) => h.far).map((h) => h.x)
+      for (const g of groups) expect(Math.abs(g - land.hearth.x), id).toBeGreaterThanOrEqual(140)
+      expect(land.lanterns.length && land.fireflies.length).toBe(0)
     }
+  })
+
+  it('lets the song pick its archetype and landmark, and every one occurs', () => {
+    const nights = SWEEP.map(([id, fp, zone]) => sceneOf(id, fp, zone))
+    const count = (a: string) => nights.filter((n) => n.archetype === a).length
+    expect(count('valley')).toBeGreaterThan(count('coast'))
+    expect(count('valley')).toBeGreaterThan(count('highlands'))
+    expect(count('coast')).toBeGreaterThan(0)
+    expect(count('highlands')).toBeGreaterThan(0)
+    for (const lm of ['mast', 'lighthouse', 'dome', 'windmill', 'bridge']) expect(nights.some((n) => n.land.landmark === lm), lm).toBe(true)
+  })
+
+  it('draws the song’s constellation from its envelope: seven stars, left to right', () => {
+    const { constellation } = sceneOf('k', FINGERPRINTS.loud, ZONE).sky
+    expect(constellation).toHaveLength(7)
+    constellation.slice(1).forEach(([l], i) => expect(l).toBeGreaterThan(constellation[i][0]))
+  })
+
+  it('never makes two songs the same place: the ranges of 200 songs differ pairwise (U6)', () => {
+    const lines = SWEEP.slice(0, 200).map(([id, fp]) => {
+      const { land } = sceneOf(id, fp, ZONE)
+      const at = (d: string) => {
+        const r = ridgeOf(d)
+        return Array.from({ length: 64 }, (_, i) => {
+          const x = (i / 63) * 1920
+          const j = Math.max(1, r.findIndex(([px]) => px >= x))
+          return r[Math.min(j, r.length - 1)][1]
+        })
+      }
+      return [...at(land.back), ...at(land.distant)]
+    })
+    let smallest = Infinity
+    for (let i = 0; i < lines.length; i++)
+      for (let j = i + 1; j < lines.length; j++) smallest = Math.min(smallest, Math.sqrt(lines[i].reduce((s, v, k) => s + (v - lines[j][k]) ** 2, 0) / lines[i].length))
+    expect(smallest).toBeGreaterThan(3)
   })
 
   it('keeps every ridge under a slope of 0.9 for 500 songs, so no hill reads as a pyramid or a wall', () => {
     for (const [id, fp, zone] of SWEEP) {
       const { land } = sceneOf(id, fp, zone)
       // The banks' and near banks' first two shapes are their ridges; what follows them is woods
-      const lines = [land.back, land.distant, land.far, land.signal, ...land.banks.split('Z').slice(0, 2), ...land.near.split('Z').slice(0, 2)].map(ridgeOf)
+      const lines = [land.back, land.distant, land.far, land.signal, ...land.banks.split('Z').slice(0, archetypeOf(fp) === 'coast' ? 1 : 2), ...land.near.split('Z').slice(0, 2)].map(ridgeOf)
       const steepest = Math.max(...lines.flatMap((line) => line.slice(1).map(([x, y], i) => (x - line[i][0] > 0.5 ? Math.abs(y - line[i][1]) / (x - line[i][0]) : 0))))
       expect(steepest, id).toBeLessThanOrEqual(0.9)
     }
@@ -188,7 +256,8 @@ describe('sceneOf', () => {
         const [[ax, ay], [bx, by]] = [signal[i - 1], signal[i]]
         return ay + ((by - ay) * (x - ax)) / (bx - ax || 1)
       }
-      for (const bank of land.banks.split('Z').slice(0, 2).map(ridgeOf)) {
+      // A coast has one mid bank: its water runs off the other edge
+      for (const bank of land.banks.split('Z').slice(0, archetypeOf(fp) === 'coast' ? 1 : 2).map(ridgeOf)) {
         // On the band, away from the lake, where the crest runs down to the water
         for (const [x, y] of bank.filter(([x]) => x >= 0 && x <= 1920 && (x < land.lake.x0 - 260 || x > land.lake.x1 + 260))) {
           // 24 below the trace, or the water's edge where the trace runs that low
@@ -216,7 +285,8 @@ describe('sceneOf', () => {
 
   it('never lets two clouds touch, even at the ends of their drift', () => {
     for (let n = 0; n < 60; n++) {
-      const { clouds } = sceneOf(`c${n}`, FINGERPRINTS.loud, ZONE).sky
+      // Far cumulus only: the near banks are a depth of their own, meant to pass in front
+      const clouds = sceneOf(`c${n}`, FINGERPRINTS.loud, ZONE).sky.clouds.filter((c) => !c.near)
       expect(clouds.length).toBeGreaterThanOrEqual(1)
       clouds.forEach((a, i) =>
         clouds.slice(i + 1).forEach((b) => {

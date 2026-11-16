@@ -1,3 +1,4 @@
+import { inflateSync } from 'node:zlib'
 import { expect, it } from 'vitest'
 
 import { objects } from '../../support/cloudflare-workers'
@@ -30,7 +31,17 @@ it('seeds every lane: tests, a master waiting to be picked, alternates, and Rele
     'First Light': { final: 'v1 wav', master: [], mix: [], alternates: [] },
     Tide: { final: 'v2 wav', master: [], mix: [], alternates: ['instrumental', 'acapella'] },
     Lamplight: { final: 'v2 wav', master: [], mix: [], alternates: [] },
+    'Coast test': { final: null, master: [], mix: ['v1 mp3'], alternates: [] },
+    'Highlands test': { final: null, master: [], mix: ['v1 mp3'], alternates: [] },
   })
+  // The two landscape samples keep the night written for them, never the arpeggio's measured one
+  const coast = await call(getRelease, releases.find((r) => r.title === 'Coast test')!.id)
+  expect(coast.tracks[0].scene?.width).toBe(0.85)
+  // …and a cover, a real PNG: its pixels inflate back to the gradient's first colour
+  const png = [...objects.values()].find((o) => o.httpMetadata?.contentType === 'image/png')!.bytes
+  expect([coast.versions.some((v) => v.kind === 'artwork'), [...png.slice(1, 4)]]).toEqual([true, [0x50, 0x4e, 0x47]])
+  const idat = png.slice(41, 41 + new DataView(png.buffer, png.byteOffset).getUint32(33))
+  expect([...inflateSync(idat).subarray(0, 4)]).toEqual([0, 64, 150, 170])
   const harbour = await call(getRelease, releases.find((r) => r.title === 'Harbour Lights')!.id)
   expect([harbour.pruned, harbour.versions.every((v) => v.released_at)]).toEqual([2, true])
   expect([...objects.values()].filter((o) => o.httpMetadata?.contentType === 'audio/mpeg')[0].bytes.slice(0, 3)).toEqual(new Uint8Array([0x49, 0x44, 0x33]))

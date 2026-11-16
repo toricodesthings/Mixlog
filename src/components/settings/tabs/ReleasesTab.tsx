@@ -6,7 +6,8 @@ import { getSettings, saveDefaultArtist, saveKeepDays } from '#/server/settings'
 import { DEFAULT_KEEP_DAYS, KEEP_CHOICES, type KeepDays } from '#/server/shipping'
 import { cn } from '../../../lib/utils'
 import { Led, Skeleton } from '../../primitives'
-import { ValueSelect } from '../../shared/Composer'
+import { ArtistPicker, useArtistsParam } from '../../artists/ArtistPicker'
+import { ArtistAvatar } from '../../artists/ArtistAvatar'
 import { SettingsRow, SettingsSection } from '../SettingsLayout'
 
 const CHOICE: Record<string, { title: string; says: string }> = {
@@ -15,6 +16,8 @@ const CHOICE: Record<string, { title: string; says: string }> = {
   30: { title: 'A month', says: 'Other masters and mixes are erased a month after it goes out.' },
   forever: { title: 'Keep everything', says: 'Nothing is erased: every bounce stays set aside with its release, and it can always move back.' },
 }
+/** `?artists=default` opens the picker over Settings, as `?artists=<trackId>` does over Details. */
+const DEFAULT = 'default'
 const keyOf = (days: KeepDays) => (days === null ? 'forever' : String(days))
 
 /** What happens to the versions that didn't ship once a release moves to Releases. Kept by the Worker, not this
@@ -28,6 +31,8 @@ export function ReleasesTab() {
   const [problem, setProblem] = useState<string | null>(null)
   const [artist, setArtist] = useState<string | null | undefined>(undefined)
   const [roster, setRoster] = useState<ArtistRow[]>([])
+  const picker = useArtistsParam()
+  const current = roster.find((a) => a.id === artist)
 
   useEffect(() => {
     void listArtists().then(setRoster).catch(() => {})
@@ -66,15 +71,25 @@ export function ReleasesTab() {
       <h2 className="mb-10 font-display text-2xl font-semibold text-ink">Releases</h2>
       <SettingsSection title="New tracks">
         <SettingsRow title="Default artist" description="Every new track starts with them as its main artist. Change it on any track in Details, or when you start a release.">
-          <ValueSelect
-            label="Default artist"
-            value={artist ?? 'none'}
+          <button
+            type="button"
             disabled={artist === undefined}
-            onChange={(next) => void chooseArtist(next === 'none' ? null : next)}
-            options={[{ value: 'none', label: 'None' }, ...roster.map((a) => ({ value: a.id, label: a.name }))]}
-          />
+            onClick={() => void picker.show(DEFAULT)}
+            aria-label={`Default artist: ${current?.name ?? 'None'}. Change`}
+            className="press flex min-h-11 max-w-full items-center gap-2.5 rounded-full border border-line-light bg-white/[0.04] py-1 pr-4 pl-1.5 text-left transition-[border-color,background-color] hover:border-accent/50 hover:bg-accent-dim focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50 disabled:opacity-60"
+          >
+            {current ? <ArtistAvatar id={current.id} name={current.name} src={current.profile_image_url} size="chip" className="size-8" /> : <span className="size-8 shrink-0 rounded-full bg-white/[0.04]" />}
+            <span className="truncate text-sm font-medium text-ink">{current?.name ?? 'None'}</span>
+          </button>
         </SettingsRow>
       </SettingsSection>
+      {picker.open === DEFAULT && (
+        <ArtistPicker
+          single
+          lineup={current ? [{ id: current.id, name: current.name, role: 'artist', profile_image_url: current.profile_image_url }] : []}
+          onDone={(next) => void listArtists().then(setRoster).catch(() => {}).then(() => chooseArtist(next[0]?.id ?? null))}
+        />
+      )}
       <SettingsSection title="After a release goes out">
         <p className="text-[0.8125rem] leading-relaxed text-ink-muted">
           Each track keeps what shipped; the rest is set aside. Until it's erased, the release can move back to Upcoming with all of them. Kept for every device.

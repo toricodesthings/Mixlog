@@ -7,6 +7,7 @@ import { env } from 'cloudflare:workers'
 import { db } from '#/server/db'
 import { fileKey } from '#/server/files'
 import { measureMissing } from '#/server/meter'
+import type { Fingerprint } from '#/server/loudness'
 import { currentPins, notes, releases, stamp, stampNow, tracks, versions } from '#/server/schema'
 
 const devOnly = () => {
@@ -27,8 +28,12 @@ const wipe = createServerOnlyFn(async () => {
 /** A sample file: its lane or stack, what it's made of (a WAV arpeggio, one of the two MP3 test bounces, a PDF), its
  *  note, and how many days ago it landed. `final` pins it as the track's final; `aside` is set aside by the release's move. */
 type SampleFile = { kind: 'mix' | 'master' | 'instrumental' | 'acapella' | 'license'; as: 'wav' | 'mix' | 'master' | 'pdf'; note?: string; days: number; final?: true; aside?: true }
-type SampleTrack = { title: string; notes: number[]; origin?: 'cover' | 'remix'; files: SampleFile[] }
-const SAMPLES: { title: string; format: 'single' | 'ep'; releasedOn?: string; tracks: SampleTrack[] }[] = [
+/** `scene` is written straight onto the track before the meter runs (the stamp is `WHERE scene IS NULL`), so a sample
+ *  can show a landscape the arpeggio would never measure as. */
+type SampleTrack = { title: string; notes: number[]; origin?: 'cover' | 'remix'; scene?: Fingerprint; files: SampleFile[] }
+/** `cover`: a release's artwork as a PNG gradient from its top colour to its bottom (RGB), so the room's palette is read. */
+type Rgb = [number, number, number]
+const SAMPLES: { title: string; format: 'single' | 'ep'; releasedOn?: string; cover?: [Rgb, Rgb]; tracks: SampleTrack[] }[] = [
   {
     title: 'Blue Hour',
     format: 'ep',
@@ -79,6 +84,25 @@ const SAMPLES: { title: string; format: 'single' | 'ep'; releasedOn?: string; tr
       { title: 'Lamplight', notes: [46, 50, 53, 57], files: [{ kind: 'master', as: 'master', days: 14, aside: true }, { kind: 'master', as: 'wav', days: 12, final: true }] },
     ],
   },
+  // The two landscapes the arpeggio never reaches: a wide mix (coast) and a loud, dynamic one (highlands)
+  {
+    title: 'Coast test',
+    format: 'single',
+    cover: [[64, 150, 170], [12, 48, 72]],
+    tracks: [{
+      title: 'Coast test', notes: [50, 55, 59, 62], files: [{ kind: 'mix', as: 'mix', days: 2 }],
+      scene: { v: 1, loud: 0.45, dyn: 0.4, width: 0.85, weather: 0.55, peak: 0.7, length: 0.5, env: [0.3, 0.35, 0.42, 0.5, 0.55, 0.52, 0.6, 0.7, 0.66, 0.62, 0.58, 0.64, 0.72, 0.8, 0.86, 0.9, 1, 0.94, 0.85, 0.7, 0.6, 0.5, 0.4, 0.32] },
+    }],
+  },
+  {
+    title: 'Highlands test',
+    format: 'single',
+    cover: [[176, 96, 140], [44, 24, 52]],
+    tracks: [{
+      title: 'Highlands test', notes: [45, 52, 57, 60], files: [{ kind: 'mix', as: 'mix', days: 1 }],
+      scene: { v: 1, loud: 0.85, dyn: 0.8, width: 0.3, weather: 0.35, peak: 0.35, length: 0.6, env: [0.15, 0.2, 0.45, 0.8, 1, 0.9, 0.5, 0.25, 0.2, 0.3, 0.6, 0.85, 0.95, 0.7, 0.35, 0.2, 0.25, 0.55, 0.9, 0.98, 0.8, 0.45, 0.2, 0.1] },
+    }],
+  },
 ]
 
 /** The two MP3 test bounces (`fixtures/`, encoded once from `arpeggio`), loaded only when seeding. */
@@ -100,9 +124,18 @@ const seed = createServerOnlyFn(async () => {
     const releaseId = crypto.randomUUID()
     const out = Boolean(sample.releasedOn)
     await db.insert(releases).values({ id: releaseId, title: sample.title, format: sample.format, releaseDate: sample.releasedOn ?? null, releasedAt: out ? stampNow : null, createdAt: stamp(20) })
+    if (sample.cover) {
+      // Stored as addArtwork stores one; its preview is made the first time it's served.
+      const id = crypto.randomUUID()
+      const key = fileKey({ releaseId }, 'artwork', id)
+      const bytes = await gradientPng(...sample.cover)
+      const filename = `${sample.title}.png`
+      await env.FILES.put(key, bytes, { httpMetadata: { contentType: 'image/png' }, customMetadata: { release: releaseId, kind: 'artwork', version: '1', filename } })
+      await db.insert(versions).values({ id, releaseId, kind: 'artwork', number: 1, r2Key: key, filename, contentType: 'image/png', size: bytes.byteLength })
+    }
     for (const [i, t] of sample.tracks.entries()) {
       const trackId = crypto.randomUUID()
-      await db.insert(tracks).values({ id: trackId, releaseId, position: i + 1, title: t.title, origin: t.origin ?? 'original' })
+      await db.insert(tracks).values({ id: trackId, releaseId, position: i + 1, title: t.title, origin: t.origin ?? 'original', scene: t.scene ?? null })
       for (const [n, f] of t.files.entries()) {
         const id = crypto.randomUUID()
         const key = fileKey({ releaseId, trackId }, f.kind, id)
@@ -156,6 +189,41 @@ export function arpeggio(notes: number[], gain: number): Uint8Array<ArrayBuffer>
     out.setInt16(44 + i * 2, Math.round(wave * Math.exp(-t * 6) * gain * 0x7fff), true)
   }
   return new Uint8Array(out.buffer)
+}
+
+/** A 512 px square PNG, a vertical gradient from `top` to `bottom` (RGB): the smallest real cover. The platform's
+ *  `deflate` stream is PNG's zlib; the chunks only need their CRC. */
+export async function gradientPng(top: Rgb, bottom: Rgb, size = 512): Promise<Uint8Array<ArrayBuffer>> {
+  const raw = new Uint8Array(size * (1 + size * 3))
+  for (let y = 0; y < size; y++) {
+    const row = y * (1 + size * 3) // each row starts with filter byte 0
+    const rgb = top.map((c, i) => Math.round(c + ((bottom[i] - c) * y) / (size - 1)))
+    for (let x = 0; x < size; x++) raw.set(rgb, row + 1 + x * 3)
+  }
+  const idat = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer())
+  const ihdr = new Uint8Array(13)
+  new DataView(ihdr.buffer).setUint32(0, size), new DataView(ihdr.buffer).setUint32(4, size)
+  ihdr.set([8, 2, 0, 0, 0], 8) // 8-bit RGB, no interlace
+  const chunk = (type: string, data: Uint8Array) => {
+    const out = new Uint8Array(12 + data.length)
+    const view = new DataView(out.buffer)
+    view.setUint32(0, data.length)
+    out.set(new TextEncoder().encode(type), 4)
+    out.set(data, 8)
+    view.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length)))
+    return out
+  }
+  const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', new Uint8Array())]
+  return new Uint8Array(await new Blob(parts).arrayBuffer())
+}
+
+function crc32(bytes: Uint8Array) {
+  let c = ~0
+  for (const b of bytes) {
+    c ^= b
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1))
+  }
+  return ~c >>> 0
 }
 
 /** A one-page PDF license, the smallest a reader opens: a catalog, a page, Helvetica, the text. */

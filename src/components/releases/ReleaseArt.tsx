@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { fileUrl, previewUrl } from '../../lib/files'
-import { idHue } from '../scene/palette'
+import { idHue, readPalette } from '../scene/palette'
 import { cn } from '../../lib/utils'
 
 const SIZES = {
@@ -39,7 +39,11 @@ export function ReleaseArt({ title, id, artworkId, src, full, size, className }:
           loading={size === 'row' ? 'lazy' : 'eager'}
           fetchPriority={size === 'stage' ? 'high' : 'auto'}
           decoding="async"
-          onLoad={() => setLoaded(url)}
+          onLoad={() => {
+            setLoaded(url)
+            // The release's colours, read now, so opening it from here is a cache hit
+            if (artworkId && !src && !full) void readPalette(url).catch(() => {})
+          }}
           onError={() => setBroken(url)}
           className={cn('size-full object-cover transition-opacity duration-(--duration-smooth)', loaded === url ? 'opacity-100' : 'opacity-0')}
         />

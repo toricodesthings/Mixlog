@@ -68,7 +68,7 @@ export function TrackArtistsButton({ trackId, lineup, label }: { trackId: string
  * them (main by default), Main or Feat. beside each name, and a name that isn't on the roster yet is one tap to add.
  * Nothing is saved until Done, which hands the artists back at once; the save runs behind it.
  */
-export function ArtistPicker({ trackTitle, number, lineup, onDone }: { trackTitle: string; number: number; lineup: OnTrack[]; onDone: (lineup: OnTrack[]) => void }) {
+export function ArtistPicker({ trackTitle, number, lineup, onDone, single }: { trackTitle?: string; number?: number; lineup: OnTrack[]; onDone: (lineup: OnTrack[]) => void; /** One artist, no Main or Feat.: Settings' default artist. */ single?: boolean }) {
   const { close } = useArtistsParam()
   const { isTouch } = useShellMode()
   const router = useRouter()
@@ -89,7 +89,8 @@ export function ArtistPicker({ trackTitle, number, lineup, onDone }: { trackTitl
   const shown = matchArtists(roster ?? [], query)
   const name = query.trim()
   const exact = (roster ?? []).some((a) => fold(a.name) === fold(name))
-  const toggle = (a: OnTrack) => setChosen((all) => (all.some((c) => c.id === a.id) ? all.filter((c) => c.id !== a.id) : [...all, { ...a, role: 'artist' }]))
+  const toggle = (a: OnTrack) =>
+    setChosen((all) => (all.some((c) => c.id === a.id) ? all.filter((c) => c.id !== a.id) : single ? [{ ...a, role: 'artist' }] : [...all, { ...a, role: 'artist' }]))
   const setRole = (id: string, role: TrackArtistRole) => setChosen((all) => all.map((c) => (c.id === id ? { ...c, role } : c)))
   const addNew = () => {
     setAdding(true)
@@ -98,7 +99,7 @@ export function ArtistPicker({ trackTitle, number, lineup, onDone }: { trackTitl
       .then(({ id }) => {
         const row = { id, name, role: null, profile_image_url: null, track_count: 0 }
         setRoster((all) => [...(all ?? []), row].sort((a, b) => a.name.localeCompare(b.name)))
-        setChosen((all) => [...all, { id, name, role: 'artist', profile_image_url: null }])
+        setChosen((all) => [...(single ? [] : all), { id, name, role: 'artist', profile_image_url: null }])
         setQuery('')
         void router.invalidate()
       })
@@ -113,28 +114,28 @@ export function ArtistPicker({ trackTitle, number, lineup, onDone }: { trackTitl
   return (
     <Composer
       onClose={() => void close()}
-      title="Artists"
+      title={single ? 'Default artist' : 'Artists'}
       icon={UsersRound}
       eyebrow={
         <>
           <Led lit={chosen.length > 0} />
-          <span className="truncate">Trk {String(number).padStart(2, '0')} · {trackTitle}</span>
+          <span className="truncate">{single ? 'New tracks' : `Trk ${String(number).padStart(2, '0')} · ${trackTitle}`}</span>
         </>
       }
       submit={{ label: 'Done', icon: Check, onSubmit: done }}
       className="gap-5 sm:max-w-2xl [&>*]:min-w-0"
     >
-      <section aria-label="On this track" className="flex flex-col gap-2">
+      <section aria-label={single ? 'Default artist' : 'On this track'} className="flex flex-col gap-2">
         {chosen.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-line-strong px-4 py-3.5 text-sm text-ink-muted">Tap an artist below to add them to this track.</p>
+          <p className="rounded-2xl border border-dashed border-line-strong px-4 py-3.5 text-sm text-ink-muted">{single ? 'None: new tracks start with no artist. Tap an artist below to choose one.' : 'Tap an artist below to add them to this track.'}</p>
         ) : (
           <ol className="flex flex-col gap-1.5">
             {chosen.map((a) => (
               <li key={a.id} className="surface-item flex min-h-14 items-center gap-3 rounded-2xl py-1.5 pr-1.5 pl-2">
                 <ArtistAvatar id={a.id} name={a.name} src={a.profile_image_url} size="chip" className="size-9" />
                 <span className="min-w-0 flex-1 truncate font-display text-[0.9375rem] font-semibold">{a.name}</span>
-                <SegmentedControl ariaLabel={`${a.name} as main or featured`} value={a.role} onChange={(role) => setRole(a.id, role)} options={ROLES} size="sm" />
-                <Button variant="ghost" size="icon" aria-label={`Take ${a.name} off this track`} onClick={() => toggle(a)} className="size-9 shrink-0">
+                {!single && <SegmentedControl ariaLabel={`${a.name} as main or featured`} value={a.role} onChange={(role) => setRole(a.id, role)} options={ROLES} size="sm" />}
+                <Button variant="ghost" size="icon" aria-label={single ? `Use no default artist` : `Take ${a.name} off this track`} onClick={() => toggle(a)} className="size-9 shrink-0">
                   <X size={15} aria-hidden="true" />
                 </Button>
               </li>

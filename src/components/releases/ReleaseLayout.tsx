@@ -12,7 +12,7 @@ import * as ScrollArea from '../primitives/ScrollArea'
 import { Page } from '../layout/Page'
 import { DOCK } from '../meters/MetersPanel'
 import { UploadButton } from '../uploads/UploadDialog'
-import { useRoomStyle } from '../scene/palette'
+import { useRoom } from '../scene/palette'
 import { MetaLine } from '../shared/MetaLine'
 import { ArtworkButton } from './ArtworkButton'
 import { dateLabel, releaseFacts } from './browse'
@@ -47,7 +47,7 @@ export function ReleaseLayout(data: ReleaseData) {
   const oneTrack = section === 'upcoming' && (/\/tracks\/[^/]+$/.test(path) || (release.format === 'single' && path.endsWith('/tracks')))
   const count = release.format === 'single' ? null : tracks.length
   const slide = useHoverSlide('rounded-xl bg-accent-dim')
-  const room = useRoomStyle(release.id, release.artwork_id)
+  const { style: room, settled } = useRoom(release.id, release.artwork_id)
   const cover = <ArtworkButton releaseId={release.id} title={release.title} artworkId={release.artwork_id} onFailure={setArtFailure} />
   const facts = artFailure ? (
     <p role="alert" className="truncate text-[0.8125rem] text-feedback-error">
@@ -58,7 +58,7 @@ export function ReleaseLayout(data: ReleaseData) {
   )
 
   return (
-    <div className="art-room flex min-w-0 flex-1" style={isDesktop ? ({ ...room, '--shell-header-h': 'calc(5.5rem + 1px)' } as CSSProperties) : room}>
+    <div className="art-room flex min-w-0 flex-1" data-palette={settled ? undefined : 'pending'} style={isDesktop ? ({ ...room, '--shell-header-h': 'calc(5.5rem + 1px)' } as CSSProperties) : room}>
       {isDesktop && (
         <aside aria-label={release.title} className="flex h-full w-64 shrink-0 flex-col border-r border-line/60">
           {/* The release itself, on every part: its cover, title and facts, level with the page's header beside it (the

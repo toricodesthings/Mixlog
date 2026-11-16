@@ -9,9 +9,10 @@ import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { deviceZone, formatDay, todayIn } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { Fetching } from '../player/controls'
-import { usePlayer, usePlayhead, type Playable } from '../player/Player'
+import { useListenParam, usePlayer, usePlayhead, type Playable } from '../player/Player'
 import { Led, Meter, useHoverSlide } from '../primitives'
-import { sceneOf, ZONES } from '../scene/generate'
+import { useScenePointer } from '../../hooks/ui/use-scene-pointer'
+import { frameOf, sceneOf, ZONES } from '../scene/generate'
 import { Land } from '../scene/Land'
 import { Sky } from '../scene/Sky'
 import { MetaLine } from '../shared/MetaLine'
@@ -28,8 +29,12 @@ import { formatOf, playableOf, stationsOf, versionLabel, type Station } from './
  * The tracklist follows below. Every fact appears once on the screen.
  */
 export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
-  const { isCompact, isDesktop } = useShellMode()
+  const { isCompact, isDesktop, mode } = useShellMode()
   const player = usePlayer()
+  const frame = frameOf(mode)
+  const sceneRef = useRef<HTMLElement>(null)
+  // The scene notices the pointer, except while the listening room covers it
+  useScenePointer(sceneRef, !useListenParam().open)
   const [artFailure, setArtFailure] = useState<string | null>(null)
   const rowSlide = useHoverSlide()
   const section = sectionOf(release)
@@ -55,9 +60,9 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
 
   return (
     <>
-      <section aria-labelledby="release-title" className={cn('art-scene @container relative isolate flex shrink-0 flex-col overflow-hidden', isCompact ? 'min-h-full' : release.format === 'single' ? 'h-full min-h-[42.25rem]' : 'h-full min-h-[43.5rem]')}>
+      <section ref={sceneRef} aria-labelledby="release-title" className={cn('art-scene @container relative isolate flex shrink-0 flex-col overflow-hidden', isCompact ? 'min-h-full' : release.format === 'single' ? 'h-full min-h-[42.25rem]' : 'h-full min-h-[43.5rem]')}>
         {/* Upper left when the signal path sits right; under it, above the ridges, when it spans the sky */}
-        <Sky sceneId={sceneId} fp={scene} zone={moonZone} />
+        <Sky sceneId={sceneId} fp={scene} zone={moonZone} frame={frame} />
 
         {/* The signal path floats in the sky on its own glass, so it reads the same over any artwork (under the part tabs, when they float here). */}
         {/* Clear of the header (and the part tabs on compact) floating over the top of the sky */}
@@ -66,11 +71,11 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
         <SignalPath section={section} releaseId={release.id} stations={stations} />
 
         <div className="min-h-12 flex-1" />
-        {/* The land grows with a tall screen, so the sky never outweighs it; on desktop it gives way (its sky side
-            cropped) before the page would scroll, so a scene that fits never scrolls, player bar or not. Below the scene at its
+        {/* The land grows with a tall screen, so the sky never outweighs it; on desktop its box gives way (the peaks
+            then rise behind the signal path's glass, never cropped) before the page would scroll, so a scene that fits never scrolls, player bar or not. Below the scene at its
             smallest (42.25rem, 43.5rem with an EP's strip) it stops giving way and scrolls instead */}
         <div className={cn('scene-horizon relative', isCompact ? 'h-[max(15.625cqw,30dvh)] shrink-0' : 'h-[max(15.625cqw,24dvh)] min-h-28 shrink')}>
-          <Land sceneId={sceneId} fp={scene} zone={moonZone} className="relative block h-full w-full" />
+          <Land sceneId={sceneId} fp={scene} zone={moonZone} frame={frame} seat className="relative block h-full w-full" />
         </div>
 
         {/* Now playing: the cover, the title, its facts once, Play, and (for an EP or album) a strip with a segment per
@@ -79,7 +84,7 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
             land to the ground with no seam. */}
         <div
           className={cn('scene-ground relative -mt-px flex items-stretch gap-4 px-4 sm:gap-8 sm:px-10', isCompact ? 'py-8' : 'py-10')}
-          style={{ '--scene-glow-x': `${(sceneOf(sceneId, scene, moonZone).land.glowX / 1920) * 100}%` } as CSSProperties}
+          style={{ '--scene-glow-x': `${(sceneOf(sceneId, scene, moonZone, frame).land.glowX / frame) * 100}%` } as CSSProperties}
         >
           <div className="flex shrink-0 items-center">
             <ArtworkButton releaseId={release.id} title={release.title} artworkId={release.artwork_id} onFailure={setArtFailure} size="stage" />
