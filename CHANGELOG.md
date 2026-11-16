@@ -6,6 +6,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Changed
+
+- Playing uses far less of a phone's power: the playhead draws only as often as it visibly moves.
+- Pages open faster: the app's files stay cached between visits, and a release hovered then opened loads once.
+- The tab icon is a small vector mark instead of a large picture.
+- Opening a release, a list or an artist asks the server once instead of several times.
+- The lock screen shows the cover's light preview, not the full-size original.
+
+### Fixed
+
+- Upcoming and Releases still load with more than 99 releases in one.
+- A missing artist's page says Not found instead of failing.
+- The listening room's playhead no longer flickers while a song plays: it breathes with the music smoothly.
+
 ## [1.6.1] - 2026-11-15
 
 ### Added

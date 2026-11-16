@@ -30,7 +30,6 @@ import { formatOf, playableOf, stationsOf, versionLabel, type Station } from './
 export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
   const { isCompact, isDesktop } = useShellMode()
   const player = usePlayer()
-  const playhead = usePlayhead()
   const [artFailure, setArtFailure] = useState<string | null>(null)
   const rowSlide = useHoverSlide()
   const section = sectionOf(release)
@@ -133,7 +132,7 @@ export function ReleaseSummary({ release, tracks, versions }: ReleaseData) {
                       <span aria-hidden="true" className="relative h-1.5 w-full overflow-hidden rounded-full bg-line-strong group-enabled:group-hover:bg-ink-muted/40">
                         {version && <span className="absolute inset-0 bg-accent/45" />}
                         {isLive(playable) && (
-                          <span data-playhead className="absolute inset-y-0 left-0 w-(--fill) bg-accent shadow-[0_0_8px_var(--accent)]" style={{ '--fill': `${playhead.duration ? (playhead.time / playhead.duration) * 100 : 0}%` } as CSSProperties} />
+                          <SegmentLit />
                         )}
                       </span>
                     </button>
@@ -338,5 +337,18 @@ function MarqueeTitle({ title }: { title: string }) {
     >
       <span>{title}</span>
     </h1>
+  )
+}
+
+/** The playing segment's lit part: its own component, so only it re-renders with the playhead. It slides (a transform)
+ *  rather than widening, so each frame is composited, not laid out. */
+function SegmentLit() {
+  const { time, duration } = usePlayhead()
+  return (
+    <span
+      data-playhead
+      className="absolute inset-0 bg-accent shadow-[0_0_8px_var(--accent)] [translate:calc((var(--share)-1)*100%)_0]"
+      style={{ '--share': duration ? Math.min(1, time / duration) : 0 } as CSSProperties}
+    />
   )
 }

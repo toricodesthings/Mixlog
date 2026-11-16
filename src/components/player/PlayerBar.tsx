@@ -87,7 +87,6 @@ export function PlayerBar() {
  *  tucked it sits beside the current tab, title and play only. */
 export function MiniPlayer({ tucked }: { tucked: boolean }) {
   const { item, playing, ab } = usePlayer()
-  const { time, duration } = usePlayhead()
   const openRoom = useOpenRoom()
   if (!item) return null
   return (
@@ -112,7 +111,13 @@ export function MiniPlayer({ tucked }: { tucked: boolean }) {
       </button>
       {!tucked && (ab?.b ? <ABSwitch size="bar" className="shrink-0" /> : <Meter live={playing} bars={4} className="shrink-0" />)}
       <PlayToggle size="sm" />
-      <span aria-hidden="true" data-playhead className="absolute inset-x-5 bottom-0 h-0.5 origin-left scale-x-(--share) rounded-full bg-accent" style={{ '--share': duration ? time / duration : 0 } as CSSProperties} />
+      <MiniHairline />
     </motion.section>
   )
+}
+
+/** The mini player's hairline: its own component, so the playhead re-renders it alone, not the (layout-animated) bar. */
+function MiniHairline() {
+  const { time, duration } = usePlayhead()
+  return <span aria-hidden="true" data-playhead className="absolute inset-x-5 bottom-0 h-0.5 origin-left scale-x-(--share) rounded-full bg-accent" style={{ '--share': duration ? time / duration : 0 } as CSSProperties} />
 }

@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils'
 import { Tip, Transfer } from '../primitives'
 import { formatLength } from '../releases/browse'
 import type { Side } from './ab'
-import { readiness, usePlayer, usePlayhead } from './Player'
+import { readiness, usePlayer, usePlayhead, useVolume } from './Player'
 
 /** The transport's controls, shared by the bar and the listening room, so they look and behave the same everywhere. */
 
@@ -91,7 +91,7 @@ export function Scrubber({ deck, className }: { deck?: Side; className?: string 
 
 /** Mute, and the level: louder sounds better, so it's always in reach and always the listener's call. */
 export function VolumeControl({ className }: { className?: string }) {
-  const { volume, muted, setVolume, setMuted } = usePlayer()
+  const { volume, muted, setVolume, setMuted } = useVolume()
   const level = muted ? 0 : volume
   const Icon = level === 0 ? VolumeX : level < 0.5 ? Volume1 : Volume2
   return (

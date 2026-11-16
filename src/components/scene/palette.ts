@@ -168,9 +168,12 @@ function useArtPalette(url: string | null) {
     const known = url ? palettes.get(url) : undefined
     setPalette(known ?? null)
     if (!url || known) return
+    let live = true
     const image = new Image()
-    image.decoding = 'async'
-    image.onload = () => {
+    image.src = url
+    // Decoded off the main thread first, so drawing it to the sample is a copy, not a decode
+    image.decode().then(() => {
+      if (!live) return
       const canvas = document.createElement('canvas')
       canvas.width = canvas.height = SAMPLE
       const context = canvas.getContext('2d', { willReadFrequently: true })
@@ -180,10 +183,9 @@ function useArtPalette(url: string | null) {
       const read = paletteOf(context.getImageData(0, 0, SAMPLE, SAMPLE).data)
       palettes.set(url, read)
       setPalette(read)
-    }
-    image.src = url
+    }, () => {})
     return () => {
-      image.onload = null
+      live = false
     }
   }, [url])
   return palette

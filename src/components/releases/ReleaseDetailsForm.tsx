@@ -213,6 +213,10 @@ function useLineup(artists: TrackArtist[]) {
     problem,
     of: (trackId: string) => pending.get(trackId) ?? artists.filter((a) => a.track_id === trackId),
     save: (trackId: string, lineup: OnTrack[]) => {
+      // Done with nothing changed sends nothing
+      const key = (all: { id: string; role: string }[]) => all.map((a) => `${a.id}:${a.role}`).join()
+      const now = pending.get(trackId) ?? artists.filter((a) => a.track_id === trackId)
+      if (key(lineup) === key(now)) return
       setProblem(null)
       setPending((m) => new Map(m).set(trackId, lineup))
       setTrackArtists({ data: { trackId, artists: lineup.map((a) => ({ id: a.id, role: a.role })) } })

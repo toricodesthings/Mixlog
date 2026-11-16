@@ -47,7 +47,7 @@ React 19 · TanStack Start + Router (file routes) · Tailwind CSS v4 (tokens in 
 ## 3. Runtime Shape
 
 - `routes/__root.tsx` is the HTML shell. `APPEARANCE_BOOT` in the head sets the theme before first paint (hence `suppressHydrationWarning` on `<html>`). Root `validateSearch` owns `?settings=`, `?listen` and the room's `&b=` and `&pick=`.
-- `router.tsx` preloads on intent, restores scroll, and shows one pending page after 200ms (`releases/Pending`'s `PagePending`). `routeTree.gen.ts` is generated; never edit it.
+- `router.tsx` preloads on intent and reuses a preload for five seconds (so a write that skips `router.invalidate()` would show a stale page), restores scroll, and shows one pending page after 200ms (`releases/Pending`'s `PagePending`). `routeTree.gen.ts` is generated; never edit it.
 - `layout/AppShell` wraps everything in `MotionConfig` (reduced motion from Settings or the OS) and renders `IconRail` or `PhoneDock`, the page `Outlet` and `SettingsDialog`. Beside it, `layout/Boot` (in the shell HTML, CSS only: sparse stars, a valley with amp tubes at its edges, the mark drawing in and out) stays over the shell until the first page's loader settles or 1.6s from navigation start, then flies into the valley (each depth grows from the crest, nearer ones more) as it fades.
 - The app version reaches the UI as `__APP_VERSION__` (`globals.d.ts`), defined from `package.json`.
 
@@ -148,7 +148,7 @@ The room is a studio (`app.css` "SIGNAL GIMMICKS"). Reach for these before inven
 - **Phantom** (`text-phantom`, `to-phantom`, `phantom-spark`; +48V magenta): the unexpected accent. Rare is the point: the brand mark's held note, plus **at most one** Phantom moment per screen (the flat trace's dot on Not found; the newest bounce landing, its LED lit once).
   - Never a fill, a control, a feedback colour, the only carrier of meaning, or palette-responsive.
   - Passing `phantom` to `Led`, `Meter` or `Scope` spends that screen's one moment. When in doubt, Signal.
-- **The brand mark** (`primitives/BrandMark`; assets in `public/brand/`): five bars (*Mix·log* said aloud) under a Phantom whole note held by a hand-drawn fermata. Coloured by role, never one sweep: bars Signal → Haze, fermata Rose → **Ember** (the mark's only use of `ember`), the note the lamp. Re-render the PNGs and `public/favicon.ico` when it changes.
+- **The brand mark** (`primitives/BrandMark`; assets in `public/brand/`): five bars (*Mix·log* said aloud) under a Phantom whole note held by a hand-drawn fermata. Coloured by role, never one sweep: bars Signal → Haze, fermata Rose → **Ember** (the mark's only use of `ember`), the note the lamp. The tab icon is `mixlog-mark.svg`; re-render the PNGs (`mixlog-mark-180.png` for iOS, `-192` and `-512` for the manifest) and `public/favicon.ico` when it changes.
 
 ### Modes, layout and access
 

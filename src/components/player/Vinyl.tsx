@@ -30,8 +30,9 @@ export const Vinyl = memo(function Vinyl({ title, releaseId, artworkId, spinning
 /** The arm, pivoting top right of the record (in the record's own 0–100 box): on the outer grooves, or lifted clear. */
 function Tonearm({ down }: { down: boolean }) {
   return (
-    <svg viewBox="0 0 100 100" className="pointer-events-none absolute inset-0 size-full overflow-visible">
-      <g className="vinyl-arm" data-down={down || undefined}>
+    // The swing is on the <svg> itself (an HTML box), so it composites; on a <g> it would repaint the record each frame
+    <svg viewBox="0 0 100 100" data-down={down || undefined} className="vinyl-arm pointer-events-none absolute inset-0 size-full overflow-visible">
+      <g>
         {/* Counterweight behind the pivot, the arm, then the headshell with its cartridge */}
         <rect x="93" y="-6" width="6" height="8" rx="1.6" className="vinyl-arm-metal" transform="rotate(-14 96 6)" />
         <path d="M96,6 L84,48 L80.5,60" className="vinyl-arm-rod" />

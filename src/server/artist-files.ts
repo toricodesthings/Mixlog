@@ -37,5 +37,5 @@ export async function serveArtistProfile(request: Request, artistId: string): Pr
   if (!artist?.key) throw notFound()
   const object = await env.FILES.get(artist.key)
   if (!object) throw notFound()
-  return new Response(object.body, { headers: { 'content-type': artist.type ?? object.httpMetadata?.contentType ?? 'application/octet-stream', 'cache-control': 'private, max-age=3600', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; sandbox" } })
+  return new Response(object.body, { headers: { 'content-type': artist.type ?? object.httpMetadata?.contentType ?? 'application/octet-stream', 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; sandbox" } })
 }

@@ -14,6 +14,8 @@ type Value = string | number | bigint | null | Uint8Array
 class Statement {
   constructor(readonly query: string, readonly params: Value[] = []) {}
   bind(...params: Value[]) {
+    // As D1: at most 100 bound values a statement
+    if (params.length > 100) throw new Error('D1_ERROR: too many SQL variables')
     return new Statement(this.query, params)
   }
   async all() {

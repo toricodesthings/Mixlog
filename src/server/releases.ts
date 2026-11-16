@@ -11,7 +11,7 @@ import { Id, idInput, readWith, Refusal } from '#/server/input'
 import { analysisInput, fingerprintOf, isMeasured, type Analysis, type Fingerprint, type Measured } from '#/server/loudness'
 import { artistProfileUrl, type TrackArtist } from '#/server/artists'
 import { artists, currentPins, releases, stampNow, trackArtists, tracks, versions } from '#/server/schema'
-import { defaultArtist, keepDays } from '#/server/settings'
+import { defaultArtist, keepDays, keepOf, keepQuery } from '#/server/settings'
 import { LANES, lanesOf, moveProblem } from '#/server/lanes'
 import { moveBackWindow, prunedOf, shippedOf } from '#/server/shipping'
 
@@ -39,18 +39,20 @@ export type ReleaseRow = {
 export type ReleaseArtist = { id: string; name: string; profile_image_url: string | null }
 export type ListedRelease = ReleaseRow & { artists: ReleaseArtist[] }
 
-/** Each listed release's main artists, in one query for the whole list. */
-const withArtists = createServerOnlyFn(async (rows: ReleaseRow[]): Promise<ListedRelease[]> => {
-  const on = rows.length
-    ? await db
-        .select({ release_id: tracks.releaseId, id: artists.id, name: artists.name, key: artists.profileImageKey })
-        .from(trackArtists)
-        .innerJoin(tracks, eq(tracks.id, trackArtists.trackId))
-        .innerJoin(artists, eq(artists.id, trackArtists.artistId))
-        .where(and(eq(trackArtists.role, 'artist'), inArray(tracks.releaseId, rows.map((r) => r.id))))
-        .orderBy(asc(tracks.position), asc(trackArtists.position))
-    : []
-  return rows.map((release) => ({
+/** One section's list with each release's main artists, in one round trip. The artists are chosen by the section, not
+ *  by a list of IDs, so no length of list meets D1's 100 bound values. */
+const listed = createServerOnlyFn(async (section: SQL | undefined, order: SQL): Promise<ListedRelease[]> => {
+  const [rows, on] = await db.batch([
+    releaseQuery().where(section).orderBy(order),
+    db
+      .select({ release_id: tracks.releaseId, id: artists.id, name: artists.name, key: artists.profileImageKey })
+      .from(trackArtists)
+      .innerJoin(tracks, eq(tracks.id, trackArtists.trackId))
+      .innerJoin(artists, eq(artists.id, trackArtists.artistId))
+      .where(and(eq(trackArtists.role, 'artist'), inArray(tracks.releaseId, db.select({ id: releases.id }).from(releases).where(section))))
+      .orderBy(asc(tracks.position), asc(trackArtists.position)),
+  ])
+  return (rows as ReleaseRow[]).map((release) => ({
     ...release,
     artists: [...new Map(on.filter((a) => a.release_id === release.id).map((a) => [a.id, { id: a.id, name: a.name, profile_image_url: a.key ? artistProfileUrl(a.id, a.key) : null }])).values()],
   }))
@@ -117,11 +119,11 @@ export const releaseQuery = createServerOnlyFn(() =>
 
 /** Upcoming: newest started first. Releases: newest out first. The list page re-sorts on this device. */
 export const listUpcoming = createServerFn().handler(
-  async (): Promise<ListedRelease[]> => withArtists(await releaseQuery().where(isNull(releases.releasedAt)).orderBy(desc(releases.createdAt))),
+  (): Promise<ListedRelease[]> => listed(isNull(releases.releasedAt), desc(releases.createdAt)),
 )
 
 export const listReleased = createServerFn().handler(
-  async (): Promise<ListedRelease[]> => withArtists(await releaseQuery().where(isNotNull(releases.releasedAt)).orderBy(desc(releases.releasedAt))),
+  (): Promise<ListedRelease[]> => listed(isNotNull(releases.releasedAt), desc(releases.releasedAt)),
 )
 
 const tracksOf = (releaseId: string) => db.select({ id: tracks.id }).from(tracks).where(eq(tracks.releaseId, releaseId))
@@ -158,28 +160,29 @@ const versionsOf = createServerOnlyFn((id: string) =>
 export const getRelease = createServerFn()
   .validator(idInput)
   .handler(async ({ data: id }) => {
-    const [release] = await releaseQuery().where(eq(releases.id, id))
-    if (!release) throw notFound()
-    const [[trackRows, versionRows, [{ pruned }], lineup], keep] = await Promise.all([
-      db.batch([
-        db
-          .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, scene: tracks.scene, duration_ms: sql<number | null>`${playLength(outer('tracks', 'id'))}` })
-          .from(tracks)
-          .where(eq(tracks.releaseId, id))
-          .orderBy(tracks.position, tracks.createdAt),
-        versionsOf(id),
-        db.select({ pruned: sql<number>`COUNT(*)` }).from(versions).where(and(inArray(versions.trackId, tracksOf(id)), isNotNull(versions.prunedAt))),
-        db
-          .select({ track_id: trackArtists.trackId, id: artists.id, name: artists.name, role: trackArtists.role, image: artists.profileImageKey })
-          .from(trackArtists)
-          .innerJoin(artists, eq(artists.id, trackArtists.artistId))
-          .where(inArray(trackArtists.trackId, tracksOf(id)))
-          .orderBy(trackArtists.position),
-      ]),
-      keepDays(),
+    // One round trip: the release, its tracks, versions and artists, the keep window, and whether a song is due a night
+    const [[release], trackRows, versionRows, [{ pruned }], lineup, keepRow, due] = await db.batch([
+      releaseQuery().where(eq(releases.id, id)),
+      db
+        .select({ id: tracks.id, title: tracks.title, isrc: tracks.isrc, lyrics: tracks.lyrics, origin: tracks.origin, scene: tracks.scene, duration_ms: sql<number | null>`${playLength(outer('tracks', 'id'))}` })
+        .from(tracks)
+        .where(eq(tracks.releaseId, id))
+        .orderBy(tracks.position, tracks.createdAt),
+      versionsOf(id),
+      db.select({ pruned: sql<number>`COUNT(*)` }).from(versions).where(and(inArray(versions.trackId, tracksOf(id)), isNotNull(versions.prunedAt))),
+      db
+        .select({ track_id: trackArtists.trackId, id: artists.id, name: artists.name, role: trackArtists.role, image: artists.profileImageKey })
+        .from(trackArtists)
+        .innerJoin(artists, eq(artists.id, trackArtists.artistId))
+        .where(inArray(trackArtists.trackId, tracksOf(id)))
+        .orderBy(trackArtists.position),
+      keepQuery(),
+      dueQuery(id).limit(1),
     ])
+    if (!release) throw notFound()
+    const keep = keepOf(keepRow)
     // A song measured before 1.3.0 gets its night the first time its release opens, not the next night's cron.
-    if (trackRows.some((t) => !t.scene) && (await stampScenes(trackRows.length, id)) > 0) {
+    if (due.length && (await stampScenes(trackRows.length, id)) > 0) {
       const stamped = await db.select({ id: tracks.id, scene: tracks.scene }).from(tracks).where(eq(tracks.releaseId, id))
       for (const t of trackRows) t.scene = stamped.find((s) => s.id === t.id)?.scene ?? null
       const [own] = await db.select({ scene: releases.scene }).from(releases).where(eq(releases.id, id))
@@ -391,12 +394,9 @@ export const saveAnalysis = createServerFn({ method: 'POST' })
     await storeAnalysis(data.versionId, data.analysis)
   })
 
-/** Backfills nights for tracks from before 1.3.0 (the cron, after measuring): for each with no scene yet but a
- *  measured mix or master, stamps it (and its release) from the oldest one still in D1 — pruned included, since
- *  those keep their `analysis` until erased. Same rule as `storeAnalysis`, just later. Up to `limit` tracks a run, or
- *  only `releaseId`'s (opening a release stamps its own, so nobody waits for the night); returns how many it stamped. */
-export const stampScenes = createServerOnlyFn(async (limit = 20, releaseId?: string): Promise<number> => {
-  const due = await db
+/** Tracks with no night yet but a measured mix or master (all, or one release's), oldest first. */
+const dueQuery = createServerOnlyFn((releaseId?: string) =>
+  db
     .select({ id: tracks.id })
     .from(tracks)
     .where(and(
@@ -404,8 +404,15 @@ export const stampScenes = createServerOnlyFn(async (limit = 20, releaseId?: str
       releaseId ? eq(tracks.releaseId, releaseId) : undefined,
       sql`EXISTS (SELECT 1 FROM ${versions} v WHERE v.track_id = ${tracks.id} AND v.kind IN ('mix', 'master') AND v.analysis IS NOT NULL)`,
     ))
-    .orderBy(asc(tracks.createdAt))
-    .limit(limit)
+    .orderBy(asc(tracks.createdAt)),
+)
+
+/** Backfills nights for tracks from before 1.3.0 (the cron, after measuring): for each with no scene yet but a
+ *  measured mix or master, stamps it (and its release) from the oldest one still in D1 — pruned included, since
+ *  those keep their `analysis` until erased. Same rule as `storeAnalysis`, just later. Up to `limit` tracks a run, or
+ *  only `releaseId`'s (opening a release stamps its own, so nobody waits for the night); returns how many it stamped. */
+export const stampScenes = createServerOnlyFn(async (limit = 20, releaseId?: string): Promise<number> => {
+  const due = await dueQuery(releaseId).limit(limit)
   let stamped = 0
   for (const { id } of due) {
     const [oldest] = await db

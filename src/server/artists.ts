@@ -1,3 +1,4 @@
+import { notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { asc, count, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -85,7 +86,9 @@ export type ArtistProfile = ArtistRow & { other_roles: string[]; links: string[]
 export const getArtist = createServerFn()
   .validator(readWith(z.string().uuid('That artist is not available.')))
   .handler(async ({ data: id }) => {
-    const [artist] = await db
+    // One round trip: the artist and the tracks they're on
+    const [[artist], linkedTracks] = await db.batch([
+      db
       .select({
         id: artists.id,
         name: artists.name,
@@ -98,14 +101,14 @@ export const getArtist = createServerFn()
       .from(artists)
       .leftJoin(trackArtists, eq(trackArtists.artistId, artists.id))
       .where(eq(artists.id, id))
-      .groupBy(artists.id, artists.name, artists.role, artists.otherRoles, artists.links, artists.profileImageKey)
-    if (!artist) throw new Error('Artist not found.')
-    const linkedTracks = await db
+      .groupBy(artists.id, artists.name, artists.role, artists.otherRoles, artists.links, artists.profileImageKey),
+      db
       .select({
         id: tracks.id,
         title: tracks.title,
-        release_id: releases.id,
-        release_title: releases.title,
+        // Named: in a batch each row comes back keyed by column name, so two bare `id`s or `title`s would collide
+        release_id: sql<string | null>`${releases.id}`.as('release_id'),
+        release_title: sql<string | null>`${releases.title}`.as('release_title'),
         release_format: releases.format,
         released_at: releases.releasedAt,
         // The release's current artwork: its pin, else its newest not pruned (releases.ts's `current`).
@@ -118,7 +121,9 @@ export const getArtist = createServerFn()
       .innerJoin(tracks, eq(tracks.id, trackArtists.trackId))
       .leftJoin(releases, eq(releases.id, tracks.releaseId))
       .where(eq(trackArtists.artistId, id))
-      .orderBy(asc(releases.title), asc(tracks.position), asc(tracks.title))
+      .orderBy(asc(releases.title), asc(tracks.position), asc(tracks.title)),
+    ])
+    if (!artist) throw notFound()
     const { profile_image_key, ...profile } = artist
     return {
       ...profile,
@@ -143,7 +148,7 @@ export const updateArtist = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const updated = await db.update(artists).set({ name: data.name, role: data.role || null, ...(data.otherRoles && { otherRoles: [...new Set(data.otherRoles)].filter((r) => r !== data.role) }), links: [...new Set(data.links)] }).where(eq(artists.id, data.id)).returning({ id: artists.id })
-    if (!updated.length) throw new Error('Artist not found.')
+    if (!updated.length) throw notFound()
   })
 
 /** Where an artist's picture is served, named by its key so a new picture is never the cached old one. */

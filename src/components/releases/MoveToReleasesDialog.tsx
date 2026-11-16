@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { CalendarDays, Disc3 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -22,6 +22,7 @@ export function MoveToReleasesDialog(data: ReleaseData) {
   const { release, tracks, versions, keepDays } = data
   const { open, close } = useMoveParam()
   const navigate = useNavigate()
+  const router = useRouter()
   const zone = deviceZone()
   const today = todayIn(zone)
   const [releasedOn, setReleasedOn] = useState(today)
@@ -34,6 +35,8 @@ export function MoveToReleasesDialog(data: ReleaseData) {
     setState({ status: 'moving' })
     try {
       await moveToReleases({ data: { id: release.id, releasedOn, zone } })
+      // A list preloaded on hover must not show it still in Upcoming
+      await router.invalidate()
       await navigate({ ...releaseLink('released', release.id, 'tracks'), replace: true })
     } catch (error) {
       setState({ status: 'failed', message: (error instanceof Error && error.message) || 'Couldn’t move it. Nothing changed; try again.' })

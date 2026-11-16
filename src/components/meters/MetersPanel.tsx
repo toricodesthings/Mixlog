@@ -85,18 +85,29 @@ function PatchCable({ versionId, dock }: { versionId: string; dock: HTMLElement 
   useEffect(() => {
     let frame = 0
     let last = ''
+    // Found once, and again only when one leaves the page (a re-render, a page change): no lookups per frame
+    let row: Element | null = null
+    let jack: Element | null = null
+    let view: Element | null = null
+    let aside: Element | null = null
+    let header: Element | null = null
+    const find = () => {
+      row = document.querySelector(`[data-version="${versionId}"]`)
+      jack = document.querySelector('[data-meters-jack]')
+      view = row?.closest('main') ?? null
+      aside = jack?.closest('aside') ?? null
+      header = jack?.closest('header') ?? null
+    }
     const draw = () => {
       frame = requestAnimationFrame(draw)
-      const row = document.querySelector(`[data-version="${versionId}"]`)
-      const jack = document.querySelector('[data-meters-jack]')
-      const view = row?.closest('main')
       const el = svg.current
       if (!el) return
-      if (!row || !jack || !view) return void (el.style.opacity = '0')
+      if (!row?.isConnected || !jack?.isConnected) find()
+      if (!row || !jack || !view || !aside || !header) return void (el.style.opacity = '0')
       const r = row.getBoundingClientRect()
       const v = view.getBoundingClientRect()
-      const panel = jack.closest('aside')!.getBoundingClientRect()
-      const top = jack.closest('header')!.getBoundingClientRect().bottom + 16
+      const panel = aside.getBoundingClientRect()
+      const top = header.getBoundingClientRect().bottom + 16
       const [sx, sy] = [r.right, r.top + r.height / 2]
       const [ex, ey] = [panel.left, Math.min(panel.bottom - 16, Math.max(top, sy))]
       const d = `M${sx},${sy} L${ex},${ey}`

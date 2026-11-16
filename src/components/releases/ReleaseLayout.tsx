@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
+import { Link, Outlet, useLocation, useNavigate, useRouter } from '@tanstack/react-router'
 import { CalendarClock, Disc3, Images, ListMusic, LogOut, ScrollText, Sparkles, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useState, type CSSProperties } from 'react'
 
@@ -206,6 +206,7 @@ function MoveToReleases({ compact }: { compact?: boolean }) {
  *  and every pruned version comes back. */
 function MoveBack({ release, pruned, keepDays, compact }: ReleaseData & { compact?: boolean }) {
   const navigate = useNavigate()
+  const router = useRouter()
   const [state, setState] = useState<{ status: 'idle' | 'moving' } | { status: 'failed'; message: string }>({ status: 'idle' })
   const back = release.released_at ? moveBackWindow(release.released_at, keepDays) : null
   if (!back) return null
@@ -221,6 +222,7 @@ function MoveBack({ release, pruned, keepDays, compact }: ReleaseData & { compac
     setState({ status: 'moving' })
     try {
       await moveToUpcoming({ data: release.id })
+      await router.invalidate()
       await navigate({ ...releaseLink('upcoming', release.id, 'tracks'), replace: true })
     } catch (error) {
       setState({ status: 'failed', message: (error instanceof Error && error.message) || 'Couldn’t move it back. Try again.' })

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Album, ArrowUpDown, ChevronRight, LayoutGrid, LayoutList, ListMusic, Music, Timer, Upload, type LucideIcon } from 'lucide-react'
-import { useState, type PointerEvent } from 'react'
+import { useMemo, useState, type PointerEvent } from 'react'
 
 import type { ListedRelease } from '#/server/releases'
 import { ArtistAvatar } from '../artists/ArtistAvatar'
@@ -53,7 +53,7 @@ export function ReleaseList({ section, releases }: { section: Section; releases:
   const setView = (v: View) => set({ view: v === 'list' ? 'list' : undefined })
   const setFormat = (f: FormatFilter | null) => set({ format: f === 'all' || f === null ? undefined : f })
   const setSort = (s: string) => set({ sort: s as ListSearch['sort'] })
-  const shown = browse(section, releases, { query, format, sort, zone: deviceZone() })
+  const shown = useMemo(() => browse(section, releases, { query, format, sort, zone: deviceZone() }), [section, releases, query, format, sort])
   const [title, body] = EMPTY[section]
   const slide = useHoverSlide()
   const formatLabel = format === 'ep' ? 'EPs' : FORMATS.find((f) => f.value === format)!.label.toLowerCase()

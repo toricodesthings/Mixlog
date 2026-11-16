@@ -13,20 +13,30 @@ const DEFAULT_ARTIST = 'default_artist'
 const stored = (days: KeepDays) => (days === null ? 'forever' : String(days))
 const KeepInput = z.union([z.literal(7), z.literal(14), z.literal(30), z.null()], 'Keep them a week, two weeks, a month, or always.')
 
-/** How long what didn't ship is kept after a release goes out; the default until it's chosen. */
-export const keepDays = createServerOnlyFn(async (): Promise<KeepDays> => {
-  const [row] = await db.select({ value: settings.value }).from(settings).where(eq(settings.key, KEEP))
+/** The keep window's row, as a query a batch can take (getRelease's, getSettings'); `keepOf` reads it. */
+export const keepQuery = createServerOnlyFn(() => db.select({ value: settings.value }).from(settings).where(eq(settings.key, KEEP)))
+/** The keep window from its row: the default until it's chosen. */
+export const keepOf = ([row]: { value: string }[]): KeepDays => {
   const parsed = KeepInput.safeParse(row?.value === 'forever' ? null : Number(row?.value))
   return row && parsed.success ? parsed.data : DEFAULT_KEEP_DAYS
-})
+}
+
+/** How long what didn't ship is kept after a release goes out; the default until it's chosen. */
+export const keepDays = createServerOnlyFn(async (): Promise<KeepDays> => keepOf(await keepQuery()))
+
+const defaultArtistQuery = createServerOnlyFn(() =>
+  db.select({ id: artists.id }).from(settings).innerJoin(artists, eq(artists.id, settings.value)).where(eq(settings.key, DEFAULT_ARTIST)),
+)
 
 /** The settings the Worker keeps, for the Settings dialog, and when each version waiting to be erased was set aside
- *  (Instants), so the Releases tab can say what a shorter window would erase. */
-export const getSettings = createServerFn().handler(async () => ({
-  keepDays: await keepDays(),
-  defaultArtist: await defaultArtist(),
-  setAside: (await db.select({ at: versions.prunedAt }).from(versions).where(isNotNull(versions.prunedAt))).map((v) => v.at as Instant),
-}))
+ *  (Instants), so the Releases tab can say what a shorter window would erase. One round trip. */
+export const getSettings = createServerFn().handler(async () => {
+  const [keep, [artist], setAside] = await db.batch([keepQuery(), defaultArtistQuery(), db.select({ at: versions.prunedAt }).from(versions).where(isNotNull(versions.prunedAt))])
+  return { keepDays: keepOf(keep), defaultArtist: artist?.id ?? null, setAside: setAside.map((v) => v.at as Instant) }
+})
+
+/** Who every new track starts with, alone: the new-release dialog needs only this, not the whole of getSettings. */
+export const getDefaultArtist = createServerFn().handler(() => defaultArtist())
 
 export const saveKeepDays = createServerFn({ method: 'POST' })
   .validator(readWith(KeepInput))
@@ -36,7 +46,7 @@ export const saveKeepDays = createServerFn({ method: 'POST' })
 
 /** The artist every new track starts with (Settings › Releases), or null: none chosen, or they've since been removed. */
 export const defaultArtist = createServerOnlyFn(async (): Promise<string | null> => {
-  const [row] = await db.select({ id: artists.id }).from(settings).innerJoin(artists, eq(artists.id, settings.value)).where(eq(settings.key, DEFAULT_ARTIST))
+  const [row] = await defaultArtistQuery()
   return row?.id ?? null
 })
 

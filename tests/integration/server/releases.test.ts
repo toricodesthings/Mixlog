@@ -144,3 +144,10 @@ it('adds a track to the end of an EP, never to a single', async () => {
   await expect(call(addTrack, { releaseId: single.id, title: 'Two' })).rejects.toThrow('Make it an EP')
   await expect(call(addTrack, { releaseId: ep.id, title: ' ' })).rejects.toThrow('title')
 })
+
+it('lists a section of more than 100 releases with their artists (D1 binds 100 values at most)', async () => {
+  const values = Array.from({ length: 120 }, (_, i) => `('many-${i}', 'Many ${i}', 'single')`).join(', ')
+  sqlite.exec(`INSERT INTO releases (id, title, format) VALUES ${values}`)
+  const listed = await call(listUpcoming)
+  expect(listed.filter((r) => r.id.startsWith('many-'))).toHaveLength(120)
+})

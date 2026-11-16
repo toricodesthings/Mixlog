@@ -49,13 +49,15 @@ export function useLaneUpload(trackId: string) {
     const next = pending.find((p) => p.state === 'queued')
     if (!next) return
     update(next.key, { state: 'sending', sent: 0, startedAt: performance.now(), phase: undefined, error: undefined })
+    let shown = 0
     void (async () => {
       try {
         const final = next.target === 'final'
         const kind = final ? 'master' : (next.target as AudioKind)
         const { id, late } = await uploadAudio(
           { trackId, kind, file: next.file, contentType: audioTypeOf(next.file.name, next.file.type)!, durationMs: await readDuration(next.file), final, replaces: next.replaces, note: next.note },
-          (sent) => update(next.key, { sent }),
+          // Only when the whole percent shown changes: progress fires about every 50 ms, and each re-renders every lane
+          (sent) => Math.round(sent * 100) !== shown && ((shown = Math.round(sent * 100)), update(next.key, { sent })),
           (phase) => update(next.key, { phase }),
         )
         saveLate(id, late, () => void router.invalidate())

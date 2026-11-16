@@ -7,7 +7,7 @@ export function getRouter() {
     routeTree,
     scrollRestoration: true,
     defaultPreload: 'intent',
-    defaultPreloadStaleTime: 0,
+    defaultPreloadStaleTime: 5_000,
     // A page on its way shows its skeleton soon (on bad signal, a second of nothing reads as broken), and once shown,
     // long enough not to flicker.
     defaultPendingMs: 200,

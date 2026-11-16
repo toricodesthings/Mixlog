@@ -139,22 +139,33 @@ const SLOT = 'Releases keep one file per slot: replace it, or move the release b
  *  release takes only a final for a track without one (which ships it), or a replacement for a file that shipped. */
 async function filingOf(trackId: string, kind: string, contentType: string, final?: boolean, replaces?: string) {
   if (final && (kind !== 'master' || !isFinal(contentType))) return { problem: 'A final is a WAV, AIFF or FLAC master.' }
-  const [track] = await db.select({ released: releases.releasedAt }).from(tracks).innerJoin(releases, eq(releases.id, tracks.releaseId)).where(eq(tracks.id, trackId))
+  const [track] = await db.select({ releaseId: tracks.releaseId, released: releases.releasedAt }).from(tracks).innerJoin(releases, eq(releases.id, tracks.releaseId)).where(eq(tracks.id, trackId))
   if (!track) return { problem: 'Not found' }
-  if (!track.released) return replaces ? { problem: 'Upcoming keeps every version: nothing is replaced.' } : { released: false, old: null }
-  if (!replaces) return !final ? { problem: SLOT } : (await hasFinal(trackId)) ? { problem: 'This track has its final. Replace it instead.' } : { released: true, old: null }
+  const { releaseId } = track
+  if (!track.released) return replaces ? { problem: 'Upcoming keeps every version: nothing is replaced.' } : { releaseId, released: false, old: null }
+  if (!replaces) return !final ? { problem: SLOT } : (await hasFinal(trackId)) ? { problem: 'This track has its final. Replace it instead.' } : { releaseId, released: true, old: null }
   const [old] = await db
     .select({ id: versions.id, r2Key: versions.r2Key, kind: versions.kind, final: sql<number>`EXISTS (SELECT 1 FROM ${currentPins} p WHERE p.version_id = ${versions.id} AND p.kind = 'master')` })
     .from(versions)
     .where(and(eq(versions.id, replaces), eq(versions.trackId, trackId), isNotNull(versions.releasedAt), isNull(versions.prunedAt)))
   const fits = old && (old.final ? final : !final && old.kind === kind)
-  return fits ? { released: true, old } : { problem: 'That file isn’t this slot’s to replace.' }
+  return fits ? { releaseId, released: true, old } : { problem: 'That file isn’t this slot’s to replace.' }
 }
+
+/** Each track's release, for the life of the isolate: a track never changes release (`tracks.release_id` is written
+ *  only on insert), so an upload's parts ask D1 once, not once each. ponytail: cleared whole at 500 tracks. */
+const releaseOf = new Map<string, string>()
 
 /** The R2 key of a track's file, under its release; null when the track is gone. */
 async function keyFor(trackId: string, kind: AudioKind, versionId: string) {
-  const [track] = await db.select({ releaseId: tracks.releaseId }).from(tracks).where(eq(tracks.id, trackId))
-  return track?.releaseId ? fileKey({ releaseId: track.releaseId, trackId }, kind, versionId) : null
+  let releaseId = releaseOf.get(trackId)
+  if (!releaseId) {
+    const [track] = await db.select({ releaseId: tracks.releaseId }).from(tracks).where(eq(tracks.id, trackId))
+    if (!track?.releaseId) return null
+    if (releaseOf.size >= 500) releaseOf.clear()
+    releaseOf.set(trackId, (releaseId = track.releaseId))
+  }
+  return fileKey({ releaseId, trackId }, kind, versionId)
 }
 
 /** An upload in flight, from what the browser sent (JSON or a query string), with its R2 key; null when it isn't one. */
@@ -174,11 +185,11 @@ export async function startUpload(request: Request): Promise<Response> {
   const { trackId, kind, filename, contentType, size, final, replaces } = body.data
   const problem = audioProblem(kind, contentType, size)
   if (problem) return text((size as number) > MAX_AUDIO_BYTES ? 413 : 400, problem)
-  const [track] = await db.select({ releaseId: tracks.releaseId }).from(tracks).where(eq(tracks.id, trackId))
-  if (!track?.releaseId) return text(404, 'Not found')
   // Checked again on completion; here so a refused file isn't sent at all.
   const filing = await filingOf(trackId, kind as string, contentType as string, final, replaces)
-  if ('problem' in filing) return text(400, filing.problem!)
+  if ('problem' in filing) return text(filing.problem === 'Not found' ? 404 : 400, filing.problem!)
+  if (!filing.releaseId) return text(404, 'Not found')
+  const track = { releaseId: filing.releaseId }
 
   const id = crypto.randomUUID()
   const name = filename?.slice(0, 255) || 'bounce'
@@ -254,20 +265,20 @@ async function stack(
   then: BatchItem<'sqlite'>[] = [],
 ) {
   const sequence = v.kind === 'mix' || v.kind === 'master' ? sql`n.kind IN ('mix', 'master')` : sql`n.kind = ${v.kind}`
+  let number: number
   try {
-    await db.batch([
+    ;[[{ number }]] = await db.batch([
       db.insert(versions).values({
         id: v.id, trackId: v.trackId, kind: v.kind as AudioKind | 'license' | 'canvas', r2Key: v.key, filename: v.filename, contentType: v.contentType, size: v.size,
         durationMs: v.durationMs, note: v.note ?? null, releasedAt: v.released ? stampNow : null, analysis: v.analysis ?? null,
         number: sql`(SELECT COALESCE(MAX(n.number), 0) + 1 FROM ${versions} n WHERE n.track_id = ${v.trackId} AND ${sequence})`,
-      }),
+      }).returning({ number: versions.number }),
       ...then,
     ])
   } catch (error) {
     await env.FILES.delete(v.key)
     throw error
   }
-  const [{ number }] = await db.select({ number: versions.number }).from(versions).where(eq(versions.id, v.id))
   return number
 }
 

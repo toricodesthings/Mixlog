@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ARTWORK_ACCEPT, AUDIO_ACCEPT, FINAL_ACCEPT, MAX_AUDIO_BYTES, artworkProblem, audioTypeOf, isFinal, type AudioKind } from '#/server/files'
 import { createRelease, type ReleaseFormat } from '#/server/releases'
 import { listArtists, type ArtistRow } from '#/server/artists'
-import { getSettings } from '#/server/settings'
+import { getDefaultArtist } from '#/server/settings'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { useFileDrop } from '../../hooks/ui/use-file-drop'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
@@ -66,7 +66,7 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
   const [artist, setArtist] = useState<string | null | undefined>(undefined)
   useEffect(() => {
     void listArtists().then(setRoster).catch(() => {})
-    void getSettings().then((s) => setArtist((a) => (a === undefined ? s.defaultArtist : a))).catch(() => {})
+    void getDefaultArtist().then((id) => setArtist((a) => (a === undefined ? id : a))).catch(() => {})
   }, [])
 
   // Sorting the drop: audio becomes bounces; the rest is left out with a reason. Artwork only goes in on the cover.
@@ -156,8 +156,10 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
     const send = async (file: File, upload: (onProgress: (sent: number) => void, onPhase: (phase: Phase) => void) => Promise<unknown>) => {
       if (progress.get(file)?.state === 'stored') return
       mark(file, { state: 'sending', sent: 0 })
+      // Redrawn only when the whole percent shown changes, not on every progress event
+      let shown = 0
       try {
-        await upload((sent) => mark(file, { state: 'sending', sent }), (phase) => mark(file, { state: 'sending', sent: 1, phase }))
+        await upload((sent) => Math.round(sent * 100) !== shown && ((shown = Math.round(sent * 100)), mark(file, { state: 'sending', sent })), (phase) => mark(file, { state: 'sending', sent: 1, phase }))
         mark(file, { state: 'stored', sent: 1 })
       } catch (error) {
         ok = false

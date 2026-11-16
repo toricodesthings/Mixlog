@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouter, useSearch } from '@tanstack/react-router'
 import { ChevronRight, LayoutGrid, LayoutList, ListMusic, UserRoundPlus } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import type { ArtistRow } from '#/server/artists'
 import { Button, Meter, toast, useHoverSlide } from '../primitives'
@@ -32,8 +32,11 @@ export function ArtistList({ artists }: { artists: ArtistRow[] }) {
   const addArtist = () => set({ add: true }, false)
   // Artists still being saved: in the list at once, replaced by the real ones when the reload lands.
   const [drafts, setDrafts] = useState<ArtistDraft[]>([])
+  // The dialog settles with the callback from before its draft was added: read the drafts as they are now
+  const draftsNow = useRef(drafts)
+  draftsNow.current = drafts
   const settleDraft = (id: string, problem?: string) => {
-    const draft = drafts.find((d) => d.id === id)
+    const draft = draftsNow.current.find((d) => d.id === id)
     const done = () => (setDrafts((all) => all.filter((d) => d.id !== id)), draft?.image && URL.revokeObjectURL(draft.image))
     if (!problem) return void router.invalidate().then(done)
     done()

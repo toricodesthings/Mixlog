@@ -47,7 +47,7 @@ export const tracks = sqliteTable('tracks', {
   updatedAt: text('updated_at').notNull().default(stampNow),
   // The track's night (1.3.0): its own first measured mix or master's fingerprint. See `releases.scene`.
   scene: text('scene', { mode: 'json' }).$type<Fingerprint>(),
-})
+}, (t) => [index('tracks_release').on(t.releaseId, t.position)])
 
 export const artists = sqliteTable('artists', {
   id: text('id').primaryKey(),
@@ -75,6 +75,7 @@ export const trackArtists = sqliteTable(
     primaryKey({ columns: [t.trackId, t.artistId] }),
     check('track_artists_role', sql`${t.role} IN ('artist', 'featured')`),
     uniqueIndex('track_artists_position').on(t.trackId, t.position),
+    index('track_artists_artist').on(t.artistId),
   ],
 )
 
@@ -111,6 +112,9 @@ export const versions = sqliteTable(
     uniqueIndex('versions_track_bounce').on(t.trackId, t.number).where(sql`${t.trackId} IS NOT NULL AND ${t.kind} IN ('mix', 'master')`),
     uniqueIndex('versions_track_stack').on(t.trackId, t.kind, t.number).where(sql`${t.trackId} IS NOT NULL AND ${t.kind} NOT IN ('mix', 'master')`),
     uniqueIndex('versions_release_stack').on(t.releaseId, t.kind, t.number).where(sql`${t.releaseId} IS NOT NULL`),
+    // The partial ones above can't serve a bound `kind = ?`: a track's newest, and its current, read this
+    index('versions_track').on(t.trackId, t.kind, t.number),
+    index('versions_pruned').on(t.prunedAt).where(sql`${t.prunedAt} IS NOT NULL`),
   ],
 )
 
@@ -128,6 +132,7 @@ export const currentPins = sqliteTable(
     check('current_pins_owner', sql`(${t.trackId} IS NULL) <> (${t.releaseId} IS NULL)`),
     uniqueIndex('current_pins_track').on(t.trackId, t.kind).where(sql`${t.trackId} IS NOT NULL`),
     uniqueIndex('current_pins_release').on(t.releaseId, t.kind).where(sql`${t.releaseId} IS NOT NULL`),
+    index('current_pins_version').on(t.versionId),
   ],
 )
 

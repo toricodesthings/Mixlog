@@ -4,7 +4,7 @@ import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { cn } from '../../lib/utils'
 import { clock } from './controls'
 import type { Side } from './ab'
-import { usePlayer, usePlayhead, type Playable, type Wave } from './Player'
+import { usePlayer, usePlayheadIf, type Playable, type Wave } from './Player'
 import { heightOf, pool } from './wave'
 
 const DRAWN = { bridge: 56, room: 72, pair: 56 }
@@ -27,9 +27,10 @@ export function LoudnessWave({ item, wave: { bars: wave, ms, loudestMs }, size =
   className?: string
 }) {
   const player = usePlayer()
-  const { time, duration, buffered } = usePlayhead(deck)
   const { isTouch } = useShellMode()
   const active = deck !== undefined || player.item?.versionId === item.versionId
+  // A wave that isn't playing doesn't listen to the playhead
+  const { time, duration, buffered } = usePlayheadIf(active, deck)
   const length = active && duration ? duration : ms / 1000
   const now = active ? time : 0
   const share = length ? Math.min(1, now / length) : 0

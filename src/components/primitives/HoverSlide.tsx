@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState, type FocusEvent, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type PointerEvent, type RefObject } from "react";
 
 import { TWEENS } from "../../lib/constants/motion";
 import { cn } from "../../lib/utils";
@@ -14,7 +14,25 @@ type Box = { x: number; y: number; width: number; height: number };
  * `to` moves it from code (a listbox's ↑ ↓ highlight), or hides it with null.
  */
 export function useHoverSlide(className = "rounded-2xl bg-accent-dim") {
+    // The box lives in the light alone, so pointing along a list re-renders the light, not the list
+    const set = useRef<(box: Box | null) => void>(() => {});
+    const measure = (el: HTMLElement) => set.current({ x: el.offsetLeft, y: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
+    const row = {
+        onPointerEnter: (event: PointerEvent<HTMLElement>) => event.pointerType !== "touch" && measure(event.currentTarget),
+        onFocus: (event: FocusEvent<HTMLElement>) => event.target.matches(":focus-visible") && measure(event.currentTarget),
+    };
+    const group = {
+        onPointerLeave: () => set.current(null),
+        onBlur: (event: FocusEvent<HTMLElement>) => !event.currentTarget.contains(event.relatedTarget as Node | null) && set.current(null),
+    };
+    const light = <Light set={set} className={className} />;
+    const to = (el: HTMLElement | null) => (el ? measure(el) : set.current(null));
+    return { group, row, light, to };
+}
+
+function Light({ set, className }: { set: RefObject<(box: Box | null) => void>; className: string }) {
     const [box, setBox] = useState<Box | null>(null);
+    set.current = setBox;
     const shown = useRef(false);
     // Where it last was, so it fades out in place instead of collapsing.
     const last = useRef<Box>({ x: 0, y: 0, width: 0, height: 0 });
@@ -22,17 +40,7 @@ export function useHoverSlide(className = "rounded-2xl bg-accent-dim") {
     useEffect(() => {
         shown.current = box !== null;
     }, [box]);
-
-    const measure = (el: HTMLElement) => setBox({ x: el.offsetLeft, y: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
-    const row = {
-        onPointerEnter: (event: PointerEvent<HTMLElement>) => event.pointerType !== "touch" && measure(event.currentTarget),
-        onFocus: (event: FocusEvent<HTMLElement>) => event.target.matches(":focus-visible") && measure(event.currentTarget),
-    };
-    const group = {
-        onPointerLeave: () => setBox(null),
-        onBlur: (event: FocusEvent<HTMLElement>) => !event.currentTarget.contains(event.relatedTarget as Node | null) && setBox(null),
-    };
-    const light = (
+    return (
         <motion.span
             aria-hidden="true"
             className={cn("pointer-events-none absolute top-0 left-0", className)}
@@ -42,6 +50,4 @@ export function useHoverSlide(className = "rounded-2xl bg-accent-dim") {
             transition={box && !shown.current ? { default: { duration: 0 }, opacity: TWEENS.FADE } : { default: TWEENS.FOLLOW, opacity: TWEENS.FADE }}
         />
     );
-    const to = (el: HTMLElement | null) => (el ? measure(el) : setBox(null));
-    return { group, row, light, to };
 }

@@ -531,14 +531,18 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
    away from the pointer as if pressed (--rx/--ry, from ReleaseList), a specular light follows the pointer across it,
    and its cover drifts forward inside the frame. It leaves on a plain ease-out, faster than it came. Mouse only:
    touch gets the press. Only transforms, opacity and shadow move, so it stays on the compositor. */
+/* Written per pointer move on the card and read only by it (or, --mx/--my, its ::after): not inherited, so a move
+   restyles the card alone, not everything inside it. */
+@property --rx { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@property --ry { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@property --mx { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
+@property --my { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 .glass-card {
-  --rx: 0deg;
-  --ry: 0deg;
-  transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry));
-  transition: translate 300ms var(--ease-out-quart), scale 300ms var(--ease-out-quart), transform 450ms var(--ease-out-quart),
-    box-shadow 300ms var(--ease-out-quart);
+  transition: translate 300ms var(--ease-out-quart), scale 300ms var(--ease-out-quart), box-shadow 300ms var(--ease-out-quart);
 }
 .glass-card::after {
+  --mx: inherit;
+  --my: inherit;
   content: "";
   position: absolute;
   inset: 0;
@@ -551,6 +555,12 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 .glass-card-art { transition: scale 300ms var(--ease-out-quart); }
 @media (hover: hover) and (pointer: fine) {
+  /* The lean is a 3D transform even at rest, so it's only where a pointer can lean it: a phone's panels stay flat */
+  .glass-card {
+    transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry));
+    transition: translate 300ms var(--ease-out-quart), scale 300ms var(--ease-out-quart), transform 450ms var(--ease-out-quart),
+      box-shadow 300ms var(--ease-out-quart);
+  }
   .glass-card:hover {
     translate: 0 -6px;
     scale: 1.02;
@@ -1523,8 +1533,7 @@ body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) { z-index:
 }
 /* The tonearm swings onto the record as it starts, and lifts back to its rest as it stops */
 .vinyl-arm {
-  transform-box: view-box;
-  transform-origin: 96px 6px;
+  transform-origin: 96% 6%;
   rotate: -24deg;
   transition: rotate 700ms var(--ease-out-quart);
 }
@@ -1577,7 +1586,16 @@ body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) { z-index:
 /* A press that holds must never raise the iOS callout or select text */
 .ab-press { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 /* The light on the floor slides under the deck you hear */
-@property --scene-glow-x { syntax: "<percentage>"; inherits: true; initial-value: 50%; }
+/* Read only by the ground's two pseudo-elements, which take it from their host: inherited, a 250 ms A/B glide would
+   restyle the whole split ground (both waves included) each frame. */
+@property --scene-glow-x { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
+.scene-ground::before, .scene-ground::after { --scene-glow-x: inherit; }
+/* The playhead's variables are read only by the element they're set on: without `inherits: false`, every bar
+   under a wave layer is restyled each frame. --buffered stays unregistered: `var(--buffered, var(--fill))`
+   needs it to be able to be missing. */
+@property --fill { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+@property --share { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --hover { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 .room-pair-ground { transition: --scene-glow-x 250ms var(--ease-out-quart); }
 /* An empty side's playhead: a flat trace, the scope's "no signal" */
 .room-flat { background: linear-gradient(color-mix(in oklab, var(--accent) 40%, transparent), color-mix(in oklab, var(--accent) 40%, transparent)) center / 100% 1px no-repeat; }
@@ -1634,8 +1652,10 @@ body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) { z-index:
   border-radius: 9999px; background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); pointer-events: none;
   transform-origin: bottom;
 }
-/* With the live signal (desktop), the playhead breathes with the level under it: ambient, never meaning */
-.wave-playhead[data-live] { scale: 1 calc(0.75 + var(--level-1, 0.6) * 0.3); }
+/* With the live signal (desktop), the playhead breathes with the level under it: ambient, never meaning. The level
+   changes every frame, so the height eases after it: set directly, its top edge jumped several pixels a frame and
+   strobed. Reduced motion stops the signal, so it rests. */
+.wave-playhead[data-live] { scale: 1 calc(0.75 + var(--level-1, 0.6) * 0.3); transition: scale 180ms var(--ease-out-quart); }
 .wave-ghost {
   position: absolute; top: 0; left: var(--hover); height: var(--wave-h); width: 1px; translate: -0.5px 0;
   background: color-mix(in srgb, var(--color-ink) 45%, transparent); pointer-events: none;

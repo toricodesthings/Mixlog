@@ -20,8 +20,8 @@ export const Route = createRootRoute({
     links: [
       { rel: 'stylesheet', href: appCss },
       { rel: 'icon', href: '/favicon.ico', sizes: '48x48' },
-      { rel: 'icon', href: '/brand/mixlog-mark.png', type: 'image/png' },
-      { rel: 'apple-touch-icon', href: '/brand/mixlog-mark.png' },
+      { rel: 'icon', href: '/brand/mixlog-mark.svg', type: 'image/svg+xml' },
+      { rel: 'apple-touch-icon', href: '/brand/mixlog-mark-180.png' },
       // Access sits in front of everything, so the manifest is fetched with the session's cookie.
       { rel: 'manifest', href: '/site.webmanifest', crossOrigin: 'use-credentials' },
     ],

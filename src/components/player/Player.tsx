@@ -4,7 +4,7 @@ import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef, useSta
 
 import { matchOf, type Fingerprint } from '#/server/loudness'
 import { ceilingOf, useListening } from '../../hooks/ui/use-listening'
-import { fileUrl } from '../../lib/files'
+import { fileUrl, previewUrl } from '../../lib/files'
 import { clampTo, driftedOf, gainOf, other, putOf, type Side } from './ab'
 import { drive, setGain, tap } from './signal'
 
@@ -46,8 +46,6 @@ type PlayerState = {
   playing: boolean
   /** Asked to play, still waiting for the file to arrive (starting, or a seek past what's here). */
   loading: boolean
-  volume: number
-  muted: boolean
   /** Plays `item`; the one already loaded toggles instead. `at` starts it from a share of the way through (0–1). While
    *  split, it replaces the side you hear (another release's version, or a released one, leaves A/B first). */
   play: (item: Playable, options?: { at?: number }) => void
@@ -59,8 +57,6 @@ type PlayerState = {
   seekTo: (seconds: number, side?: Side) => void
   /** Moves the playhead by seconds, back when negative. */
   skip: (seconds: number) => void
-  setVolume: (volume: number) => void
-  setMuted: (muted: boolean) => void
   /** A/B: null unless split. The split is the player's, so it outlives the room; the URL mirrors it while it's open. */
   ab: AB | null
   /** Splits the room: what's playing goes on A, `b` (or nothing yet) on B. Already split, it puts `b` on B. */
@@ -84,6 +80,15 @@ type Playhead = { time: number; duration: number; buffered: number }
 export const readiness = ({ time, buffered }: Playhead) => Math.min(1, Math.max(0, (buffered - time) / 4))
 
 const PlayerContext = createContext<PlayerState | null>(null)
+/** The volume, its own context: a drag changes it per step, and only VolumeControl reads it. */
+type Volume = { volume: number; muted: boolean; setVolume: (volume: number) => void; setMuted: (muted: boolean) => void }
+const VolumeContext = createContext<Volume | null>(null)
+
+export function useVolume() {
+  const volume = use(VolumeContext)
+  if (!volume) throw new Error('useVolume needs a PlayerProvider (layout/AppShell)')
+  return volume
+}
 const NO_TIME: Playhead = { time: 0, duration: 0, buffered: 0 }
 const PlayheadContext = createContext<{ live: Playhead; a: Playhead; b: Playhead }>({ live: NO_TIME, a: NO_TIME, b: NO_TIME })
 
@@ -95,6 +100,9 @@ export function usePlayer() {
 
 /** The playhead you hear, or one deck's while split. */
 export const usePlayhead = (side?: Side) => use(PlayheadContext)[side ?? 'live']
+/** The same, read only while `on`: a reader that isn't showing time skips the re-render on every tick (`use` may be
+ *  conditional). */
+export const usePlayheadIf = (on: boolean, side?: Side) => (on ? use(PlayheadContext)[side ?? 'live'] : NO_TIME)
 
 /** The decks, as one value so a swap or a hand-over lands in one render (an <audio>'s `src` never flickers). `flip`:
  *  A plays on the second <audio>, so leaving A/B on B, or swapping, never reloads a file. */
@@ -257,8 +265,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       item: decks.split ? decks[decks.live] : decks.a,
       playing,
       loading,
-      volume,
-      muted,
       canTrim,
       ab: decks.split && decks.a ? { a: decks.a, b: decks.b, live: decks.live, pending, trim } : null,
       toggle,
@@ -287,17 +293,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const a = el(now.current.live)
         if (a?.duration) seekTo(a.currentTime + seconds)
       },
-      setVolume: (next) => {
-        live.current = { ...live.current, volume: next, muted: next === 0 }
-        apply()
-        setVolumeState(next)
-        setMutedState(next === 0)
-      },
-      setMuted: (next) => {
-        live.current = { ...live.current, muted: next }
-        apply()
-        setMutedState(next)
-      },
       compare: (b) => {
         const d = now.current
         if (!d.a) return
@@ -311,12 +306,29 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
     // The state, and what the <audio> events and effects below need
     return { state, apply, sideAt, el, commit, cancel }
-  }, [decks, playing, loading, pending, volume, muted, canTrim, trim?.a, trim?.b])
+  }, [decks, playing, loading, pending, canTrim, trim?.a, trim?.b])
   const { state } = engine
 
   // Space plays and pauses, ←/→ move 5 s, as in every music app and DAW: unless the key belongs to what has focus.
   const keyed = useRef(engine)
   keyed.current = engine
+
+  // apply() reads `live`, so the volume needs no new engine: a drag re-renders only VolumeControl
+  const volumeState = useMemo<Volume>(() => ({
+    volume,
+    muted,
+    setVolume: (next) => {
+      live.current = { ...live.current, volume: next, muted: next === 0 }
+      keyed.current.apply()
+      setVolumeState(next)
+      setMutedState(next === 0)
+    },
+    setMuted: (next) => {
+      live.current = { ...live.current, muted: next }
+      keyed.current.apply()
+      setMutedState(next)
+    },
+  }), [volume, muted])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !keyed.current.state.item) return
@@ -397,7 +409,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
     navigator.mediaSession.metadata = item
-      ? new MediaMetadata({ title: item.title, artist: item.label, album: item.release, artwork: item.artworkId ? [{ src: fileUrl(item.artworkId) }] : [] })
+      ? new MediaMetadata({ title: item.title, artist: item.label, album: item.release, artwork: item.artworkId ? [{ src: previewUrl(item.artworkId), sizes: '1024x1024', type: 'image/webp' }] : [] })
       : null
     const p = () => keyed.current.state
     navigator.mediaSession.setActionHandler('play', item ? () => !p().playing && p().toggle() : null)
@@ -438,9 +450,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   return (
     <PlayerContext value={state}>
-      <PlayheadClock els={els} flip={decks.flip} live={decks.live} playing={playing} split={decks.split}>
-        {children}
-      </PlayheadClock>
+      <VolumeContext value={volumeState}>
+        <PlayheadClock els={els} flip={decks.flip} live={decks.live} playing={playing} split={decks.split}>
+          {children}
+        </PlayheadClock>
+      </VolumeContext>
       <audio ref={el0} src={fileOf(decks.flip ? decks.b : decks.a)} {...events(0)} />
       <audio ref={el1} src={fileOf(decks.flip ? decks.a : decks.b)} {...events(1)} />
     </PlayerContext>
@@ -496,10 +510,25 @@ function PlayheadClock({ els, flip, live, playing, split, children }: {
     const both = split ? [a, b] : [a]
     both.forEach((el) => events.forEach((e) => el.addEventListener(e, read)))
     let frame = 0
-    const tick = () => (draw(), (frame = requestAnimationFrame(tick)))
+    let timer = 0
+    // A third of a device pixel on the widest playhead is the smallest move anyone can see: a three-minute song on a
+    // phone needs about 20 draws a second, not 60. A short file, or a wide screen, still gets every frame.
+    const pause = () => {
+      const el = of(undefined)
+      let widest = 0
+      for (const host of document.querySelectorAll<HTMLElement>('[data-playhead]')) widest = Math.max(widest, host.offsetWidth)
+      if (!widest || !Number.isFinite(el.duration) || !el.duration) return 0
+      return Math.min(250, (el.duration * 1000) / (widest * devicePixelRatio * 3)) - 16
+    }
+    const tick = () => {
+      draw()
+      const wait = pause()
+      if (wait > 4) timer = window.setTimeout(() => (frame = requestAnimationFrame(tick)), wait)
+      else frame = requestAnimationFrame(tick)
+    }
     if (playing) frame = requestAnimationFrame(tick)
     read()
-    return () => (cancelAnimationFrame(frame), both.forEach((el) => events.forEach((e) => el.removeEventListener(e, read))))
+    return () => (cancelAnimationFrame(frame), clearTimeout(timer), both.forEach((el) => events.forEach((e) => el.removeEventListener(e, read))))
   }, [els, flip, live, playing, split])
   return <PlayheadContext value={playhead}>{children}</PlayheadContext>
 }

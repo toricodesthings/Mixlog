@@ -1,4 +1,4 @@
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useNavigate, useRouter, useSearch } from '@tanstack/react-router'
 import { Check, UserRoundPlus, UsersRound, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -71,6 +71,7 @@ export function TrackArtistsButton({ trackId, lineup, label }: { trackId: string
 export function ArtistPicker({ trackTitle, number, lineup, onDone }: { trackTitle: string; number: number; lineup: OnTrack[]; onDone: (lineup: OnTrack[]) => void }) {
   const { close } = useArtistsParam()
   const { isTouch } = useShellMode()
+  const router = useRouter()
   const [roster, setRoster] = useState<ArtistRow[] | null>(null)
   const [chosen, setChosen] = useState(lineup)
   const [query, setQuery] = useState('')
@@ -99,6 +100,7 @@ export function ArtistPicker({ trackTitle, number, lineup, onDone }: { trackTitl
         setRoster((all) => [...(all ?? []), row].sort((a, b) => a.name.localeCompare(b.name)))
         setChosen((all) => [...all, { id, name, role: 'artist', profile_image_url: null }])
         setQuery('')
+        void router.invalidate()
       })
       .catch((error) => setProblem(error instanceof Error ? error.message : 'Couldn’t add the artist.'))
       .finally(() => setAdding(false))
