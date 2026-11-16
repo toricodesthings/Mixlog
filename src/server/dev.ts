@@ -1,5 +1,5 @@
 // `pnpm dev` only: start the local studio over, empty or with sample music. The rail's Developer menu calls these.
-// Built into production too (server functions are), so each refuses unless `import.meta.env.DEV`, which a build sets false.
+// In a build `import.meta.env.DEV` is false: each handler is only its 404, and the rest is shaken out.
 import { notFound } from '@tanstack/react-router'
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { env } from 'cloudflare:workers'
@@ -9,10 +9,6 @@ import { fileKey } from '#/server/files'
 import { measureMissing } from '#/server/meter'
 import type { Fingerprint } from '#/server/loudness'
 import { currentPins, notes, releases, stamp, stampNow, tracks, versions } from '#/server/schema'
-
-const devOnly = () => {
-  if (!import.meta.env.DEV) throw notFound()
-}
 
 /** Every row and every file, gone: local D1 and R2 as on the first day. */
 const wipe = createServerOnlyFn(async () => {
@@ -156,13 +152,15 @@ const seed = createServerOnlyFn(async () => {
   }
 })
 
+// Each guard is inline, not a helper: a build reads `import.meta.env.DEV` as false and drops everything after it,
+// samples and fixtures included, so none of this ships in the production Worker.
 export const wipeDev = createServerFn({ method: 'POST' }).handler(async () => {
-  devOnly()
+  if (!import.meta.env.DEV) throw notFound()
   await wipe()
 })
 
 export const seedDev = createServerFn({ method: 'POST' }).handler(async () => {
-  devOnly()
+  if (!import.meta.env.DEV) throw notFound()
   await wipe()
   await seed()
   // Through the Worker runner, so the samples have readings and every seed exercises it.

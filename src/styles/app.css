@@ -9,7 +9,6 @@
  * Never use text opacity below /90 on ink-muted.
  */
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @theme static {
   /* === TYPOGRAPHY === */
@@ -450,12 +449,16 @@
   :is([aria-haspopup="menu"]:not([role="menuitem"]), button[role="combobox"], [data-morph-trigger])[aria-expanded="true"] { opacity: 0; transition: opacity var(--morph-out); }
 }
 @media not (pointer: coarse) {
-  .morph-surface { animation: menu-pop-in var(--pop-in) backwards; transform-origin: var(--radix-popper-transform-origin); }
-  .morph-surface[data-state="closed"] { animation: menu-pop-out var(--pop-out) forwards; }
+  .morph-surface { animation: pop-in var(--pop-in) backwards; transform-origin: var(--radix-popper-transform-origin); }
+  .morph-surface[data-state="closed"] { animation: pop-out var(--pop-out) forwards; }
   .morph-surface[data-state="open"] > * { animation: none; }
 }
-@keyframes menu-pop-in { from { opacity: 0; scale: 0.95; } }
-@keyframes menu-pop-out { to { opacity: 0; scale: 0.95; } }
+/* The same pop for dialogs, their scrim, tooltips and the drop overlay: in on mount or open, out on close.
+   `--pop-from` is the scale it grows from (1: a fade alone). */
+.pop:is([data-state="open"], [data-state="delayed-open"], :not([data-state])) { animation: pop-in var(--pop-in) backwards; }
+.pop[data-state="closed"] { animation: pop-out var(--pop-out) forwards; }
+@keyframes pop-in { from { opacity: 0; scale: var(--pop-from, 0.95); } }
+@keyframes pop-out { to { opacity: 0; scale: var(--pop-from, 0.95); } }
 
 /* Shell chrome — page headers and side rails: a darker, lightly blurred plane over the background. */
 @utility surface-shell {

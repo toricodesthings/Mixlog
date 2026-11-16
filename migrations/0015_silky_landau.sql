@@ -1,0 +1,1 @@
+ALTER TABLE `artists` ADD `live_picture` integer DEFAULT false NOT NULL;

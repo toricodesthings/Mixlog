@@ -1,6 +1,8 @@
 import { expect, it } from 'vitest'
 
+import { objects, sqlite } from '../../support/cloudflare-workers'
 import { call } from '../../support/start'
+import { addArtistProfile } from '#/server/artist-files'
 import { createArtist, getArtist, listArtists, setTrackArtists, updateArtist } from '#/server/artists'
 import { createRelease, getRelease } from '#/server/releases'
 
@@ -28,4 +30,23 @@ it('keeps an artist’s links, adds https when it’s left off, drops repeats an
   await call(updateArtist, { id, name: 'Kai', role: null, links: ['instagram.com/kai', 'https://instagram.com/kai'] })
   expect((await call(getArtist, id)).links).toEqual(['https://instagram.com/kai'])
   await expect(call(updateArtist, { id, name: 'Kai', role: null, links: ['http://example.com'] })).rejects.toThrow()
+})
+
+it('turns the live picture on (erasing an upload) and an upload turns it off', async () => {
+  const { id } = await call(createArtist, { name: 'Kai', role: null })
+  const links = ['https://open.spotify.com/artist/1']
+  const upload = () => addArtistProfile(new Request('https://mixlog.test', { method: 'POST', body: 'png', headers: { 'content-type': 'image/png', 'content-length': '3' } }), id)
+  expect((await upload()).status).toBe(201)
+  const [{ key }] = sqlite.prepare('SELECT profile_image_key AS key FROM artists WHERE id = ?').all(id) as { key: string }[]
+
+  await call(updateArtist, { id, name: 'Kai', role: null, links, livePicture: true })
+  const live = await call(getArtist, id)
+  expect(live).toMatchObject({ live_picture: true, uploaded: false, profile_image_url: `/api/artists/${id}/profile?v=live` })
+  expect(objects.has(key)).toBe(false)
+
+  await call(updateArtist, { id, name: 'Kai', role: null, links: [] })
+  expect((await call(getArtist, id)).profile_image_url).toBeNull() // no link to read it from
+
+  await upload()
+  expect(await call(getArtist, id)).toMatchObject({ live_picture: false, uploaded: true })
 })

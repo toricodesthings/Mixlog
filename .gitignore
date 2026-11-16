@@ -35,3 +35,6 @@ npm-debug.log*
 
 # Playwright plugin output
 .playwright-mcp/
+
+# Local agent skills (kept on disk, not tracked)
+/.agents/

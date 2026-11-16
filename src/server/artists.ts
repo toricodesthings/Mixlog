@@ -1,9 +1,11 @@
+import { env } from 'cloudflare:workers'
 import { notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { asc, count, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/server/db'
+import { pictureLink } from '#/server/live-picture'
 import { Id, Refusal, readWith } from '#/server/input'
 import { TRACK_ARTIST_ROLES, artists, currentPins, releases, trackArtists, tracks, versions } from '#/server/schema'
 
@@ -39,14 +41,14 @@ export const listArtists = createServerFn().handler(
         id: artists.id,
         name: artists.name,
         role: artists.role,
-        profile_image_key: artists.profileImageKey,
+        ...pictureColumns,
         track_count: count(trackArtists.trackId),
       })
       .from(artists)
       .leftJoin(trackArtists, eq(trackArtists.artistId, artists.id))
       .groupBy(artists.id, artists.name)
       .orderBy(asc(artists.name))
-      .then((rows) => rows.map(({ profile_image_key, ...row }) => ({ ...row, profile_image_url: profile_image_key ? artistProfileUrl(row.id, profile_image_key) : null }))),
+      .then((rows) => rows.map(({ key, live, links, ...row }) => ({ ...row, profile_image_url: artistPictureUrl(row.id, { key, live, links }) }))),
 )
 
 /** An email address as typed or pasted (`name@gmail.com`, or already `mailto:`). */
@@ -81,7 +83,7 @@ export const createArtist = createServerFn({ method: 'POST' })
     return { id }
   })
 
-export type ArtistProfile = ArtistRow & { other_roles: string[]; links: string[]; tracks: ArtistTrack[] }
+export type ArtistProfile = ArtistRow & { other_roles: string[]; links: string[]; live_picture: boolean; uploaded: boolean; tracks: ArtistTrack[] }
 
 export const getArtist = createServerFn()
   .validator(readWith(z.string().uuid('That artist is not available.')))
@@ -95,13 +97,14 @@ export const getArtist = createServerFn()
         role: artists.role,
         other_roles: artists.otherRoles,
         links: artists.links,
-        profile_image_key: artists.profileImageKey,
+        key: artists.profileImageKey,
+        live_picture: artists.livePicture,
         track_count: count(trackArtists.trackId),
       })
       .from(artists)
       .leftJoin(trackArtists, eq(trackArtists.artistId, artists.id))
       .where(eq(artists.id, id))
-      .groupBy(artists.id, artists.name, artists.role, artists.otherRoles, artists.links, artists.profileImageKey),
+      .groupBy(artists.id, artists.name, artists.role, artists.otherRoles, artists.links, artists.profileImageKey, artists.livePicture),
       db
       .select({
         id: tracks.id,
@@ -124,12 +127,14 @@ export const getArtist = createServerFn()
       .orderBy(asc(releases.title), asc(tracks.position), asc(tracks.title)),
     ])
     if (!artist) throw notFound()
-    const { profile_image_key, ...profile } = artist
+    const { key, ...profile } = artist
     return {
       ...profile,
       other_roles: profile.other_roles ?? [],
       links: profile.links ?? [],
-      profile_image_url: profile_image_key ? artistProfileUrl(artist.id, profile_image_key) : null,
+      /** An uploaded picture's (an upload always wins over the live one). */
+      uploaded: key !== null,
+      profile_image_url: artistPictureUrl(artist.id, { key, live: profile.live_picture, links: profile.links }),
       tracks: linkedTracks,
     }
   })
@@ -143,16 +148,28 @@ export const updateArtist = createServerFn({ method: 'POST' })
         role: Role.nullable(),
         otherRoles: z.array(Role.min(1)).max(12, 'Twelve roles at most.').optional(),
         links: z.array(Link).max(12, 'Twelve links at most.'),
+        /** The picture from their link. Turning it on erases an uploaded picture (the page asked first). */
+        livePicture: z.boolean().optional(),
       }),
     ),
   )
   .handler(async ({ data }) => {
-    const updated = await db.update(artists).set({ name: data.name, role: data.role || null, ...(data.otherRoles && { otherRoles: [...new Set(data.otherRoles)].filter((r) => r !== data.role) }), links: [...new Set(data.links)] }).where(eq(artists.id, data.id)).returning({ id: artists.id })
-    if (!updated.length) throw notFound()
+    const [before] = await db.select({ key: artists.profileImageKey }).from(artists).where(eq(artists.id, data.id))
+    if (!before) throw notFound()
+    const live = data.livePicture === undefined ? {} : data.livePicture ? { livePicture: true, profileImageKey: null, profileImageType: null, profileImageSize: null } : { livePicture: false }
+    await db.update(artists).set({ name: data.name, role: data.role || null, ...(data.otherRoles && { otherRoles: [...new Set(data.otherRoles)].filter((r) => r !== data.role) }), links: [...new Set(data.links)], ...live }).where(eq(artists.id, data.id))
+    if (data.livePicture && before.key) await env.FILES.delete(before.key) // only once the row no longer names it
   })
 
-/** Where an artist's picture is served, named by its key so a new picture is never the cached old one. */
-export const artistProfileUrl = (id: string, key: string) => `/api/artists/${id}/profile?v=${key.slice(-8)}`
+/** What an artist's picture is read from: an upload (`key`), else their sharpest link while `live` is on. */
+export const pictureColumns = { key: artists.profileImageKey, live: artists.livePicture, links: artists.links }
+
+/** Where an artist's picture is served: an upload named by its key, so a new picture is never the cached old one; a
+ *  live one by `live` (cached for a day); null when there's neither. */
+export function artistPictureUrl(id: string, { key, live, links }: { key: string | null; live: boolean; links: string[] | null }) {
+  if (key) return `/api/artists/${id}/profile?v=${key.slice(-8)}`
+  return live && pictureLink(links ?? []) ? `/api/artists/${id}/profile?v=live` : null
+}
 
 /** A track's artists, saved whole (the picker's Done): main artists first, then featured, each in the order
  *  given. One batch, so a track's artists are never half-written. */

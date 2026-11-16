@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- An artist's picture can follow their Apple Music, Spotify, YouTube, SoundCloud, Deezer or Tidal picture live.
+
 ## [1.7.3] - 2026-11-16
 
 ### Changed

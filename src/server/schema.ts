@@ -58,6 +58,8 @@ export const artists = sqliteTable('artists', {
   profileImageKey: text('profile_image_key'),
   profileImageType: text('profile_image_type'),
   profileImageSize: integer('profile_image_size'),
+  // The picture read live from their sharpest link (`live-picture.ts`), never stored. An upload turns it off.
+  livePicture: integer('live_picture', { mode: 'boolean' }).notNull().default(false),
 })
 
 export const TRACK_ARTIST_ROLES = ['artist', 'featured'] as const

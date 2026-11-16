@@ -245,7 +245,7 @@ Two `<audio>` in the shell (the second is A/B's and has no file until the room s
 
 ### Artists (`artists/`)
 
-Everyone who can be on a track: portraits (the default, no card around the circle) or a list, searched by name or role, all in the URL (`?q=&view=list&add`, `browse.ts`, unit-tested). An artist's page holds their picture (click or drop; one, replaced; its corner button opens it full size at `?full`), name, main role and supporting roles, links (web addresses or emails), and every track they're on, each wearing its release's artwork when there is one.
+Everyone who can be on a track: portraits (the default, no card around the circle) or a list, searched by name or role, all in the URL (`?q=&view=list&add`, `browse.ts`, unit-tested). An artist's page holds their picture (click or drop; one, replaced; its corner button opens it full size at `?full`; or, by a switch, read live from their sharpest music link, which erases an upload on Save and any upload turns off), name, main role and supporting roles, links (web addresses or emails), and every track they're on, each wearing its release's artwork when there is one.
 
 ## 8. Settings
 

@@ -9,7 +9,7 @@ import { db } from '#/server/db'
 import { AUDIO_KINDS } from '#/server/files'
 import { Id, idInput, readWith, Refusal } from '#/server/input'
 import { analysisInput, fingerprintOf, isMeasured, type Analysis, type Fingerprint, type Measured } from '#/server/loudness'
-import { artistProfileUrl, type TrackArtist } from '#/server/artists'
+import { artistPictureUrl, pictureColumns, type TrackArtist } from '#/server/artists'
 import { artists, currentPins, releases, stampNow, trackArtists, tracks, versions } from '#/server/schema'
 import { defaultArtist, keepDays, keepOf, keepQuery } from '#/server/settings'
 import { LANES, lanesOf, moveProblem } from '#/server/lanes'
@@ -45,7 +45,7 @@ const listed = createServerOnlyFn(async (section: SQL | undefined, order: SQL): 
   const [rows, on] = await db.batch([
     releaseQuery().where(section).orderBy(order),
     db
-      .select({ release_id: tracks.releaseId, id: artists.id, name: artists.name, key: artists.profileImageKey })
+      .select({ release_id: tracks.releaseId, id: artists.id, name: artists.name, ...pictureColumns })
       .from(trackArtists)
       .innerJoin(tracks, eq(tracks.id, trackArtists.trackId))
       .innerJoin(artists, eq(artists.id, trackArtists.artistId))
@@ -54,7 +54,7 @@ const listed = createServerOnlyFn(async (section: SQL | undefined, order: SQL): 
   ])
   return (rows as ReleaseRow[]).map((release) => ({
     ...release,
-    artists: [...new Map(on.filter((a) => a.release_id === release.id).map((a) => [a.id, { id: a.id, name: a.name, profile_image_url: a.key ? artistProfileUrl(a.id, a.key) : null }])).values()],
+    artists: [...new Map(on.filter((a) => a.release_id === release.id).map((a) => [a.id, { id: a.id, name: a.name, profile_image_url: artistPictureUrl(a.id, a) }])).values()],
   }))
 })
 
@@ -171,7 +171,7 @@ export const getRelease = createServerFn()
       versionsOf(id),
       db.select({ pruned: sql<number>`COUNT(*)` }).from(versions).where(and(inArray(versions.trackId, tracksOf(id)), isNotNull(versions.prunedAt))),
       db
-        .select({ track_id: trackArtists.trackId, id: artists.id, name: artists.name, role: trackArtists.role, image: artists.profileImageKey })
+        .select({ track_id: trackArtists.trackId, id: artists.id, name: artists.name, role: trackArtists.role, ...pictureColumns })
         .from(trackArtists)
         .innerJoin(artists, eq(artists.id, trackArtists.artistId))
         .where(inArray(trackArtists.trackId, tracksOf(id)))
@@ -193,7 +193,7 @@ export const getRelease = createServerFn()
       tracks: trackRows as TrackRow[],
       versions: versionRows as VersionRow[],
       /** Each track's artists, in credit order. */
-      artists: lineup.map(({ image, ...a }): TrackArtist => ({ ...a, profile_image_url: image ? artistProfileUrl(a.id, image) : null })),
+      artists: lineup.map(({ key, live, links, ...a }): TrackArtist => ({ ...a, profile_image_url: artistPictureUrl(a.id, { key, live, links }) })),
       /** Versions pruned when it moved to Releases, still waiting out the keep window. */
       pruned,
       /** How long what didn't ship is kept after release (Settings → Releases); null keeps everything. */

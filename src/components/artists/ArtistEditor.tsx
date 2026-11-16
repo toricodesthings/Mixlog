@@ -1,15 +1,16 @@
 import { Link, useRouter } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BadgeCheck, BadgePlus, ChevronRight, Download, ImagePlus, ListMusic, Plus, Save, UserRound, X } from 'lucide-react'
+import { BadgeCheck, BadgePlus, ChevronRight, Download, ImagePlus, ListMusic, Plus, Radio, Save, UserRound, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { updateArtist, type ArtistProfile } from '#/server/artists'
 import { ARTWORK_ACCEPT, artworkProblem } from '#/server/files'
+import { pictureLink } from '#/server/live-picture'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { uploadArtistProfile } from '../../lib/files'
 import { SPRINGS } from '../../lib/constants/motion'
 import { cn } from '../../lib/utils'
-import { Button, Input, Led, Scope, Tip, Transfer, useHoverSlide } from '../primitives'
+import { Button, Input, Led, Scope, Switch, Tip, Transfer, useHoverSlide } from '../primitives'
 import { Page } from '../layout/Page'
 import { ComposerRow, ComposerRows, ValueSelect, ValuesSelect } from '../shared/Composer'
 import { useLeaveGuard } from '../shared/LeaveGuard'
@@ -33,6 +34,8 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
   const [links, setLinks] = useState(artist.links)
   const [draft, setDraft] = useState('')
   const [profile, setProfile] = useState<File | null>(null)
+  const [live, setLive] = useState(artist.live_picture)
+  const [savedLive, setSavedLive] = useState(artist.live_picture)
   const [preview, setPreview] = useState<string | null>(null)
   const [sent, setSent] = useState(0)
   const [shownName, setShownName] = useState(artist.name) // the saved name, on the page at once
@@ -40,9 +43,12 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
   const [problem, setProblem] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const typed = platformIn(draft)
+  const source = pictureLink(links)
+  // Turning the live picture on erases an uploaded one; the page says so before Save does it.
+  const erases = live && !savedLive && artist.uploaded
   const slide = useHoverSlide()
   const full = useFullParam()
-  const dirty = name.trim() !== shownName || role !== (artist.role ?? '') || otherRoles.join() !== savedRoles.join() || profile !== null || links.join() !== artist.links.join() || draft.trim() !== ''
+  const dirty = name.trim() !== shownName || role !== (artist.role ?? '') || otherRoles.join() !== savedRoles.join() || profile !== null || live !== savedLive || links.join() !== artist.links.join() || draft.trim() !== ''
 
   const { guard, allow } = useLeaveGuard(dirty && !busy, shownName)
 
@@ -57,7 +63,7 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
     if (!file) return
     const issue = artworkProblem(file.type, file.size)
     setProblem(issue)
-    if (!issue) (setProfile(file), setSaved(false))
+    if (!issue) (setProfile(file), setLive(false), setSaved(false)) // an upload ends the live picture
   }
   const drop = useDropTarget({ onFiles: (files) => pick(files[0]) })
   /** The pasted link joins the list (once); anything that isn't a web address stays in the box with a word on why. */
@@ -79,12 +85,14 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
     if (!next) return
     const before = shownName
     const picture = profile
+    const liveBefore = savedLive
     setProblem(null)
     setSaved(true)
     setShownName(name.trim())
     setSavedRoles(otherRoles)
+    setSavedLive(live)
     allow()
-    updateArtist({ data: { id: artist.id, name, role: role || null, otherRoles, links: next } })
+    updateArtist({ data: { id: artist.id, name, role: role || null, otherRoles, links: next, ...(live !== liveBefore && { livePicture: live }) } })
       .then(async () => {
         if (!picture) return
         setBusy(true)
@@ -96,6 +104,7 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
       .catch((error) => {
         setShownName(before)
         setSavedRoles(artist.other_roles)
+        setSavedLive(liveBefore)
         setSaved(false)
         setProblem(error instanceof Error ? error.message : 'Couldn’t save the artist.')
       })
@@ -138,7 +147,7 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
               </button>
               {artist.profile_image_url && !preview && <ViewButton label="View the picture" onClick={() => void full.show()} className="absolute right-1 bottom-1" />}
             </span>
-            <p className="readout mt-3 text-ink-muted">{preview ? 'New picture · saved with Save' : 'PNG or JPG · click or drop'}</p>
+            <p className="readout mt-3 text-ink-muted">{preview ? 'New picture · saved with Save' : erases ? 'Uploaded picture · erased with Save' : live && source ? `Live from ${source.name}` : 'PNG or JPG · click or drop'}</p>
             <input ref={input} type="file" accept={ARTWORK_ACCEPT} hidden onChange={(event) => (pick(event.target.files?.[0]), (event.target.value = ''))} />
           </div>
 
@@ -153,6 +162,11 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
             <ComposerRow icon={BadgePlus} label="Also">
               <ValuesSelect label="Supporting roles" values={otherRoles} empty="None" options={ROLES.filter((r) => r !== role)} onChange={(next) => (setOtherRoles(next), setSaved(false))} />
             </ComposerRow>
+            {source && (
+              <ComposerRow icon={Radio} label={`Picture from ${source.name}`}>
+                <Switch checked={live} aria-label={`Use the picture from ${source.name}`} onCheckedChange={(on) => (setLive(on), on && setProfile(null), setSaved(false))} />
+              </ComposerRow>
+            )}
           </ComposerRows>
           <div className="flex flex-col">
             <span className="readout mb-2 text-ink-muted">Links</span>

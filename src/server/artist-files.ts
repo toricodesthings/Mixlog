@@ -6,6 +6,7 @@ import { allowed } from '#/server/access'
 import { artworkProblem, artistProfileKey } from '#/server/files'
 import { db } from '#/server/db'
 import { isId } from '#/server/input'
+import { livePicture } from '#/server/live-picture'
 import { artists } from '#/server/schema'
 
 export async function addArtistProfile(request: Request, artistId: string): Promise<Response> {
@@ -21,7 +22,7 @@ export async function addArtistProfile(request: Request, artistId: string): Prom
   const key = artistProfileKey(artistId, crypto.randomUUID())
   await env.FILES.put(key, request.body, { httpMetadata: { contentType: contentType! } })
   try {
-    await db.update(artists).set({ profileImageKey: key, profileImageType: contentType, profileImageSize: size }).where(eq(artists.id, artistId))
+    await db.update(artists).set({ profileImageKey: key, profileImageType: contentType, profileImageSize: size, livePicture: false }) // an upload ends the live picture.where(eq(artists.id, artistId))
   } catch (error) {
     await env.FILES.delete(key)
     throw error
@@ -33,8 +34,13 @@ export async function addArtistProfile(request: Request, artistId: string): Prom
 export async function serveArtistProfile(request: Request, artistId: string): Promise<Response> {
   if (!(await allowed(request))) return new Response('Forbidden', { status: 403 })
   if (!isId(artistId)) return new Response('Not found', { status: 404 })
-  const [artist] = await db.select({ key: artists.profileImageKey, type: artists.profileImageType }).from(artists).where(eq(artists.id, artistId))
-  if (!artist?.key) throw notFound()
+  const [artist] = await db.select({ key: artists.profileImageKey, type: artists.profileImageType, live: artists.livePicture, links: artists.links }).from(artists).where(eq(artists.id, artistId))
+  if (!artist) throw notFound()
+  if (!artist.key) {
+    const picture = artist.live ? await livePicture(artist.links ?? []) : null
+    if (!picture) throw notFound() // the page shows their initials
+    return new Response(picture.body, { headers: { 'content-type': picture.type, 'cache-control': 'private, max-age=86400', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; sandbox" } })
+  }
   const object = await env.FILES.get(artist.key)
   if (!object) throw notFound()
   return new Response(object.body, { headers: { 'content-type': artist.type ?? object.httpMetadata?.contentType ?? 'application/octet-stream', 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; sandbox" } })
