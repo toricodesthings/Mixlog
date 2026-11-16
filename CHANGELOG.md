@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Fixed
+
+- A cover with a small contrasting colour (teal in a red artwork) now lights the room's lamps in that second colour.
+
 ## [1.7.0] - 2026-11-16
 
 ### Changed

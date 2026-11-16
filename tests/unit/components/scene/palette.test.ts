@@ -9,6 +9,9 @@ const image = (...colours: [number[], number][]) =>
 const num = (palette: Record<string, string>, name: string) => Number(palette[name])
 
 describe('paletteOf', () => {
+  /** How far apart two hues are, the short way round. */
+  const arc = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b))
+
   it('takes the dominant hue for the accent and a second strong one for the sky', () => {
     const palette = paletteOf(image([[30, 70, 220], 70], [[220, 40, 40], 30]))
     expect(num(palette, '--art-h')).toBeGreaterThan(250)
@@ -24,14 +27,16 @@ describe('paletteOf', () => {
     expect(num(palette, '--art-light-h')).toBeLessThan(160)
   })
 
-  it('keeps a cover with one colour and a faint second unmixed, its lights in the first', () => {
+  it('keeps a cover with one colour and a small contrasting second unmixed: the sky in the first, the lamps in the second', () => {
     const faint = paletteOf(image([[30, 70, 220], 92], [[220, 40, 40], 8]))
-    expect(faint['--art-light-h']).toBeUndefined()
+    expect(faint['--art-mix']).toBeUndefined()
+    expect(num(faint, '--art-h2')).toBeGreaterThan(200)
+    expect(arc(num(faint, '--art-light-h'), 29)).toBeLessThan(20)
+    // dull teal on 2% of a red cover still counts; under 1% it's noise
+    expect(arc(num(paletteOf(image([[200, 40, 40], 98], [[60, 110, 100], 2])), '--art-light-h'), 180)).toBeLessThan(30)
+    expect(paletteOf(image([[200, 40, 40], 995], [[60, 110, 100], 5]))['--art-light-h']).toBeUndefined()
     expect(paletteOf(image([[200, 30, 30], 100]))['--art-mix']).toBeUndefined()
   })
-
-  /** How far apart two hues are, the short way round. */
-  const arc = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b))
 
   it('gives a three-tone cover’s sky the tone nearest the accent and its lamps the farthest', () => {
     const palette = paletteOf(image([[210, 40, 40], 45], [[220, 130, 30], 30], [[40, 80, 220], 25]))

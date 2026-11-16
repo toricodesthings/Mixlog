@@ -54,6 +54,7 @@ export function paletteOf(pixels: Uint8ClampedArray): Record<string, string> {
   const x = new Array<number>(BINS).fill(0)
   const y = new Array<number>(BINS).fill(0)
   const chroma = new Array<number>(BINS).fill(0)
+  const count = new Array<number>(BINS).fill(0)
   const spotCount = new Array<number>(BINS).fill(0)
   const spotX = new Array<number>(BINS).fill(0)
   const spotY = new Array<number>(BINS).fill(0)
@@ -83,6 +84,7 @@ export function paletteOf(pixels: Uint8ClampedArray): Record<string, string> {
     const w = C * (1 - Math.abs(L - 0.6))
     const bin = Math.floor(h / BIN) % BINS
     weight[bin] += w
+    count[bin]++
     x[bin] += cos * w
     y[bin] += sin * w
     chroma[bin] += C * w
@@ -135,7 +137,15 @@ export function paletteOf(pixels: Uint8ClampedArray): Record<string, string> {
   const c = near.reduce((sum, i) => sum + chroma[i], 0) / near.reduce((sum, i) => sum + weight[i], 0)
   const k = clampK(Math.max((c / 0.12) * cover, castC / 0.05))
   const base = { '--art-h': h.toFixed(1), '--art-k': k.toFixed(2) }
-  if (peaks.length < 2) return withSpot({ ...base, '--art-h2': ((h + 340) % 360).toFixed(1) }, k)
+  if (peaks.length < 2) {
+    // A small contrasting tone (teal eyes in a red cover) never stands above the mean the first sets, but the eye still
+    // sees two colours: at least 1% of the pixels, 90° or more away, it lights the lamps and leaves the sky to the first.
+    const share3 = (i: number) => (count[ring(i - 1)] + count[i] + count[ring(i + 1)]) / seen
+    const far = smooth.map((_, i) => i).filter((i) => gap(i, top) >= 90)
+    const minor = far.length ? far.reduce((a, b) => (share3(b) > share3(a) ? b : a)) : -1
+    const props = { ...base, '--art-h2': ((h + 340) % 360).toFixed(1) }
+    return withSpot(minor >= 0 && share3(minor) >= 0.01 ? { ...props, '--art-light-h': hueAround(minor).toFixed(1) } : props, k)
+  }
 
   // The other tones, nearest the accent's hue first. The big quiet areas take the near ones, so the sky and hills drift
   // from the accent instead of clashing with it; the farthest, the accent's counterpoint, is kept to the small lights
