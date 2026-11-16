@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-16
+
 ### Changed
 
 - Playing uses far less of a phone's power: the playhead draws only as often as it visibly moves.
