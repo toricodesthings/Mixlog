@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Activity, ArrowUpDown, Download, File, FlaskConical, Play, RefreshCw } from 'lucide-react'
+import { Activity, ArrowUpDown, Download, File, FlaskConical, Gem, Play, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import { audioTypeOf, isFinal } from '#/server/files'
@@ -18,17 +18,19 @@ import { useMetersParam } from '../meters/use-meters-param'
 import { Fetching } from '../player/controls'
 import { usePlayer } from '../player/Player'
 import { Button, Led, Meter, Tip, useHoverSlide } from '../primitives'
+import { MetaLine } from '../shared/MetaLine'
 import { sizeOf } from '../uploads/progress'
 import { UploadRow } from '../uploads/UploadRow'
 import type { Target } from '../uploads/use-lane-upload'
 import type { TrackState } from './Lane'
 import { LaneMenu } from './LaneMenu'
-import { FINAL_ICON, KIND_ICON, formatOf, nameOf, playableOf, versionLabel } from './stacks'
+import { FINAL_ICON, KIND_ICON, formatOf, landedOf, nameOf, playableOf, versionLabel } from './stacks'
 
 
 /**
- * One version, read left to right in the order you'd ask: Play, which one, what changed, then quiet columns (a test's
- * flask and its format, the day it landed), then what you can do with it. In Upcoming a mix or master moves between
+ * One version, read left to right in the order you'd ask: Play, which one, what changed, then what you can do with it.
+ * Three tiers, never more: the name at full width; under it one quiet line (a test's flask and its format, the day it
+ * landed); and one layer down, in that line's tip, the minute it landed, its filename and size. In Upcoming a mix or master moves between
  * lanes: its Move menu, a drag (with a mouse), or Alt+↑/↓. In Releases a slot holds one file with no number: a wrong one
  * is replaced by dropping a file on the row or with Replace, after a confirm on the row that names both files.
  */
@@ -94,22 +96,31 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
       {version.is_final ? <span className="sr-only">, final</span> : null}
     </span>
   )
-  // On a phone the facts sit under the name, never under the buttons: the number and format, then the time on its own line.
+  // Under the name, at every size: on a phone the number leads it, and whole facts wrap rather than being cut. The line
+  // opens its tip on hover, focus or a tap.
   const facts = (
-    <span className={cn('flex items-center gap-x-3', isCompact ? 'min-w-0 flex-wrap gap-y-0.5' : 'shrink-0')}>
-      {isCompact && number}
-      <span className={cn('readout flex items-center gap-1.5', test ? 'text-ink-muted' : 'text-ink-soft')}>
-        {test && <FlaskConical size={13} aria-hidden="true" />}
-        {formatOf(version.filename)}
-        {test && <span className="sr-only">, test bounce</span>}
-      </span>
+    <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+      <Tip
+        toggle
+        side="bottom"
+        label={
+          <span className="flex flex-col gap-0.5" data-numeric>
+            <span>Uploaded {formatMoment(version.created_at, zone, todayIn(zone))}</span>
+            <span className="text-ink-muted">{version.filename} · {sizeOf(version.size)}</span>
+          </span>
+        }
+      >
+        <button type="button" className="relative z-[1] -my-1 flex min-w-0 rounded-md py-1 text-left">
+          <MetaLine wrap={isCompact} facts={[isCompact && number, <Format key="f" version={version} />, landedOf(version, zone)]} />
+        </button>
+      </Tip>
       {compact && isMeasured(version.analysis) && version.analysis.lufs !== null && <Loudness a={version.analysis} />}
-      <span className={cn('readout whitespace-nowrap text-ink-muted', isCompact ? 'basis-full' : 'w-36 text-right')}>{formatMoment(version.created_at, zone, todayIn(zone))}</span>
     </span>
   )
 
   return (
     <>
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the row carries the drag and the shortcuts; its buttons are the real controls */}
       <li
         data-version={version.id}
         {...slide}
@@ -151,12 +162,11 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
             <Mark size={16} aria-hidden="true" className={version.is_final ? 'text-accent' : 'text-accent-tertiary'} />
           </span>
         )}
-        <span className={cn('flex min-w-0 flex-1 flex-col py-2', isCompact ? 'gap-0.5' : 'gap-1')}>
-          {/* Two lines on a phone rather than cut short; one, truncated, beside the columns on a wide screen. */}
-          <span className={cn('text-[0.9375rem] font-medium', isCompact ? 'line-clamp-2 leading-snug break-words' : 'truncate', live ? 'text-accent' : 'text-ink')}>{name}</span>
-          {isCompact && facts}
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-2">
+          {/* Two lines on a phone rather than cut short; one, truncated, on a wider screen, where it has the row. */}
+          <span className={cn('text-[0.9375rem] leading-snug font-medium', isCompact ? 'line-clamp-2 break-words' : 'truncate', live ? 'text-accent' : 'text-ink')}>{name}</span>
+          {facts}
         </span>
-        {!isCompact && facts}
         {audio && !compact && (
           <Tip label="Meters" side="left">
             <Button
@@ -189,7 +199,7 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
             </Button>
           </Tip>
         )}
-        <Tip label={`${version.filename} · ${sizeOf(version.size)}`} side="left">
+        <Tip label="Download" side="left">
           <a
             href={downloadUrl(version.id)}
             download={version.filename}
@@ -234,6 +244,21 @@ export function VersionRow({ t, version, slide, compact }: { t: TrackState; vers
       {refused && <li role="status" className="px-4 pb-2 text-[0.8125rem] text-ink-soft">{refused}</li>}
       {replacing && <UploadRow pending={replacing} onRetry={() => t.uploads.retry(replacing.key)} onDismiss={() => t.uploads.dismiss(replacing.key)} />}
     </>
+  )
+}
+
+/** A version's format as its quiet fact, its icon saying what the format means: a test bounce (MP3) wears the flask,
+ *  a lossless file (WAV, AIFF, FLAC: what can be the final) the gem, a step brighter. Anything else, the format alone. */
+export function Format({ version }: { version: Pick<Version, 'filename' | 'content_type'> }) {
+  const audio = version.content_type.startsWith('audio/')
+  const lossless = audio && isFinal(version.content_type)
+  const Icon = audio ? (lossless ? Gem : FlaskConical) : null
+  return (
+    <span className={cn('inline-flex items-center gap-1', lossless ? 'text-ink-soft' : 'text-ink-muted')}>
+      {Icon && <Icon size={12} aria-hidden="true" />}
+      {formatOf(version.filename)}
+      {audio && <span className="sr-only">{lossless ? ' lossless' : ' test bounce'}</span>}
+    </span>
   )
 }
 

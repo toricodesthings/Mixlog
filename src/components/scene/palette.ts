@@ -204,11 +204,15 @@ export function readPalette(url: string): Promise<Record<string, string>> {
 function useArtPalette(url: string | null) {
   const [palette, setPalette] = useState<Record<string, string> | null>(() => (url && palettes.get(url)) || null)
   const [settled, setSettled] = useState(() => !url || palettes.has(url))
-  useEffect(() => {
+  const [seen, setSeen] = useState(url)
+  if (seen !== url) {
     const known = url ? palettes.get(url) : undefined
+    setSeen(url)
     setPalette(known ?? null)
     setSettled(!url || Boolean(known))
-    if (!url || known) return
+  }
+  useEffect(() => {
+    if (!url || palettes.has(url)) return
     let live = true
     const timer = setTimeout(() => live && setSettled(true), 300)
     const attempt = (retry: boolean) =>

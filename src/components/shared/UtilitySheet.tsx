@@ -80,7 +80,7 @@ export function UtilitySheet({
     useEffect(() => {
         if (scroll.current) scroll.current.scrollTop = 0;
         if (open) panel?.querySelector<HTMLElement>("[data-sheet-heading]")?.focus({ preventScroll: true });
-    }, [title]); // only on a drill-in: opening focuses through Radix (`focusInitial`)
+    }, [title]); // eslint-disable-line react-hooks/exhaustive-deps -- only on a drill-in: opening focuses through Radix (`focusInitial`)
 
     const aboveKeyboard = keyboard ? `calc(100dvh - ${keyboard}px - max(0.5rem, env(safe-area-inset-top)))` : null;
     const tall = "min(92dvh, 52rem)";
@@ -172,7 +172,7 @@ export function UtilitySheet({
 
                         {/* A footer button keeps focus in the field: a blur would close the keyboard and move the footer
                             out from under the finger before the tap lands. */}
-                        {footer ? <div className="shrink-0 border-t border-line" onMouseDown={(e) => { if ((e.target as Element).closest("button")) e.preventDefault(); }}>{footer}</div> : null}
+                        {footer ? <div role="presentation" className="shrink-0 border-t border-line" onMouseDown={(e) => { if ((e.target as Element).closest("button")) e.preventDefault(); }}>{footer}</div> : null}
                     </motion.aside>
                 </DialogPrimitive.Content>
             </DialogPrimitive.Portal>

@@ -1,13 +1,13 @@
 import { BadgeCheck, Check, ImagePlus, UserRoundPlus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { createArtist } from '#/server/artists'
 import { ARTWORK_ACCEPT, artworkProblem } from '#/server/files'
 import { uploadArtistProfile } from '../../lib/files'
-import { cn } from '../../lib/utils'
 import { Input } from '../primitives'
 import { Composer, ComposerRow, ComposerRows, ValueSelect } from '../shared/Composer'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
+import { useObjectFile } from '../../hooks/ui/use-object-url'
 
 export const ROLES = ['Artist', 'Producer', 'Songwriter', 'Composer', 'Engineer', 'Other'] as const
 export const ROLE_OPTIONS = [{ value: 'none', label: 'No role' }, ...ROLES.map((r) => ({ value: r, label: r }))]
@@ -21,16 +21,8 @@ export function AddArtistDialog({ open, onOpenChange, onDraft, onSettled }: { op
   const input = useRef<HTMLInputElement>(null)
   const [name, setName] = useState('')
   const [role, setRole] = useState('')
-  const [profile, setProfile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [profile, preview, setProfile] = useObjectFile()
   const [problem, setProblem] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!profile) return setPreview(null)
-    const url = URL.createObjectURL(profile)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [profile])
 
   const pick = (file: File | undefined) => {
     if (!file) return
@@ -70,9 +62,10 @@ export function AddArtistDialog({ open, onOpenChange, onDraft, onSettled }: { op
             <button
               type="button"
               {...drop.props}
+              data-over={drop.over ? '' : undefined}
               onClick={() => input.current?.click()}
               aria-label={profile ? 'Replace profile image' : 'Add profile image'}
-              className={cn('group relative flex size-36 items-center justify-center overflow-hidden rounded-full border border-dashed border-line-strong bg-room-surface text-4xl font-display font-semibold text-accent transition-[border-color,box-shadow] hover:border-accent/60', drop.over && 'border-accent glow-accent')}
+              className="drop-slot group relative flex size-36 items-center justify-center overflow-hidden rounded-full text-4xl font-display font-semibold text-accent"
             >
               {preview ? <img src={preview} alt="" width={144} height={144} className="size-full object-cover" /> : <ImagePlus size={30} aria-hidden="true" />}
               <span className="absolute inset-0 flex items-center justify-center bg-room-void/65 text-sm text-ink opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Add image</span>

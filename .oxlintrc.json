@@ -1,0 +1,147 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "import", "vitest"],
+  "categories": {
+    "correctness": "error"
+  },
+  "ignorePatterns": ["src/routeTree.gen.ts", "meter/pkg/**", "worker-configuration.d.ts", "dist/**"],
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "no-unused-expressions": "off",
+    "react/refs": "off",
+    "react/set-state-in-effect": "warn",
+    "react/purity": "warn",
+    "react/immutability": "warn",
+    "react/static-components": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "import/default": "off",
+    "unicorn/no-new-array": "off",
+    "unicorn/no-useless-spread": "off",
+    "vitest/valid-expect": [
+      "error",
+      {
+        "maxArgs": 2
+      }
+    ],
+    "vitest/require-to-throw-message": "off",
+    "vitest/no-conditional-expect": "off",
+    "jsx-a11y/no-autofocus": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "jsx-a11y/media-has-caption": "off",
+    "jsx-a11y/label-has-associated-control": [
+      "error",
+      {
+        "controlComponents": ["Input", "Textarea"]
+      }
+    ],
+    "jsx-a11y/click-events-have-key-events": "warn",
+    "jsx-a11y/no-static-element-interactions": "warn",
+    "jsx-a11y/no-noninteractive-element-interactions": "warn",
+    "jsx-a11y/no-noninteractive-element-to-interactive-role": "warn",
+    "jsx-a11y/no-redundant-roles": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["src/components/meters/MeterBridge.tsx"],
+      "rules": {
+        "react/jsx-key": "off"
+      }
+    },
+    {
+      "files": ["src/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "sonner",
+                "message": "Toasts only through primitives/Toaster."
+              },
+              {
+                "name": "cloudflare:workers",
+                "message": "env is read only in src/server/."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@radix-ui/*"],
+                "message": "Radix only through components/primitives/."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "matchMedia",
+            "message": "Layout and input come only from useShellMode()."
+          },
+          {
+            "name": "innerWidth",
+            "message": "Layout and input come only from useShellMode()."
+          }
+        ],
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "window",
+            "property": "matchMedia",
+            "message": "Layout and input come only from useShellMode()."
+          },
+          {
+            "object": "window",
+            "property": "innerWidth",
+            "message": "Layout and input come only from useShellMode()."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/components/primitives/**", "src/components/shared/UtilitySheet.tsx"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["src/hooks/ui/use-shell-mode.ts", "src/hooks/ui/use-appearance.ts"],
+      "rules": {
+        "no-restricted-globals": "off",
+        "no-restricted-properties": "off"
+      }
+    },
+    {
+      "files": ["src/server/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "sonner"
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@radix-ui/*"]
+              }
+            ]
+          }
+        ],
+        "no-console": "error"
+      }
+    },
+    {
+      "files": ["src/server/log.ts"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+}

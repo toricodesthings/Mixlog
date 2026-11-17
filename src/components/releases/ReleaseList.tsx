@@ -1,17 +1,17 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { Album, ArrowUpDown, ChevronRight, LayoutGrid, LayoutList, ListMusic, Music, Timer, Upload, type LucideIcon } from 'lucide-react'
+import { Album, ChevronRight, LayoutGrid, LayoutList, ListMusic, Music, Timer, Upload, type LucideIcon } from 'lucide-react'
 import { useMemo, useState, type PointerEvent } from 'react'
 
 import type { ListedRelease } from '#/server/releases'
 import { ArtistAvatar } from '../artists/ArtistAvatar'
 import { useFileDrop } from '../../hooks/ui/use-file-drop'
 import { Button, Meter, useHoverSlide } from '../primitives'
-import * as DropdownMenu from '../primitives/DropdownMenu'
 import { SearchField } from '../primitives/SearchField'
 import { SegmentedControl } from '../primitives/SegmentedControl'
 import { Page } from '../layout/Page'
 import { EmptyState } from '../shared/EmptyState'
 import { MetaLine } from '../shared/MetaLine'
+import { SortMenu } from '../shared/SortMenu'
 import { DropOverlay } from '../uploads/DropOverlay'
 import { NewReleaseDialog } from '../uploads/NewReleaseDialog'
 import { ReleaseArt } from './ReleaseArt'
@@ -33,20 +33,20 @@ const FORMATS: { value: FormatFilter; label: string }[] = [
 ]
 
 const VIEWS = [
+  { value: 'card', label: <span className="max-sm:sr-only">Card</span>, icon: <LayoutGrid size={16} aria-hidden="true" /> },
   { value: 'list', label: <span className="max-sm:sr-only">List</span>, icon: <LayoutList size={16} aria-hidden="true" /> },
-  { value: 'panels', label: <span className="max-sm:sr-only">Panels</span>, icon: <LayoutGrid size={16} aria-hidden="true" /> },
 ] as const
 
-/** Upcoming or Releases: search, filter and sort above the releases, as a list or as panels. */
+/** Upcoming or Releases: search, filter and sort above the releases, as cards or as a list. */
 export function ReleaseList({ section, releases }: { section: Section; releases: ListedRelease[] }) {
   // Everything here lives in the URL (`?q=&format=&sort=&view=&upload`), so a refresh, Back or a link keeps it.
   const search: ListSearch = useSearch({ strict: false })
   const navigate = useNavigate()
   // Refining the list replaces the entry (typing shouldn't flood Back); opening the dialog adds one, so Back closes it.
   const set = (next: Partial<ListSearch>, replace = true) =>
-    void navigate({ to: '.', search: (prev: ListSearch) => listSearch({ ...prev, ...next }), replace, resetScroll: false })
+    void navigate({ to: '.', search: (prev: Record<string, unknown>) => listSearch({ ...prev, ...next }), replace, resetScroll: false })
   const query = search.q ?? ''
-  const view: View = search.view ?? 'panels'
+  const view: View = search.view ?? 'card'
   const format: FormatFilter = search.format ?? 'all'
   const sort = sortOf(section, search.sort ?? null)
   const setQuery = (q: string) => set({ q })
@@ -87,7 +87,7 @@ export function ReleaseList({ section, releases }: { section: Section; releases:
             <div className="-mx-1 flex min-w-0 flex-1 overflow-x-auto px-1 [scrollbar-width:none] max-sm:[mask-image:linear-gradient(90deg,black_80%,transparent)] sm:flex-none">
               <SegmentedControl ariaLabel="Format" value={format} onChange={setFormat} options={FORMATS} />
             </div>
-            <SortMenu section={section} sort={sort} onSort={setSort} />
+            <SortMenu options={SORTS[section]} sort={sort} onSort={setSort} />
             <SegmentedControl ariaLabel="View" value={view} onChange={setView} options={VIEWS} />
           </div>
 
@@ -129,30 +129,6 @@ export function ReleaseList({ section, releases }: { section: Section; releases:
         </div>
       )}
     </Page>
-  )
-}
-
-function SortMenu({ section, sort, onSort }: { section: Section; sort: string; onSort: (sort: string) => void }) {
-  const current = SORTS[section].find((s) => s.value === sort)!
-  return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild>
-        <Button variant="secondary" aria-label={`Sort: ${current.label}`} className="px-3.5">
-          <ArrowUpDown size={16} aria-hidden="true" />
-          <span className="max-lg:hidden">{current.label}</span>
-        </Button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="end" className="min-w-[13rem]">
-        <DropdownMenu.RadioGroup value={sort} onValueChange={onSort}>
-          {SORTS[section].map(({ value, label, icon: Icon }) => (
-            <DropdownMenu.RadioItem key={value} value={value} className="gap-2">
-              <Icon size={14} aria-hidden="true" className="text-ink-muted" />
-              {label}
-            </DropdownMenu.RadioItem>
-          ))}
-        </DropdownMenu.RadioGroup>
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
   )
 }
 

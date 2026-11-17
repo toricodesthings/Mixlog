@@ -27,7 +27,7 @@ export function AddTrackSlot({ number }: { number: number }) {
     <button
       type="button"
       onClick={() => void show()}
-      className="press group flex min-h-18 w-full items-center gap-3 rounded-3xl border border-dashed border-line-strong px-6 text-left transition-[border-color,background-color] duration-(--duration-normal) hover:border-accent/60 hover:bg-accent-dim focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50"
+      className="drop-slot press group flex min-h-18 w-full items-center gap-3 rounded-3xl px-6 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50"
     >
       <span className="readout w-6 shrink-0 text-ink-muted group-hover:text-accent">{String(number).padStart(2, '0')}</span>
       <span className="min-w-0 flex-1 truncate font-display text-xl font-semibold tracking-tight text-ink-muted group-hover:text-ink">Add a track</span>

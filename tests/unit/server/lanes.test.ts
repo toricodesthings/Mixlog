@@ -48,8 +48,7 @@ describe('moving between lanes', () => {
   ]
   it.each(cases)('in Upcoming, %s', (_, version, to, problem) => {
     const said = moveProblem(version, to, 'upcoming')
-    if (problem) expect(said).toMatch(problem)
-    else expect(said).toBeNull()
+    expect(said).toEqual(problem ? expect.stringMatching(problem) : null)
   })
 
   it('in Releases, only gives a track its final', () => {

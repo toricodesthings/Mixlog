@@ -7,15 +7,16 @@ import { laneOf, lanesOf, moveProblem, moved, type Lane as LaneName } from '#/se
 import { fileVersion, type TrackRow, type VersionRow as Version } from '#/server/releases'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
-import { deviceZone, formatMoment, todayIn } from '../../lib/time'
+import { deviceZone } from '../../lib/time'
 import { cn } from '../../lib/utils'
-import { Button, Tip, useHoverSlide } from '../primitives'
+import { Button, Meter, Tip, useHoverSlide } from '../primitives'
 import * as DropdownMenu from '../primitives/DropdownMenu'
 import { UploadRow } from '../uploads/UploadRow'
 import { sortDrop, useLaneUpload, type Target } from '../uploads/use-lane-upload'
 import { TARGET_ICON } from './LaneMenu'
 import type { ReleaseData } from './loaders'
 import { sectionOf } from './sections'
+import { landedOf } from './stacks'
 import { VersionRow } from './VersionRow'
 
 const errorOf = (error: unknown, fallback: string) => (error instanceof Error && error.message) || fallback
@@ -117,12 +118,13 @@ export function useTrack(data: ReleaseData, track: TrackRow) {
 }
 export type TrackState = ReturnType<typeof useTrack>
 
-const LANE: Record<LaneName, { title: string; add: string; empty: string; over: string }> = {
-  final: { title: 'Final', add: 'Add the final', empty: 'No final yet. Drop its WAV here, or drag a master in.', over: 'Drop to make it the final' },
-  master: { title: 'Masters', add: 'Add a master', empty: 'Drop a master here', over: 'Drop to make it a master' },
-  mix: { title: 'Mixes', add: 'Add a mix', empty: 'Drop a mix here', over: 'Drop to make it a mix' },
+/** Each lane's words. An empty lane's slot says what's missing (`empty`), then how it fills: a drop (`drop`), a tap. */
+const LANE: Record<LaneName, { title: string; add: string; empty: string; drop: string; tap: string; over: string }> = {
+  final: { title: 'Final', add: 'Add the final', empty: 'No final yet', drop: 'Drop its WAV here, or drag a master in', tap: 'Tap to choose its WAV', over: 'Drop to make it the final' },
+  master: { title: 'Masters', add: 'Add a master', empty: 'No masters yet', drop: 'Drop a master here, or drag a mix up', tap: 'Tap to choose a master', over: 'Drop to make it a master' },
+  mix: { title: 'Mixes', add: 'Add a mix', empty: 'No mixes yet', drop: 'Drop a bounce here', tap: 'Tap to choose a bounce', over: 'Drop to make it a mix' },
 }
-const RELEASED_EMPTY = 'No final yet. Drop its WAV, AIFF or FLAC here, or click to choose.'
+const RELEASED_DROP = 'Drop its WAV, AIFF or FLAC here'
 const KEEP = { 7: 'a week', 14: 'two weeks', 30: 'a month' } as const
 const FOLD = 3
 
@@ -134,7 +136,7 @@ const FOLD = 3
  * `released`: only the empty final slot, whose final ships the track. `compact`: the Move dialog's, under `heading`.
  */
 export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: TrackState; lane: LaneName; lit?: boolean; filesOver?: boolean; size?: 'page' | 'compact'; heading?: ReactNode }) {
-  const { isCompact } = useShellMode()
+  const { isCompact, isTouch } = useShellMode()
   const slide = useHoverSlide()
   const zone = deviceZone()
   const [unfolded, setUnfolded] = useState(false)
@@ -152,7 +154,7 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
   })
   const over = drop.over ?? (moving && !refusal ? 'version' : filesOver ? 'files' : null)
   const hint = refusal ? refusal : over === 'version' ? LANE[lane].over : over === 'files' ? (lane === 'final' ? 'Drop its WAV to make it the final' : `Drop to add ${lane === 'mix' ? 'a mix' : 'a master'}`) : null
-  const Icon = TARGET_ICON(lane)
+  const Icon = TARGET_ICON[lane]
   const empty = rows.length === 0 && pending.length === 0
   // Pick: the track's lossless bounces, newest first, any of which can be its final.
   const pickable = lane === 'final' ? [...lanes.master, ...lanes.mix].filter((v) => isFinal(v.content_type)).sort((a, b) => b.number - a.number) : []
@@ -165,8 +167,8 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
       {...drop.props}
       className={cn(
         'relative flex flex-col gap-0.5 rounded-2xl pl-4 transition-[background-color,box-shadow,opacity] duration-(--duration-normal)',
-        drop.over && 'bg-accent-dim ring-1 ring-accent/50 glow-accent',
-        !drop.over && over && 'ring-1 ring-accent/25',
+        !empty && drop.over && 'bg-accent-dim ring-[1.5px] ring-accent glow-accent',
+        !empty && !drop.over && over && 'ring-1 ring-accent/25',
         refusal && 'opacity-55',
       )}
     >
@@ -180,8 +182,9 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
             {lane !== 'final' && rows.length > 0 && <span data-numeric>· {rows.length}</span>}
           </h3>
         )}
+        {/* An empty lane says what a drop would do in its slot; a refusal is said here, over the dimmed lane. */}
         <span aria-live="polite" className={cn('min-w-0 flex-1 truncate text-[0.8125rem]', refusal ? 'text-ink-soft' : 'text-accent')}>
-          {hint}
+          {empty && !refusal ? null : hint}
         </span>
         {empty && pickable.length > 0 && (
           <DropdownMenu.Root>
@@ -197,13 +200,13 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
                 <DropdownMenu.Item key={v.id} onSelect={() => void t.move(v, 'final')} className="gap-2">
                   <span className="readout w-8 text-accent">v{v.number}</span>
                   <span className="min-w-0 flex-1 truncate">{v.note || v.filename}</span>
-                  <span className="text-xs whitespace-nowrap text-ink-muted">{formatMoment(v.created_at, zone, todayIn(zone))}</span>
+                  <span className="text-xs whitespace-nowrap text-ink-muted">{landedOf(v, zone)}</span>
                 </DropdownMenu.Item>
               ))}
             </DropdownMenu.Content>
           </DropdownMenu.Root>
         )}
-        {section === 'upcoming' && (lane !== 'final' || empty) && (
+        {section === 'upcoming' && lane !== 'final' && !empty && (
           <Tip label={LANE[lane].add} disabled={!isCompact}>
             <Button variant="ghost" size="sm" onClick={() => t.pick(lane)} aria-label={isCompact ? LANE[lane].add : undefined} className="shrink-0 gap-1.5">
               <Plus size={15} aria-hidden="true" />
@@ -229,23 +232,31 @@ export function Lane({ t, lane, lit, filesOver, size = 'page', heading }: { t: T
           {unfolded ? 'Fold' : `${rows.length - FOLD} earlier`}
         </button>
       )}
-      {empty &&
-        (lane === 'final' ? (
-          <button
-            type="button"
-            onClick={() => t.pick('final')}
-            className={cn('press surface-row sink flex min-h-14 flex-col justify-center gap-0.5 rounded-2xl px-4 text-left text-[0.9375rem] text-ink-soft ring-1 ring-line transition-colors hover:text-ink hover:ring-accent/40', size === 'compact' && 'min-h-12 text-sm')}
-          >
-            {section === 'released' ? RELEASED_EMPTY : LANE.final.empty}
-            {section === 'released' && others > 0 && (
+      {empty && (
+        // One slot for every empty lane: what's missing, then how it fills. Dashed at rest, lit while a file or version is
+        // over it, its meter dancing like a channel catching signal. A click or tap chooses a file.
+        <button
+          type="button"
+          onClick={() => t.pick(lane)}
+          data-meter-host
+          data-over={over && !refusal ? '' : undefined}
+          className={cn('drop-slot press group flex items-center gap-3 rounded-2xl px-4 text-left', size === 'compact' ? 'min-h-12 py-2' : 'min-h-14 py-2.5', over && !refusal && 'meter-live')}
+        >
+          <Meter bars={4} className="h-3.5 shrink-0 opacity-70 group-data-over:opacity-100" />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span aria-live="polite" className={cn('font-medium', size === 'compact' ? 'text-sm' : 'text-[0.9375rem]', over && !refusal ? 'text-accent' : 'text-ink-soft group-hover:text-ink')}>
+              {over && !refusal ? hint : LANE[lane].empty}
+            </span>
+            {!(over && !refusal) && <span className="text-[0.8125rem] text-ink-muted">{isTouch ? LANE[lane].tap : section === 'released' ? RELEASED_DROP : LANE[lane].drop}</span>}
+            {section === 'released' && lane === 'final' && others > 0 && (
               <span className="text-[0.8125rem] text-ink-muted">
                 Its {others} other {others === 1 ? 'version is' : 'versions are'} set aside{keep ? ` and erased after ${KEEP[keep]}` : ''}.
               </span>
             )}
-          </button>
-        ) : (
-          <p className="px-3 pb-2 text-sm text-ink-muted">{LANE[lane].empty}</p>
-        ))}
+          </span>
+          <Plus size={18} aria-hidden="true" className="shrink-0 text-accent" />
+        </button>
+      )}
       {message && (
         <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-1 pb-2 text-[0.8125rem] text-ink-soft">
           {message.wavOf ? `v${message.wavOf.number} is a test, so its WAV is the final.` : message.text}

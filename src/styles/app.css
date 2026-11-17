@@ -8,14 +8,14 @@
  * CONTRAST FLOOR: every ink and accent token is ≥ 4.5:1 on every room in its mode.
  * Never use text opacity below /90 on ink-muted.
  */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme static {
   /* === TYPOGRAPHY === */
-  --font-sans: "Sora Variable", "Sora", system-ui, -apple-system, sans-serif;
-  --font-display: "Outfit Variable", "Outfit", system-ui, sans-serif;
+  --font-sans: 'Sora Variable', 'Sora', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
   /* Readouts (channel strips, timecodes, −∞ dB): the console's own lettering. */
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
 
   /* === BLUE HOUR (default dark) === */
   --color-room-void: #060a14;
@@ -30,8 +30,8 @@
   --color-ink-soft: #b8c5d4;
   --color-ink-muted: #8a9ab3;
 
-  --color-line: rgba(255, 255, 255, 0.10);
-  --color-line-strong: rgba(255, 255, 255, 0.20);
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-line-strong: rgba(255, 255, 255, 0.2);
   --color-line-light: rgba(255, 255, 255, 0.15);
 
   /* === FEEDBACK (warm on purpose, so a problem never blends into the brand) === */
@@ -43,7 +43,7 @@
   --color-tube: #e8b26a;
   --color-haze: #aaa8f2;
 
-  /* === PHANTOM — the one unexpected light (+48V lit on the desk). Rare by rule: src/AGENTS.md §6. === */
+  /* === PHANTOM — the one unexpected light (+48V lit on the desk). Rare by rule: src/AGENTS.md, "Look". === */
   --color-phantom: #ff6bd6;
 
   /* === THE BRAND MARK (primitives/BrandMark, public/brand/): its own colours, as its files, one set per theme.
@@ -82,9 +82,15 @@
 /* Apple's continuous corner: a squircle, not a circular arc (superellipse 1.5: 1 is a plain arc, 2 the full squircle, which reads sharper at the same radius). Capsules stay true semicircles.
    Concentric rule everywhere: inner radius = outer radius − padding (card 2rem/p-4 → 1rem; 1.5rem/p-2 → 1rem; 1rem/p-2 → 0.5rem). */
 @supports (corner-shape: squircle) {
-  [class*="rounded-"]:not(.rounded-full, .rounded-none, [class*="rounded-[inherit]"]) { corner-shape: superellipse(1.5); }
+  [class*='rounded-']:not(.rounded-full, .rounded-none, [class*='rounded-[inherit]']) {
+    corner-shape: superellipse(1.5);
+  }
   /* Pseudo-elements (edges, hover glow, sweeps) and rounded-[inherit] children trace the same corner as their host. */
-  [class*="rounded-[inherit]"], ::before, ::after { corner-shape: inherit; }
+  [class*='rounded-[inherit]'],
+  ::before,
+  ::after {
+    corner-shape: inherit;
+  }
 }
 
 /* === MOTION, LAYERS & THE ACTIVE PALETTE === */
@@ -132,7 +138,7 @@
 }
 
 /* === DAYLIGHT STUDIO — warm cream, never a cold white === */
-[data-theme="daylight"] {
+[data-theme='daylight'] {
   color-scheme: light;
 
   --color-room-void: #f8f6f3;
@@ -147,7 +153,7 @@
   --color-ink-soft: #475569;
   --color-ink-muted: #4f5b6e;
 
-  --color-line: rgba(0, 0, 0, 0.10);
+  --color-line: rgba(0, 0, 0, 0.1);
   --color-line-strong: rgba(0, 0, 0, 0.18);
   --color-line-light: rgba(0, 0, 0, 0.08);
 
@@ -193,16 +199,19 @@
 
   /* Installed app: the shell never rubber-bands; inner scrollers still do. */
   @media (display-mode: standalone), (display-mode: fullscreen) {
-    html, body { overscroll-behavior: none; }
+    html,
+    body {
+      overscroll-behavior: none;
+    }
   }
 
   /* Tailwind v4 Preflight no longer sets cursor:pointer on buttons. */
   button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]),
-  [role="switch"]:not([aria-disabled="true"]),
-  [role="tab"]:not([aria-disabled="true"]),
-  [role="menuitem"]:not([aria-disabled="true"]),
-  [role="option"]:not([aria-disabled="true"]),
+  [role='button']:not([aria-disabled='true']),
+  [role='switch']:not([aria-disabled='true']),
+  [role='tab']:not([aria-disabled='true']),
+  [role='menuitem']:not([aria-disabled='true']),
+  [role='option']:not([aria-disabled='true']),
   label[for],
   summary,
   select:not(:disabled) {
@@ -210,13 +219,17 @@
   }
 
   button:disabled,
-  [aria-disabled="true"] {
+  [aria-disabled='true'] {
     cursor: not-allowed;
   }
 
   /* Under 16px, iOS zooms the page on focus. */
   @media (pointer: coarse) {
-    input, select, textarea { font-size: max(1rem, 16px); }
+    input,
+    select,
+    textarea {
+      font-size: max(1rem, 16px);
+    }
   }
 
   * {
@@ -231,17 +244,19 @@
   }
 
   /* Standalone text inputs get a lighter 1px ring rather than the full 2px button ring. */
-  input[type="text"]:focus-visible,
+  input[type='text']:focus-visible,
   input:not([type]):focus-visible,
   textarea:focus-visible {
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
   }
 
   /* A heading focus is moved to (a bridge opening) isn't a control: no ring. */
-  [tabindex="-1"]:focus-visible { box-shadow: none; }
+  [tabindex='-1']:focus-visible {
+    box-shadow: none;
+  }
 
   /* Composite wrappers that draw their own focus state opt out with data-focus-container. */
-  [role="form"] input:focus-visible,
+  [role='form'] input:focus-visible,
   [data-focus-container] input:focus-visible,
   [data-focus-container] textarea:focus-visible,
   [data-focus-container] select:focus-visible {
@@ -254,7 +269,8 @@
   }
 
   /* Timecodes, version numbers and levels never jitter while playing. */
-  time, [data-numeric] {
+  time,
+  [data-numeric] {
     font-variant-numeric: tabular-nums;
   }
 }
@@ -269,12 +285,11 @@
       radial-gradient(ellipse 70% 50% at 92% 8%, rgba(232, 178, 106, 0.04) 0%, transparent 50%),
       /* Haze horizon — last light over the skyline */
       radial-gradient(ellipse 80% 40% at 50% 100%, rgba(170, 168, 242, 0.05) 0%, transparent 50%),
-      /* Depth vignette */
-      radial-gradient(ellipse 60% 60% at 50% 50%, transparent 40%, rgba(6, 10, 20, 0.5) 100%),
+      /* Depth vignette */ radial-gradient(ellipse 60% 60% at 50% 50%, transparent 40%, rgba(6, 10, 20, 0.5) 100%),
       linear-gradient(175deg, var(--color-room-deep) 0%, #080d1b 40%, var(--color-room-void) 100%);
   }
 
-  [data-theme="daylight"] .bg-atmosphere {
+  [data-theme='daylight'] .bg-atmosphere {
     background:
       radial-gradient(ellipse 100% 70% at 8% 0%, rgba(20, 73, 194, 0.05) 0%, transparent 55%),
       radial-gradient(ellipse 70% 50% at 92% 8%, rgba(122, 74, 12, 0.04) 0%, transparent 50%),
@@ -291,7 +306,7 @@
     border: 1px solid var(--color-line);
   }
 
-  [data-theme="daylight"] .glass {
+  [data-theme='daylight'] .glass {
     background: color-mix(in srgb, var(--color-panel-raised) 85%, transparent);
     -webkit-backdrop-filter: blur(32px) saturate(1.1);
     backdrop-filter: blur(32px) saturate(1.1);
@@ -299,38 +314,91 @@
   }
 
   .glass-surface {
-    background: var(--glass-surface-lighting, none), color-mix(in srgb, var(--color-room-surface) var(--glass-surface-tint, 85%), transparent);
+    background:
+      var(--glass-surface-lighting, none),
+      color-mix(in srgb, var(--color-room-surface) var(--glass-surface-tint, 85%), transparent);
     -webkit-backdrop-filter: blur(var(--glass-surface-blur, 24px));
     backdrop-filter: blur(var(--glass-surface-blur, 24px));
     border: 1px solid var(--color-line-light);
   }
 
-  .safe-top { padding-top: max(1rem, env(safe-area-inset-top)); }
-  .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
   /* Compact page headers: their surface runs under the iOS status bar. */
-  .safe-header-top { padding-top: max(0.625rem, env(safe-area-inset-top)); }
+  .safe-header-top {
+    padding-top: max(0.625rem, env(safe-area-inset-top));
+  }
 
-  .layer-shell-base { z-index: var(--z-shell-base); }
-  .layer-shell-header { z-index: var(--z-shell-header); }
-  .layer-floating-bar { z-index: var(--z-floating-bar); }
-  .layer-route-backdrop { z-index: var(--z-route-backdrop); }
-  .layer-route-overlay { z-index: var(--z-route-overlay); }
-  .layer-utility-surface { z-index: var(--z-utility-surface); }
-  .layer-fullscreen-surface { z-index: var(--z-fullscreen-surface); }
-  .layer-system-dialog { z-index: var(--z-system-dialog); }
-  .layer-floating-ui { z-index: var(--z-floating-ui); }
-  .layer-loading-screen { z-index: var(--z-loading-screen); }
+  .layer-shell-base {
+    z-index: var(--z-shell-base);
+  }
+  .layer-shell-header {
+    z-index: var(--z-shell-header);
+  }
+  .layer-floating-bar {
+    z-index: var(--z-floating-bar);
+  }
+  .layer-route-backdrop {
+    z-index: var(--z-route-backdrop);
+  }
+  .layer-route-overlay {
+    z-index: var(--z-route-overlay);
+  }
+  .layer-utility-surface {
+    z-index: var(--z-utility-surface);
+  }
+  .layer-fullscreen-surface {
+    z-index: var(--z-fullscreen-surface);
+  }
+  .layer-system-dialog {
+    z-index: var(--z-system-dialog);
+  }
+  .layer-floating-ui {
+    z-index: var(--z-floating-ui);
+  }
+  .layer-loading-screen {
+    z-index: var(--z-loading-screen);
+  }
 }
 
 /* ── ScrollArea thumb ── */
 [data-radix-scroll-area-thumb] {
-  transition: opacity 250ms var(--ease-out-quart), background-color 250ms var(--ease-out-quart);
+  transition:
+    opacity 250ms var(--ease-out-quart),
+    background-color 250ms var(--ease-out-quart);
 }
 
 /* A faint halo in the accent tone around a lit surface. */
 @utility glow-accent {
-  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 6%, transparent),
-              0 0 80px color-mix(in srgb, var(--accent) 3%, transparent);
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--accent) 6%, transparent),
+    0 0 80px color-mix(in srgb, var(--accent) 3%, transparent);
+}
+
+/* A drop slot: the one look for "a file goes here", wherever one does. Dashed at rest (an open patch point); Signal
+   on hover or focus; lit solid with a glow while a file is over it (`data-over`). Its radius and size are its own. */
+@utility drop-slot {
+  border: 1.5px dashed color-mix(in srgb, var(--color-ink-muted) 55%, transparent);
+  transition:
+    border-color var(--duration-normal) var(--ease-out-expo),
+    background-color var(--duration-normal) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo);
+  &:is(:hover, :focus-visible) {
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    background-color: var(--accent-dim);
+  }
+  &[data-over] {
+    border-style: solid;
+    border-color: var(--accent);
+    background-color: var(--accent-dim);
+    box-shadow:
+      0 0 24px color-mix(in srgb, var(--accent) 6%, transparent),
+      0 0 80px color-mix(in srgb, var(--accent) 3%, transparent);
+  }
 }
 
 /* Dialogs: glass on the background's own raised base, translucent so the page reads through the blur. */
@@ -339,20 +407,32 @@
   -webkit-backdrop-filter: blur(28px) saturate(1.4);
   backdrop-filter: blur(28px) saturate(1.4);
   border: 1px solid var(--color-line-light);
-  box-shadow: 0 32px 72px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 32px 72px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 /* Press response: on touch a control swells under the finger; a fine pointer presses in slightly.
    `scale` is the individual property, so it never fights a transform. press-none keeps a control still. */
 @utility press {
-  transition: scale var(--spring-snap), filter var(--duration-fast) ease, color var(--duration-normal) ease,
-    background-color var(--duration-normal) ease, border-color var(--duration-normal) ease,
-    box-shadow var(--duration-normal) ease, opacity var(--duration-normal) ease;
+  transition:
+    scale var(--spring-snap),
+    filter var(--duration-fast) ease,
+    color var(--duration-normal) ease,
+    background-color var(--duration-normal) ease,
+    border-color var(--duration-normal) ease,
+    box-shadow var(--duration-normal) ease,
+    opacity var(--duration-normal) ease;
   @media (pointer: coarse) {
-    &:active:not(:disabled) { scale: var(--press-scale, 1.05); filter: brightness(var(--press-bright, 1.08)); }
+    &:active:not(:disabled) {
+      scale: var(--press-scale, 1.05);
+      filter: brightness(var(--press-bright, 1.08));
+    }
   }
   @media (pointer: fine) {
-    &:active:not(:disabled) { scale: var(--press-fine, 0.98); }
+    &:active:not(:disabled) {
+      scale: var(--press-fine, 0.98);
+    }
   }
 }
 @utility press-none {
@@ -360,45 +440,76 @@
   --press-fine: 1;
   --press-bright: 1;
 }
-.press:is(.w-full, [data-press="wide"]) { --press-scale: 1.025; }
+.press:is(.w-full, [data-press='wide']) {
+  --press-scale: 1.025;
+}
 
 /* Glass edge: a 1px specular rim. The element must already be positioned. */
 /* The edge is drawn on the host's own box, so the host must be positioned: relative unless it says otherwise. In the
    base layer, so a `fixed` or `absolute` host (the player, sheets, the segmented lens) still wins. Without it the edge
    traced the nearest positioned ancestor instead: the whole release room, around the sidebar. */
-@layer base { .glass-edge { position: relative; } }
+@layer base {
+  .glass-edge {
+    position: relative;
+  }
+}
 @utility glass-edge {
   &::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
     padding: 1px;
     opacity: var(--edge-strength, 1);
-    background: linear-gradient(160deg, rgb(255 255 255 / 0.38), rgb(255 255 255 / 0.06) 38%, transparent 62%, rgb(255 255 255 / 0.14));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    background: linear-gradient(
+      160deg,
+      rgb(255 255 255 / 0.38),
+      rgb(255 255 255 / 0.06) 38%,
+      transparent 62%,
+      rgb(255 255 255 / 0.14)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
   }
 }
-[data-theme="daylight"] .glass-edge { --edge-strength: 0.75; }
+[data-theme='daylight'] .glass-edge {
+  --edge-strength: 0.75;
+}
 
 /* Primary fills: a lit material in the accent tone (lighter top, rim, inner highlight, tinted shadow).
    Indicators (dots, progress, checks) stay flat. */
 @utility accent-fill {
   --fill-tone: var(--accent);
   color: var(--color-on-accent);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--fill-tone), white var(--fill-lift, 14%)), var(--fill-tone) 58%, color-mix(in oklab, var(--fill-tone), black 6%));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--fill-tone), white var(--fill-lift, 14%)),
+    var(--fill-tone) 58%,
+    color-mix(in oklab, var(--fill-tone), black 6%)
+  );
   border: 1px solid color-mix(in oklab, var(--fill-tone), white 20%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), inset 0 -1px 0 rgb(0 0 0 / 0.12), 0 6px 18px -6px color-mix(in srgb, var(--fill-tone) 45%, transparent);
-  &:hover { --fill-lift: 20%; }
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -1px 0 rgb(0 0 0 / 0.12),
+    0 6px 18px -6px color-mix(in srgb, var(--fill-tone) 45%, transparent);
+  &:hover {
+    --fill-lift: 20%;
+  }
 }
-[data-theme="daylight"] .accent-fill {
+[data-theme='daylight'] .accent-fill {
   --fill-lift: 8%;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.32), inset 0 -1px 0 rgb(0 0 0 / 0.08), 0 4px 12px -6px color-mix(in srgb, var(--fill-tone) 35%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.32),
+    inset 0 -1px 0 rgb(0 0 0 / 0.08),
+    0 4px 12px -6px color-mix(in srgb, var(--fill-tone) 35%, transparent);
 }
-[data-theme="daylight"] .accent-fill:hover { --fill-lift: 12%; }
+[data-theme='daylight'] .accent-fill:hover {
+  --fill-lift: 12%;
+}
 
 /* Menus, popovers, selects and tooltips: see-through glass that takes the colour of the page beneath it.
    --floating-tint is the lowest fill that keeps text legible over worst-case backdrops. */
@@ -407,10 +518,18 @@
   -webkit-backdrop-filter: blur(22px) saturate(1.8) brightness(var(--floating-brightness));
   backdrop-filter: blur(22px) saturate(1.8) brightness(var(--floating-brightness));
   border: 1px solid var(--color-line-light);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
-:root { --floating-tint: 74%; --floating-brightness: 0.92; }
-[data-theme="daylight"] { --floating-tint: 85%; --floating-brightness: 1.04; }
+:root {
+  --floating-tint: 74%;
+  --floating-brightness: 0.92;
+}
+[data-theme='daylight'] {
+  --floating-tint: 85%;
+  --floating-brightness: 1.04;
+}
 
 /* On touch, popovers grow out of their trigger (a clip-path from the anchor rect); a mouse gets a pop-in. */
 .morph-surface {
@@ -422,43 +541,125 @@
   --m-left: 0px;
   animation: morph-in var(--morph-in) backwards;
 }
-.morph-surface[data-align="end"] { --m-left: max(0px, 100% - var(--aw)); --m-right: 0px; }
-.morph-surface[data-align="center"] { --m-left: max(0px, (100% - var(--aw)) / 2); --m-right: var(--m-left); }
-.morph-surface[data-side="top"] { --m-top: max(0px, 100% - var(--ah)); --m-bottom: 0px; }
-.morph-surface:is([data-side="left"], [data-side="right"]) { --m-top: 0px; --m-bottom: max(0px, 100% - var(--ah)); }
-.morph-surface:is([data-side="left"], [data-side="right"])[data-align="end"] { --m-top: max(0px, 100% - var(--ah)); --m-bottom: 0px; }
-.morph-surface:is([data-side="left"], [data-side="right"])[data-align="center"] { --m-top: max(0px, (100% - var(--ah)) / 2); --m-bottom: var(--m-top); }
-.morph-surface[data-side="left"] { --m-left: max(0px, 100% - var(--aw)); --m-right: 0px; }
-.morph-surface[data-side="right"] { --m-left: 0px; --m-right: max(0px, 100% - var(--aw)); }
-.morph-surface[data-state="closed"] { animation: morph-out var(--morph-out) forwards; }
-.morph-surface[data-state="open"] > * { animation: morph-rows 160ms var(--ease-out-quart) 30ms backwards; }
+.morph-surface[data-align='end'] {
+  --m-left: max(0px, 100% - var(--aw));
+  --m-right: 0px;
+}
+.morph-surface[data-align='center'] {
+  --m-left: max(0px, (100% - var(--aw)) / 2);
+  --m-right: var(--m-left);
+}
+.morph-surface[data-side='top'] {
+  --m-top: max(0px, 100% - var(--ah));
+  --m-bottom: 0px;
+}
+.morph-surface:is([data-side='left'], [data-side='right']) {
+  --m-top: 0px;
+  --m-bottom: max(0px, 100% - var(--ah));
+}
+.morph-surface:is([data-side='left'], [data-side='right'])[data-align='end'] {
+  --m-top: max(0px, 100% - var(--ah));
+  --m-bottom: 0px;
+}
+.morph-surface:is([data-side='left'], [data-side='right'])[data-align='center'] {
+  --m-top: max(0px, (100% - var(--ah)) / 2);
+  --m-bottom: var(--m-top);
+}
+.morph-surface[data-side='left'] {
+  --m-left: max(0px, 100% - var(--aw));
+  --m-right: 0px;
+}
+.morph-surface[data-side='right'] {
+  --m-left: 0px;
+  --m-right: max(0px, 100% - var(--aw));
+}
+.morph-surface[data-state='closed'] {
+  animation: morph-out var(--morph-out) forwards;
+}
+.morph-surface[data-state='open'] > * {
+  animation: morph-rows 160ms var(--ease-out-quart) 30ms backwards;
+}
 @keyframes morph-in {
-  from { clip-path: inset(var(--m-top) var(--m-right) var(--m-bottom) var(--m-left) round var(--morph-from-radius, 1rem)); opacity: 0.7; }
-  to { clip-path: inset(0 round var(--morph-to-radius, 0.75rem)); opacity: 1; }
+  from {
+    clip-path: inset(var(--m-top) var(--m-right) var(--m-bottom) var(--m-left) round var(--morph-from-radius, 1rem));
+    opacity: 0.7;
+  }
+  to {
+    clip-path: inset(0 round var(--morph-to-radius, 0.75rem));
+    opacity: 1;
+  }
 }
 @keyframes morph-out {
-  from { clip-path: inset(0 round var(--morph-to-radius, 0.75rem)); opacity: 1; }
-  to { clip-path: inset(var(--m-top) var(--m-right) var(--m-bottom) var(--m-left) round var(--morph-from-radius, 1rem)); opacity: 0; }
+  from {
+    clip-path: inset(0 round var(--morph-to-radius, 0.75rem));
+    opacity: 1;
+  }
+  to {
+    clip-path: inset(var(--m-top) var(--m-right) var(--m-bottom) var(--m-left) round var(--morph-from-radius, 1rem));
+    opacity: 0;
+  }
 }
-@keyframes morph-rows { from { opacity: 0; } }
-.morph-surface.rounded-2xl { --morph-to-radius: 1rem; }
-@media (max-width: 767px) { .morph-surface { --morph-from-radius: calc(var(--ah) / 2); } }
+@keyframes morph-rows {
+  from {
+    opacity: 0;
+  }
+}
+.morph-surface.rounded-2xl {
+  --morph-to-radius: 1rem;
+}
+@media (max-width: 767px) {
+  .morph-surface {
+    --morph-from-radius: calc(var(--ah) / 2);
+  }
+}
 @media (pointer: coarse) {
-  .morph-surface[data-side="bottom"] { translate: 0 calc(-1 * var(--ah) - var(--side-gap, 4px)); }
-  .morph-surface[data-side="top"] { translate: 0 calc(var(--ah) + var(--side-gap, 4px)); }
-  :is([aria-haspopup="menu"]:not([role="menuitem"]), button[role="combobox"], [data-morph-trigger])[aria-expanded="true"] { opacity: 0; transition: opacity var(--morph-out); }
+  .morph-surface[data-side='bottom'] {
+    translate: 0 calc(-1 * var(--ah) - var(--side-gap, 4px));
+  }
+  .morph-surface[data-side='top'] {
+    translate: 0 calc(var(--ah) + var(--side-gap, 4px));
+  }
+  :is(
+    [aria-haspopup='menu']:not([role='menuitem']),
+    button[role='combobox'],
+    [data-morph-trigger]
+  )[aria-expanded='true'] {
+    opacity: 0;
+    transition: opacity var(--morph-out);
+  }
 }
 @media not (pointer: coarse) {
-  .morph-surface { animation: pop-in var(--pop-in) backwards; transform-origin: var(--radix-popper-transform-origin); }
-  .morph-surface[data-state="closed"] { animation: pop-out var(--pop-out) forwards; }
-  .morph-surface[data-state="open"] > * { animation: none; }
+  .morph-surface {
+    animation: pop-in var(--pop-in) backwards;
+    transform-origin: var(--radix-popper-transform-origin);
+  }
+  .morph-surface[data-state='closed'] {
+    animation: pop-out var(--pop-out) forwards;
+  }
+  .morph-surface[data-state='open'] > * {
+    animation: none;
+  }
 }
 /* The same pop for dialogs, their scrim, tooltips and the drop overlay: in on mount or open, out on close.
    `--pop-from` is the scale it grows from (1: a fade alone). */
-.pop:is([data-state="open"], [data-state="delayed-open"], :not([data-state])) { animation: pop-in var(--pop-in) backwards; }
-.pop[data-state="closed"] { animation: pop-out var(--pop-out) forwards; }
-@keyframes pop-in { from { opacity: 0; scale: var(--pop-from, 0.95); } }
-@keyframes pop-out { to { opacity: 0; scale: var(--pop-from, 0.95); } }
+.pop:is([data-state='open'], [data-state='delayed-open'], :not([data-state])) {
+  animation: pop-in var(--pop-in) backwards;
+}
+.pop[data-state='closed'] {
+  animation: pop-out var(--pop-out) forwards;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: var(--pop-from, 0.95);
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    scale: var(--pop-from, 0.95);
+  }
+}
 
 /* Shell chrome — page headers and side rails: a darker, lightly blurred plane over the background. */
 @utility surface-shell {
@@ -495,23 +696,42 @@
 /* One light from above. Volume is one highlight on the top edge and one shade on the bottom, as background layers
    (never a box-shadow, which the focus ring owns). `raise`: things you press. `sink`: wells you put things into. */
 :root {
-  --raise: linear-gradient(rgb(255 255 255 / 0.09), transparent 1px), linear-gradient(to top, rgb(0 0 0 / 0.22), transparent 1px);
-  --sink: linear-gradient(rgb(0 0 0 / 0.22), transparent 1px), linear-gradient(to top, rgb(255 255 255 / 0.06), transparent 1px);
+  --raise:
+    linear-gradient(rgb(255 255 255 / 0.09), transparent 1px),
+    linear-gradient(to top, rgb(0 0 0 / 0.22), transparent 1px);
+  --sink:
+    linear-gradient(rgb(0 0 0 / 0.22), transparent 1px),
+    linear-gradient(to top, rgb(255 255 255 / 0.06), transparent 1px);
 }
-[data-theme="daylight"] {
-  --raise: linear-gradient(rgb(255 255 255 / 0.7), transparent 1px), linear-gradient(to top, rgb(60 40 10 / 0.12), transparent 1px);
-  --sink: linear-gradient(rgb(60 40 10 / 0.12), transparent 1px), linear-gradient(to top, rgb(255 255 255 / 0.6), transparent 1px);
+[data-theme='daylight'] {
+  --raise:
+    linear-gradient(rgb(255 255 255 / 0.7), transparent 1px),
+    linear-gradient(to top, rgb(60 40 10 / 0.12), transparent 1px);
+  --sink:
+    linear-gradient(rgb(60 40 10 / 0.12), transparent 1px),
+    linear-gradient(to top, rgb(255 255 255 / 0.6), transparent 1px);
 }
-.raise, button.surface-control { background-image: var(--raise); }
-button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint-up); }
-.surface-control-accent:hover { --control-tone-mix: 25%; }
+.raise,
+button.surface-control {
+  background-image: var(--raise);
+}
+button.surface-control:not(:disabled):hover {
+  --control-tint: var(--control-tint-up);
+}
+.surface-control-accent:hover {
+  --control-tone-mix: 25%;
+}
 
 .surface-row {
   background-color: color-mix(in srgb, var(--color-panel) var(--row-tint), transparent);
   background-image: linear-gradient(var(--row-wash, transparent), var(--row-wash, transparent));
 }
-.sink { background-image: var(--sink); }
-.surface-row:hover { --row-tint: var(--row-tint-up); }
+.sink {
+  background-image: var(--sink);
+}
+.surface-row:hover {
+  --row-tint: var(--row-tint-up);
+}
 
 @utility surface-card {
   background: color-mix(in srgb, var(--color-panel) var(--card-tint), transparent);
@@ -536,59 +756,112 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
    touch gets the press. Only transforms, opacity and shadow move, so it stays on the compositor. */
 /* Written per pointer move on the card and read only by it (or, --mx/--my, its ::after): not inherited, so a move
    restyles the card alone, not everything inside it. */
-@property --rx { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-@property --ry { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-@property --mx { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
-@property --my { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+@property --rx {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --ry {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --mx {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 50%;
+}
+@property --my {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
 .glass-card {
-  transition: translate 300ms var(--ease-out-quart), scale 300ms var(--ease-out-quart), box-shadow 300ms var(--ease-out-quart);
+  transition:
+    translate 300ms var(--ease-out-quart),
+    scale 300ms var(--ease-out-quart),
+    box-shadow 300ms var(--ease-out-quart);
 }
 .glass-card::after {
   --mx: inherit;
   --my: inherit;
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.03) 38%, transparent 62%);
+  background: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 0%),
+    rgb(255 255 255 / 0.13),
+    rgb(255 255 255 / 0.03) 38%,
+    transparent 62%
+  );
   mix-blend-mode: plus-lighter;
   opacity: 0;
   transition: opacity 300ms var(--ease-out-quart);
 }
-.glass-card-art { transition: scale 300ms var(--ease-out-quart); }
+.glass-card-art {
+  transition: scale 300ms var(--ease-out-quart);
+}
 @media (hover: hover) and (pointer: fine) {
   /* The lean is a 3D transform even at rest, so it's only where a pointer can lean it: a phone's panels stay flat */
   .glass-card {
     transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry));
-    transition: translate 300ms var(--ease-out-quart), scale 300ms var(--ease-out-quart), transform 450ms var(--ease-out-quart),
+    transition:
+      translate 300ms var(--ease-out-quart),
+      scale 300ms var(--ease-out-quart),
+      transform 450ms var(--ease-out-quart),
       box-shadow 300ms var(--ease-out-quart);
   }
   .glass-card:hover {
     translate: 0 -6px;
     scale: 1.02;
-    box-shadow: 0 28px 50px -22px rgb(0 0 0 / 0.6), 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+    box-shadow:
+      0 28px 50px -22px rgb(0 0 0 / 0.6),
+      0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
       0 0 48px -12px color-mix(in srgb, var(--accent) 30%, transparent);
     /* The tilt follows the pointer on Emil's tracking curve: short, so it's never behind the hand */
-    transition: translate var(--spring-liquid), scale var(--spring-liquid), transform 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    transition:
+      translate var(--spring-liquid),
+      scale var(--spring-liquid),
+      transform 200ms cubic-bezier(0.23, 1, 0.32, 1),
       box-shadow 300ms var(--ease-out-quart);
   }
-  .glass-card:hover::after { opacity: 1; }
-  .glass-card:hover .glass-card-art { scale: 1.04; transition: scale var(--spring-liquid); }
-  .glass-card:active { scale: 0.99; transition-duration: 120ms; }
+  .glass-card:hover::after {
+    opacity: 1;
+  }
+  .glass-card:hover .glass-card-art {
+    scale: 1.04;
+    transition: scale var(--spring-liquid);
+  }
+  .glass-card:active {
+    scale: 0.99;
+    transition-duration: 120ms;
+  }
 }
-[data-theme="daylight"] .glass-card::after { mix-blend-mode: normal; background: radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgb(255 255 255 / 0.4), transparent 60%); }
-[data-theme="daylight"] .glass-card:hover { box-shadow: 0 24px 44px -24px rgb(60 40 10 / 0.35), 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
+[data-theme='daylight'] .glass-card::after {
+  mix-blend-mode: normal;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgb(255 255 255 / 0.4), transparent 60%);
+}
+[data-theme='daylight'] .glass-card:hover {
+  box-shadow:
+    0 24px 44px -24px rgb(60 40 10 / 0.35),
+    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
 /* Reduced motion: it still lights and lifts (state), but nothing leans or drifts */
-:root[data-motion="reduced"] .glass-card { transform: none; }
-:root[data-motion="reduced"] .glass-card-art { scale: 1 !important; }
+:root[data-motion='reduced'] .glass-card {
+  transform: none;
+}
+:root[data-motion='reduced'] .glass-card-art {
+  scale: 1 !important;
+}
 
 .surface-card[data-lift]:hover,
-.surface-card[data-state="selected"] {
+.surface-card[data-state='selected'] {
   --card-tint: var(--card-tint-up);
 }
 
-[data-theme="daylight"] .surface-card {
+[data-theme='daylight'] .surface-card {
   border-color: rgba(0, 0, 0, 0.1);
   border-top-color: rgba(0, 0, 0, 0.05);
   border-bottom-color: rgba(0, 0, 0, 0.14);
@@ -598,9 +871,11 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 /* One finish for navigation counts and unread indicators. */
 @utility activity-badge {
   color: var(--color-ink);
-  background: linear-gradient(150deg,
+  background: linear-gradient(
+    150deg,
     color-mix(in srgb, var(--accent) 24%, var(--color-panel)),
-    color-mix(in srgb, var(--accent) 16%, var(--color-panel)) 70%);
+    color-mix(in srgb, var(--accent) 16%, var(--color-panel)) 70%
+  );
   box-shadow:
     0 0 0 2px var(--color-panel),
     inset 0 1px 0 color-mix(in srgb, var(--color-ink) 12%, transparent),
@@ -608,9 +883,9 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 
 /* Reduced motion is global (the OS, or Settings › Appearance): state changes still happen, they just don't travel. */
-:root[data-motion="reduced"] *,
-:root[data-motion="reduced"] *::before,
-:root[data-motion="reduced"] *::after {
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   /* Only what travels or leans stops; colour, opacity and light keep their short ease. */
@@ -625,10 +900,20 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
   }
-  .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
-  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-  .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 9999px; }
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.24); }
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.24);
+  }
 
   .mobile-sheet-shell {
     width: min(100%, 32rem);
@@ -646,35 +931,99 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   }
 
   /* Daylight: bg-white/[0.0x] is invisible on cream, so the common washes map to black alpha. */
-  [data-theme="daylight"] .bg-white\/\[0\.02\] { background-color: rgba(0, 0, 0, 0.02); }
-  [data-theme="daylight"] .bg-white\/\[0\.03\] { background-color: rgba(0, 0, 0, 0.03); }
-  [data-theme="daylight"] .bg-white\/\[0\.04\] { background-color: rgba(0, 0, 0, 0.04); }
-  [data-theme="daylight"] .bg-white\/\[0\.05\] { background-color: rgba(0, 0, 0, 0.05); }
-  [data-theme="daylight"] .bg-white\/\[0\.06\] { background-color: rgba(0, 0, 0, 0.06); }
-  [data-theme="daylight"] .bg-white\/\[0\.08\] { background-color: rgba(0, 0, 0, 0.06); }
-  [data-theme="daylight"] .hover\:bg-white\/\[0\.04\]:hover { background-color: rgba(0, 0, 0, 0.04); }
-  [data-theme="daylight"] .hover\:bg-white\/\[0\.05\]:hover { background-color: rgba(0, 0, 0, 0.05); }
-  [data-theme="daylight"] .hover\:bg-white\/\[0\.06\]:hover { background-color: rgba(0, 0, 0, 0.06); }
-  [data-theme="daylight"] .active\:bg-white\/\[0\.06\]:active { background-color: rgba(0, 0, 0, 0.06); }
-  [data-theme="daylight"] .border-white\/\[0\.04\] { border-color: rgba(0, 0, 0, 0.06); }
-  [data-theme="daylight"] .divide-white\/\[0\.04\] > :not(:last-child) { border-color: rgba(0, 0, 0, 0.06); }
-  [data-theme="daylight"] .scrollbar-thin { scrollbar-color: rgba(0, 0, 0, 0.16) transparent; }
+  [data-theme='daylight'] .bg-white\/\[0\.02\] {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  [data-theme='daylight'] .bg-white\/\[0\.03\] {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  [data-theme='daylight'] .bg-white\/\[0\.04\] {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+  [data-theme='daylight'] .bg-white\/\[0\.05\] {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  [data-theme='daylight'] .bg-white\/\[0\.06\] {
+    background-color: rgba(0, 0, 0, 0.06);
+  }
+  [data-theme='daylight'] .bg-white\/\[0\.08\] {
+    background-color: rgba(0, 0, 0, 0.06);
+  }
+  [data-theme='daylight'] .hover\:bg-white\/\[0\.04\]:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+  [data-theme='daylight'] .hover\:bg-white\/\[0\.05\]:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  [data-theme='daylight'] .hover\:bg-white\/\[0\.06\]:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+  }
+  [data-theme='daylight'] .active\:bg-white\/\[0\.06\]:active {
+    background-color: rgba(0, 0, 0, 0.06);
+  }
+  [data-theme='daylight'] .border-white\/\[0\.04\] {
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+  [data-theme='daylight'] .divide-white\/\[0\.04\] > :not(:last-child) {
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+  [data-theme='daylight'] .scrollbar-thin {
+    scrollbar-color: rgba(0, 0, 0, 0.16) transparent;
+  }
 }
 
 /* Overlay panels (UtilitySheet) open and close on the compositor. The sheet drag writes
    `transform` and these write `translate`, so they add: a thrown sheet leaves from where the finger let go. */
-.sheet-up[data-state="open"] { animation: sheet-up-in var(--sheet-in) both; }
-.sheet-up[data-state="closed"] { animation: sheet-up-out var(--sheet-out) forwards; }
-.sheet-side[data-state="open"] { animation: sheet-side-in var(--sheet-in) both; }
-.sheet-side[data-state="closed"] { animation: sheet-side-out var(--sheet-out) forwards; }
-.sheet-fade[data-state="open"] { animation: sheet-fade-in var(--sheet-in) both; }
-.sheet-fade[data-state="closed"] { animation: sheet-fade-out var(--sheet-out) forwards; }
-@keyframes sheet-up-in { from { translate: 0 100%; } }
-@keyframes sheet-up-out { to { translate: 0 100%; } }
-@keyframes sheet-side-in { from { translate: 28px 0; opacity: 0; } }
-@keyframes sheet-side-out { to { translate: 28px 0; opacity: 0; } }
-@keyframes sheet-fade-in { from { opacity: 0; } }
-@keyframes sheet-fade-out { to { opacity: 0; } }
+.sheet-up[data-state='open'] {
+  animation: sheet-up-in var(--sheet-in) both;
+}
+.sheet-up[data-state='closed'] {
+  animation: sheet-up-out var(--sheet-out) forwards;
+}
+.sheet-side[data-state='open'] {
+  animation: sheet-side-in var(--sheet-in) both;
+}
+.sheet-side[data-state='closed'] {
+  animation: sheet-side-out var(--sheet-out) forwards;
+}
+.sheet-fade[data-state='open'] {
+  animation: sheet-fade-in var(--sheet-in) both;
+}
+.sheet-fade[data-state='closed'] {
+  animation: sheet-fade-out var(--sheet-out) forwards;
+}
+@keyframes sheet-up-in {
+  from {
+    translate: 0 100%;
+  }
+}
+@keyframes sheet-up-out {
+  to {
+    translate: 0 100%;
+  }
+}
+@keyframes sheet-side-in {
+  from {
+    translate: 28px 0;
+    opacity: 0;
+  }
+}
+@keyframes sheet-side-out {
+  to {
+    translate: 28px 0;
+    opacity: 0;
+  }
+}
+@keyframes sheet-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-fade-out {
+  to {
+    opacity: 0;
+  }
+}
 
 @utility surface-route-overlay {
   background: color-mix(in srgb, var(--color-room-deep) 96%, transparent);
@@ -684,7 +1033,9 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 
 /* Settings: the content area catches a faint wash of the accent from the top right. */
-.settings-content-bg { background: radial-gradient(circle at top right, var(--accent-dim), transparent 45%); }
+.settings-content-bg {
+  background: radial-gradient(circle at top right, var(--accent-dim), transparent 45%);
+}
 
 .mobile-icon-button {
   display: inline-flex;
@@ -697,10 +1048,17 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   cursor: pointer;
 }
 .mobile-icon-button:hover,
-.mobile-icon-button:active { background: var(--color-room-surface); }
+.mobile-icon-button:active {
+  background: var(--color-room-surface);
+}
 
-.mobile-tab-bar a, .mobile-tab-bar button { cursor: pointer; }
-.mobile-tab-bar.safe-bottom { padding-bottom: max(0.875rem, env(safe-area-inset-bottom)); }
+.mobile-tab-bar a,
+.mobile-tab-bar button {
+  cursor: pointer;
+}
+.mobile-tab-bar.safe-bottom {
+  padding-bottom: max(0.875rem, env(safe-area-inset-bottom));
+}
 .mobile-tab-bar {
   padding-left: max(1.25rem, env(safe-area-inset-left));
   padding-right: max(1.25rem, env(safe-area-inset-right));
@@ -723,8 +1081,12 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --edge-strength: 1;
   background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
-.dock-link { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
-[data-theme="daylight"] .mobile-dock {
+.dock-link {
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+[data-theme='daylight'] .mobile-dock {
   box-shadow:
     0 16px 36px -14px rgba(94, 72, 41, 0.28),
     0 3px 10px -4px rgba(94, 72, 41, 0.14),
@@ -733,26 +1095,56 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 
 /* While typing, the keyboard covers the home indicator: a sheet drops its safe-area pad. */
 @media (pointer: coarse) {
-  .mobile-sheet-shell:has(:is(textarea, [contenteditable="true"], input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="date"], [type="time"], [type="datetime-local"], [type="button"], [type="submit"])):focus) {
+  .mobile-sheet-shell:has(
+    :is(
+      textarea,
+      [contenteditable='true'],
+      input:not(
+        [type='checkbox'],
+        [type='radio'],
+        [type='range'],
+        [type='color'],
+        [type='file'],
+        [type='date'],
+        [type='time'],
+        [type='datetime-local'],
+        [type='button'],
+        [type='submit']
+      )
+    ):focus
+  ) {
     padding-bottom: 0;
   }
 }
 /* A dialog's corner X never sits on its title. */
-[data-dialog-content="true"]:has(> [data-dialog-x]) [data-dialog-header] { padding-right: 3rem; }
+[data-dialog-content='true']:has(> [data-dialog-x]) [data-dialog-header] {
+  padding-right: 3rem;
+}
 
 /* A tab's own heading is the sheet's title on compact, so it isn't said twice. */
-.mobile-settings-content > div > h2:first-child { display: none; }
-.utility-sheet-header h2:focus, [data-sheet-heading]:focus { box-shadow: none; }
-.utility-sheet-content button, .utility-sheet-content a { cursor: pointer; }
+.mobile-settings-content > div > h2:first-child {
+  display: none;
+}
+.utility-sheet-header h2:focus,
+[data-sheet-heading]:focus {
+  box-shadow: none;
+}
+.utility-sheet-content button,
+.utility-sheet-content a {
+  cursor: pointer;
+}
 .utility-sheet-content input,
 .utility-sheet-content select,
-.utility-sheet-content textarea { font-size: max(1rem, 16px); } /* under 16px, iOS zooms on focus */
-.utility-sheet-content, .utility-sheet-header {
+.utility-sheet-content textarea {
+  font-size: max(1rem, 16px);
+} /* under 16px, iOS zooms on focus */
+.utility-sheet-content,
+.utility-sheet-header {
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
 }
 
-/* ══ SIGNAL GIMMICKS — the audio-engineering cameos (docs: src/AGENTS.md §6, "Cameos").
+/* ══ SIGNAL GIMMICKS — the audio-engineering cameos (docs: src/AGENTS.md, "Look").
    Ambient motion is slow and decorative, never carries meaning, and stops under reduced motion
    (the global rule above lands each loop on its resting frame). ══ */
 
@@ -763,15 +1155,27 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --marquee-fade: 1.25rem;
   margin-inline: calc(-1 * var(--marquee-fade));
   text-overflow: clip;
-  mask-image: linear-gradient(to right, transparent, #000 var(--marquee-fade), #000 calc(100% - var(--marquee-fade)), transparent);
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--marquee-fade),
+    #000 calc(100% - var(--marquee-fade)),
+    transparent
+  );
 }
-.title-marquee[data-overflow] > span { display: inline-block; padding-inline: var(--marquee-fade); will-change: translate; }
+.title-marquee[data-overflow] > span {
+  display: inline-block;
+  padding-inline: var(--marquee-fade);
+  will-change: translate;
+}
 
 /* The scope graticule behind every page: a faint grid fading out from the top, like a lit oscilloscope.
    The ground isolates so the grid sits above its own background and under everything else. */
-.bg-atmosphere { isolation: isolate; }
+.bg-atmosphere {
+  isolation: isolate;
+}
 .bg-atmosphere::before {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
@@ -782,8 +1186,13 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse 90% 60% at 30% 0%, #000 0%, transparent 70%);
 }
-:root { --graticule: rgb(108 180 255 / 0.035); }
-[data-theme="daylight"] { --graticule: rgb(20 73 194 / 0.04); --scope-pulse: var(--accent); }
+:root {
+  --graticule: rgb(108 180 255 / 0.035);
+}
+[data-theme='daylight'] {
+  --graticule: rgb(20 73 194 / 0.04);
+  --scope-pulse: var(--accent);
+}
 
 /* LED: a lit dot with its own bloom (primitives/Led). --led-tone picks the light. */
 @utility led {
@@ -792,27 +1201,78 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   height: 6px;
   border-radius: 9999px;
   background: radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--led-tone), white 45%), var(--led-tone) 60%);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--led-tone) 70%, transparent), 0 0 14px color-mix(in srgb, var(--led-tone) 35%, transparent);
+  box-shadow:
+    0 0 6px color-mix(in srgb, var(--led-tone) 70%, transparent),
+    0 0 14px color-mix(in srgb, var(--led-tone) 35%, transparent);
 }
-.led-off { --led-tone: var(--color-line-strong); box-shadow: none; }
-.led-breathe { animation: led-breathe 3.2s ease-in-out infinite; }
-@keyframes led-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.led-off {
+  --led-tone: var(--color-line-strong);
+  box-shadow: none;
+}
+.led-breathe {
+  animation: led-breathe 3.2s ease-in-out infinite;
+}
+@keyframes led-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
 
 /* Meter bars (primitives/Meter): each bar dances on its own period; at rest they read as a still EQ. */
-.meter-bar { transform-origin: bottom; scale: 1 var(--rest, 0.6); }
+.meter-bar {
+  transform-origin: bottom;
+  scale: 1 var(--rest, 0.6);
+}
 /* A host ([data-meter-host]) wakes its meter on hover, like a channel catching signal. */
-:is(.meter-live, [data-meter-host]:hover) .meter-bar { animation: meter-dance var(--period, 900ms) ease-in-out infinite alternate; animation-delay: var(--delay, 0ms); }
-@keyframes meter-dance { 0% { scale: 1 0.18; } 100% { scale: 1 var(--rest, 0.6); } }
+:is(.meter-live, [data-meter-host]:hover) .meter-bar {
+  animation: meter-dance var(--period, 900ms) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0ms);
+}
+@keyframes meter-dance {
+  0% {
+    scale: 1 0.18;
+  }
+  100% {
+    scale: 1 var(--rest, 0.6);
+  }
+}
 /* With the signal (player/signal.ts) each bar reads its band, set every frame, so no transition */
-.meter-live[data-live] .meter-bar { animation: none; scale: 1 var(--level, var(--rest)); }
+.meter-live[data-live] .meter-bar {
+  animation: none;
+  scale: 1 var(--level, var(--rest));
+}
 
 /* The brand mark (primitives/BrandMark) sings like a voice around its centre line; its resting frame is the logo. */
-.brand-bar { transform-box: fill-box; transform-origin: center; }
-:is(.brand-live, [data-meter-host]:hover) .brand-bar { animation: brand-sing var(--period, 900ms) ease-in-out infinite alternate; animation-delay: var(--delay, 0ms); }
-@keyframes brand-sing { from { scale: 1 1; } to { scale: 1 0.45; } }
+.brand-bar {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+:is(.brand-live, [data-meter-host]:hover) .brand-bar {
+  animation: brand-sing var(--period, 900ms) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0ms);
+}
+@keyframes brand-sing {
+  from {
+    scale: 1 1;
+  }
+  to {
+    scale: 1 0.45;
+  }
+}
 /* Its hold (the fermata) draws itself on once as the mark wakes; the dash runs a little past the path so the rest frame is whole */
-:is(.brand-live, [data-meter-host]:hover) .brand-hold { stroke-dasharray: 1.02 2; animation: brand-hold 900ms var(--ease-out-expo) backwards; }
-@keyframes brand-hold { from { stroke-dashoffset: 1.02; } }
+:is(.brand-live, [data-meter-host]:hover) .brand-hold {
+  stroke-dasharray: 1.02 2;
+  animation: brand-hold 900ms var(--ease-out-expo) backwards;
+}
+@keyframes brand-hold {
+  from {
+    stroke-dashoffset: 1.02;
+  }
+}
 
 /* ── BOOT (layout/Boot): the room before the app arrives, far quieter than the listening room it borrows from. Pure CSS,
    since it runs in the shell HTML before any script. */
@@ -834,7 +1294,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --boot-light-rose: var(--color-mark-rose);
   --boot-light-blend: color-mix(in oklab, var(--color-tube), var(--color-mark-rose));
 }
-[data-theme="daylight"] .boot {
+[data-theme='daylight'] .boot {
   --boot-trace: color-mix(in oklab, var(--accent) 35%, transparent);
   --boot-glow: color-mix(in oklab, var(--accent) 5%, transparent);
   --boot-land-back: #e9e4dd;
@@ -850,31 +1310,104 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
    66.5% down the ground), nearer ones more (`--depth`), the mark rises past and goes first, and the whole room fades
    into the page in the second half. 700ms, but the page under it is live from the first frame. Reduced motion: the
    fade alone, in 300ms. */
-.boot { --fly: 700ms; --fly-ease: cubic-bezier(0.5, 0, 0.3, 1); }
-.boot-leaving { pointer-events: none; animation: boot-out var(--fly) cubic-bezier(0.4, 0, 0.7, 1) forwards; }
-@keyframes boot-out { 0%, 30% { opacity: 1; } 100% { opacity: 0; } }
-.boot-depth { transform-origin: 50% 66.5%; }
+.boot {
+  --fly: 700ms;
+  --fly-ease: cubic-bezier(0.5, 0, 0.3, 1);
+}
+.boot-leaving {
+  pointer-events: none;
+  animation: boot-out var(--fly) cubic-bezier(0.4, 0, 0.7, 1) forwards;
+}
+@keyframes boot-out {
+  0%,
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.boot-depth {
+  transform-origin: 50% 66.5%;
+}
 /* The sky's box is the whole screen: its origin is the same peak, 33.5% of the ground's height up from the bottom */
-.boot-depth-sky { --depth: 0.5; transform-origin: 50% calc(100% - 0.335 * max(36%, 20.84vw)); }
-.boot-leaving .boot-depth { animation: boot-fly var(--fly) var(--fly-ease) forwards; }
-@keyframes boot-fly { to { scale: calc(1 + 0.04 * var(--depth)); } }
-.boot-leaving .boot-stage { animation: boot-pass var(--fly) var(--fly-ease) forwards; }
+.boot-depth-sky {
+  --depth: 0.5;
+  transform-origin: 50% calc(100% - 0.335 * max(36%, 20.84vw));
+}
+.boot-leaving .boot-depth {
+  animation: boot-fly var(--fly) var(--fly-ease) forwards;
+}
+@keyframes boot-fly {
+  to {
+    scale: calc(1 + 0.04 * var(--depth));
+  }
+}
+.boot-leaving .boot-stage {
+  animation: boot-pass var(--fly) var(--fly-ease) forwards;
+}
 /* The mark holds a beat as it starts to rise, then fades as it passes overhead */
-@keyframes boot-pass { 0%, 20% { opacity: 1; } 70%, 100% { opacity: 0; } 100% { scale: 1.1; translate: 0 -3%; } }
-:root[data-motion="reduced"] .boot-leaving { animation-duration: 300ms !important; }
-:root[data-motion="reduced"] .boot-leaving :is(.boot-depth, .boot-stage) { animation: none; }
-.boot-sky { animation: boot-fade 1.2s ease-out both; }
-@keyframes boot-fade { from { opacity: 0; } }
-.boot-stage { animation: boot-in 700ms var(--ease-out-expo) both; }
-@keyframes boot-in { from { opacity: 0; scale: 0.96; } }
+@keyframes boot-pass {
+  0%,
+  20% {
+    opacity: 1;
+  }
+  70%,
+  100% {
+    opacity: 0;
+  }
+  100% {
+    scale: 1.1;
+    translate: 0 -3%;
+  }
+}
+:root[data-motion='reduced'] .boot-leaving {
+  animation-duration: 300ms !important;
+}
+:root[data-motion='reduced'] .boot-leaving :is(.boot-depth, .boot-stage) {
+  animation: none;
+}
+.boot-sky {
+  animation: boot-fade 1.2s ease-out both;
+}
+@keyframes boot-fade {
+  from {
+    opacity: 0;
+  }
+}
+.boot-stage {
+  animation: boot-in 700ms var(--ease-out-expo) both;
+}
+@keyframes boot-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
 
 /* Stars: still, but for three that breathe slowly and one with the room's 4-point sparkle. Gone by day. */
-.boot-star { position: absolute; border-radius: 9999px; background: var(--boot-star); box-shadow: 0 0 4px var(--boot-star); opacity: 0.8; }
-.boot-star-warm { background: var(--boot-star-warm); box-shadow: 0 0 4px var(--boot-star-warm); }
-.boot-twinkle { animation: boot-twinkle 7s ease-in-out infinite; }
-@keyframes boot-twinkle { 50% { opacity: 0.2; } }
-.boot-sparkle::before, .boot-sparkle::after {
-  content: "";
+.boot-star {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--boot-star);
+  box-shadow: 0 0 4px var(--boot-star);
+  opacity: 0.8;
+}
+.boot-star-warm {
+  background: var(--boot-star-warm);
+  box-shadow: 0 0 4px var(--boot-star-warm);
+}
+.boot-twinkle {
+  animation: boot-twinkle 7s ease-in-out infinite;
+}
+@keyframes boot-twinkle {
+  50% {
+    opacity: 0.2;
+  }
+}
+.boot-sparkle::before,
+.boot-sparkle::after {
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;
@@ -884,12 +1417,18 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   background: linear-gradient(90deg, transparent, var(--boot-star), transparent);
   opacity: 0.55;
 }
-.boot-sparkle::after { rotate: 90deg; }
-[data-theme="daylight"] .boot-star { display: none; }
+.boot-sparkle::after {
+  rotate: 90deg;
+}
+[data-theme='daylight'] .boot-star {
+  display: none;
+}
 
 /* The valley (Boot's Ground): tall enough that its viewBox's height always shows (1920 × 400, so ≥ 20.84vw), which
    keeps the mist's band (y 152–240 of 400) between the ranges at every width */
-.boot-ground { height: max(36%, 20.84vw); }
+.boot-ground {
+  height: max(36%, 20.84vw);
+}
 .boot-mist {
   top: 38%;
   height: 22%;
@@ -897,30 +1436,75 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   mask-image: linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent);
   animation: boot-mist 60s ease-in-out infinite alternate;
 }
-@keyframes boot-mist { from { translate: -16px 0; } to { translate: 16px 0; } }
+@keyframes boot-mist {
+  from {
+    translate: -16px 0;
+  }
+  to {
+    translate: 16px 0;
+  }
+}
 /* A tube's box: 80 × 130 of the ground's 400 units, so it scales with the valley */
-.boot-tube { height: 32.5%; aspect-ratio: 80 / 130; }
+.boot-tube {
+  height: 32.5%;
+  aspect-ratio: 80 / 130;
+}
 /* An amp tube warming: the filament's light swells and settles, slowly, the two layers out of step */
-.boot-tube-light { animation: boot-tube 5.5s ease-in-out infinite alternate; }
-.boot-tube-light-b { animation-delay: -2.9s; }
-@keyframes boot-tube { from { opacity: 1; } to { opacity: 0.5; } }
-[data-theme="daylight"] :is(.boot-tube-light, .boot-reflection) { display: none; }
+.boot-tube-light {
+  animation: boot-tube 5.5s ease-in-out infinite alternate;
+}
+.boot-tube-light-b {
+  animation-delay: -2.9s;
+}
+@keyframes boot-tube {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.5;
+  }
+}
+[data-theme='daylight'] :is(.boot-tube-light, .boot-reflection) {
+  display: none;
+}
 
 /* The wordmark, flanked by two rules fading away from it */
-.boot-rule { width: 3.5rem; height: 1px; background: linear-gradient(90deg, transparent, var(--boot-trace)); }
-.boot-rule-r { rotate: 180deg; }
-.boot-wordmark { animation: boot-in 700ms var(--ease-out-expo) 120ms both; }
+.boot-rule {
+  width: 3.5rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--boot-trace));
+}
+.boot-rule-r {
+  rotate: 180deg;
+}
+.boot-wordmark {
+  animation: boot-in 700ms var(--ease-out-expo) 120ms both;
+}
 
 /* The mark draws itself in (1s), holds (0.5s), plays itself back out (1s) and rests (0.7s). One number, --boot-g, runs
    0 → 1 → 0; each part takes its own slice of it, smoothstepped: the bars rise from their centre line left to right,
    the fermata draws across them, the whole note is drawn round last. So the way out is the way in, reversed. Still (reduced motion,
    or no @property): --boot-g stays 1 and the whole mark shows. */
-@property --boot-g { syntax: "<number>"; inherits: true; initial-value: 1; }
-.boot-mark { animation: boot-grow 3.2s linear infinite; }
+@property --boot-g {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+.boot-mark {
+  animation: boot-grow 3.2s linear infinite;
+}
 @keyframes boot-grow {
-  0%, 100% { --boot-g: 0; }
-  31.25%, 46.875% { --boot-g: 1; }
-  78.125% { --boot-g: 0; }
+  0%,
+  100% {
+    --boot-g: 0;
+  }
+  31.25%,
+  46.875% {
+    --boot-g: 1;
+  }
+  78.125% {
+    --boot-g: 0;
+  }
 }
 .brand-boot :is(.brand-bar, .brand-hold, .brand-note-pen, .brand-light) {
   --t: clamp(0, (var(--boot-g) - var(--from, 0)) / var(--span, 1), 1);
@@ -928,14 +1512,42 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 /* The bars rise from a sliver (a meter at −∞, never quite gone) and shrink back to it; they also sway softly, like the
    mark singing under its breath */
-.brand-boot .brand-bar { --from: calc(var(--i) * 0.09); --span: 0.5; --s: calc(0.05 + 0.95 * var(--e)); scale: 1 var(--s); animation: brand-sway var(--period) ease-in-out var(--delay) infinite alternate; }
+.brand-boot .brand-bar {
+  --from: calc(var(--i) * 0.09);
+  --span: 0.5;
+  --s: calc(0.05 + 0.95 * var(--e));
+  scale: 1 var(--s);
+  animation: brand-sway var(--period) ease-in-out var(--delay) infinite alternate;
+}
 /* One property: on an SVG shape Chrome drops `scale` while a `transform` animates, so the sway rides on --s itself */
-@keyframes brand-sway { from { scale: 1 var(--s); } to { scale: 1 calc(var(--s) * 0.84); } }
-.brand-boot .brand-hold { --from: 0.3; --span: 0.55; stroke-dasharray: 1.02 2; stroke-dashoffset: calc(1.02 * (1 - var(--e))); opacity: calc(var(--t) * 40); }
+@keyframes brand-sway {
+  from {
+    scale: 1 var(--s);
+  }
+  to {
+    scale: 1 calc(var(--s) * 0.84);
+  }
+}
+.brand-boot .brand-hold {
+  --from: 0.3;
+  --span: 0.55;
+  stroke-dasharray: 1.02 2;
+  stroke-dashoffset: calc(1.02 * (1 - var(--e)));
+  opacity: calc(var(--t) * 40);
+}
 /* The whole note is drawn around its ring by its pen (BrandMark's mask), and its light comes up with it */
-.brand-boot :is(.brand-note-pen, .brand-light) { --from: 0.72; --span: 0.28; }
-.brand-boot .brand-note-pen { stroke-dasharray: 1.02 2; stroke-dashoffset: calc(1.02 * (1 - var(--e))); opacity: calc(var(--t) * 40); }
-.brand-boot .brand-light { opacity: var(--e); }
+.brand-boot :is(.brand-note-pen, .brand-light) {
+  --from: 0.72;
+  --span: 0.28;
+}
+.brand-boot .brand-note-pen {
+  stroke-dasharray: 1.02 2;
+  stroke-dashoffset: calc(1.02 * (1 - var(--e)));
+  opacity: calc(var(--t) * 40);
+}
+.brand-boot .brand-light {
+  opacity: var(--e);
+}
 /* Its light breathes with it: faint while bare, full once drawn */
 .boot-aura {
   position: absolute;
@@ -945,16 +1557,41 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   opacity: calc(0.3 + 0.7 * var(--boot-g));
   scale: calc(0.88 + 0.12 * var(--boot-g));
 }
-[data-theme="daylight"] .boot-aura { background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 8%, transparent), transparent); }
-:root[data-motion="reduced"] :is(.boot-mark, .brand-boot .brand-bar, .boot-twinkle, .boot-mist, .boot-tube-light) { animation: none; }
+[data-theme='daylight'] .boot-aura {
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 8%, transparent), transparent);
+}
+:root[data-motion='reduced'] :is(.boot-mark, .brand-boot .brand-bar, .boot-twinkle, .boot-mist, .boot-tube-light) {
+  animation: none;
+}
 
 /* Scope trace (primitives/Scope): the line draws itself in, then a pulse of signal keeps travelling it. */
 /* The dash runs past the path's end (1.2 of a pathLength of 1): with a non-scaling stroke, Chrome measures it on screen,
    so a band drawn larger than 1:1 would otherwise stop short of its edge */
-.scope-trace { stroke-dasharray: 1.2 2; stroke-dashoffset: 0; animation: scope-draw 1.4s var(--ease-out-expo) backwards; }
-@keyframes scope-draw { from { stroke-dashoffset: 1.2; } }
-.scope-pulse { stroke: var(--scope-pulse, var(--color-ink)); stroke-dasharray: 0.06 1; stroke-dashoffset: 0.06; opacity: 0.7; animation: scope-pulse 3.6s ease-in-out 1.4s infinite; }
-@keyframes scope-pulse { from { stroke-dashoffset: 0.06; } to { stroke-dashoffset: -1; } }
+.scope-trace {
+  stroke-dasharray: 1.2 2;
+  stroke-dashoffset: 0;
+  animation: scope-draw 1.4s var(--ease-out-expo) backwards;
+}
+@keyframes scope-draw {
+  from {
+    stroke-dashoffset: 1.2;
+  }
+}
+.scope-pulse {
+  stroke: var(--scope-pulse, var(--color-ink));
+  stroke-dasharray: 0.06 1;
+  stroke-dashoffset: 0.06;
+  opacity: 0.7;
+  animation: scope-pulse 3.6s ease-in-out 1.4s infinite;
+}
+@keyframes scope-pulse {
+  from {
+    stroke-dashoffset: 0.06;
+  }
+  to {
+    stroke-dashoffset: -1;
+  }
+}
 
 /* Readout: a console's channel-strip lettering. Small caps-mono, tracked, tabular. */
 @utility readout {
@@ -969,7 +1606,14 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 /* A signal line: the hairline under page headers, lit from the left like a level trace. */
 @utility signal-rule {
   border-bottom: 1px solid transparent;
-  border-image: linear-gradient(90deg, color-mix(in srgb, var(--accent) 45%, transparent), var(--color-line) 30%, var(--color-line) 85%, color-mix(in srgb, var(--accent-tertiary) 30%, transparent)) 1;
+  border-image: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 45%, transparent),
+      var(--color-line) 30%,
+      var(--color-line) 85%,
+      color-mix(in srgb, var(--accent-tertiary) 30%, transparent)
+    )
+    1;
 }
 
 /* Playhead sweep: hovering a row passes a faint light across it, left to right, once. */
@@ -978,26 +1622,58 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   overflow: hidden;
   isolation: isolate;
   &::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 12%, transparent) 70%, color-mix(in srgb, var(--accent) 35%, transparent) 99%, transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--accent) 12%, transparent) 70%,
+      color-mix(in srgb, var(--accent) 35%, transparent) 99%,
+      transparent
+    );
     translate: -101% 0;
   }
   /* A playhead passing, not a whoosh: a gentle ease-out over 1.2s, so it travels the row instead of dashing across
      it. Only where there's a real hover; a keyboard focus plays it too. */
-  @media (hover: hover) and (pointer: fine) { &:hover::after { animation: playhead-pass 1200ms var(--ease-out-cubic) forwards; } }
-  &:focus-visible::after { animation: playhead-pass 1200ms var(--ease-out-cubic) forwards; }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover::after {
+      animation: playhead-pass 1200ms var(--ease-out-cubic) forwards;
+    }
+  }
+  &:focus-visible::after {
+    animation: playhead-pass 1200ms var(--ease-out-cubic) forwards;
+  }
 }
-@keyframes playhead-pass { from { translate: -101% 0; } to { translate: 101% 0; } }
+@keyframes playhead-pass {
+  from {
+    translate: -101% 0;
+  }
+  to {
+    translate: 101% 0;
+  }
+}
 
 /* Phantom spark: the rare flourish. One per view at most; it orbits and blooms, never blinks fast. */
-.phantom-spark { --led-tone: var(--color-phantom); animation: phantom-bloom 5s ease-in-out infinite; }
+.phantom-spark {
+  --led-tone: var(--color-phantom);
+  animation: phantom-bloom 5s ease-in-out infinite;
+}
 @keyframes phantom-bloom {
-  0%, 70%, 100% { box-shadow: 0 0 6px color-mix(in srgb, var(--color-phantom) 70%, transparent), 0 0 14px color-mix(in srgb, var(--color-phantom) 30%, transparent); }
-  80% { box-shadow: 0 0 10px var(--color-phantom), 0 0 28px color-mix(in srgb, var(--color-phantom) 55%, transparent); }
+  0%,
+  70%,
+  100% {
+    box-shadow:
+      0 0 6px color-mix(in srgb, var(--color-phantom) 70%, transparent),
+      0 0 14px color-mix(in srgb, var(--color-phantom) 30%, transparent);
+  }
+  80% {
+    box-shadow:
+      0 0 10px var(--color-phantom),
+      0 0 28px color-mix(in srgb, var(--color-phantom) 55%, transparent);
+  }
 }
 
 /* ── Waiting, in the room's own instruments: state motion, so quick and purposeful, unlike the ambient loops. Under
@@ -1005,36 +1681,113 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 
 /* Tuning (primitives/Tuning): the carrier races left half its width (two cycles, seamless) while it swells and
    settles, hunting for the lock; the scope's edges fade so it reads as a window onto a longer signal. */
-.tuning { mask-image: linear-gradient(90deg, transparent, #000 28%, #000 72%, transparent); }
-.tuning-carrier { animation: tuning-run 620ms linear infinite; }
-.tuning-wave { transform-box: fill-box; transform-origin: center; filter: drop-shadow(0 0 2px currentColor); animation: tuning-lock 1.24s ease-in-out infinite alternate; }
-@keyframes tuning-run { to { translate: -50% 0; } }
-@keyframes tuning-lock { from { scale: 1 0.3; } to { scale: 1 1; } }
+.tuning {
+  mask-image: linear-gradient(90deg, transparent, #000 28%, #000 72%, transparent);
+}
+.tuning-carrier {
+  animation: tuning-run 620ms linear infinite;
+}
+.tuning-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: drop-shadow(0 0 2px currentColor);
+  animation: tuning-lock 1.24s ease-in-out infinite alternate;
+}
+@keyframes tuning-run {
+  to {
+    translate: -50% 0;
+  }
+}
+@keyframes tuning-lock {
+  from {
+    scale: 1 0.3;
+  }
+  to {
+    scale: 1 1;
+  }
+}
 
 /* Transfer (primitives/Transfer): the ring fills as the bytes move; the arrow shoots in, holds a beat at the centre,
    and leaves the way the file is going (up and out to the cloud, down and in to this device). */
-.transfer-fill { filter: drop-shadow(0 0 3px currentColor); transition: stroke-dashoffset var(--duration-smooth) var(--ease-out-expo), opacity var(--duration-fast) ease; }
-.transfer-arrow { animation: transfer-up 900ms var(--ease-out-quart) infinite; }
-[data-direction="down"] .transfer-arrow { animation-name: transfer-down; }
-@keyframes transfer-up { 0% { translate: 0 11px; } 35%, 55% { translate: 0 0; } 100% { translate: 0 -11px; } }
-@keyframes transfer-down { 0% { translate: 0 -11px; } 35%, 55% { translate: 0 0; } 100% { translate: 0 11px; } }
+.transfer-fill {
+  filter: drop-shadow(0 0 3px currentColor);
+  transition:
+    stroke-dashoffset var(--duration-smooth) var(--ease-out-expo),
+    opacity var(--duration-fast) ease;
+}
+.transfer-arrow {
+  animation: transfer-up 900ms var(--ease-out-quart) infinite;
+}
+[data-direction='down'] .transfer-arrow {
+  animation-name: transfer-down;
+}
+@keyframes transfer-up {
+  0% {
+    translate: 0 11px;
+  }
+  35%,
+  55% {
+    translate: 0 0;
+  }
+  100% {
+    translate: 0 -11px;
+  }
+}
+@keyframes transfer-down {
+  0% {
+    translate: 0 -11px;
+  }
+  35%,
+  55% {
+    translate: 0 0;
+  }
+  100% {
+    translate: 0 11px;
+  }
+}
 
 /* Skeleton (primitives/Skeleton): a clip waiting on the timeline, and the playhead's light passing over it, then a
    breath before the next pass. A sweep, never a pulse. */
-:root { --skeleton-ground: color-mix(in srgb, var(--color-ink) 6%, transparent); --skeleton-light: color-mix(in srgb, var(--color-ink) 9%, transparent); }
-[data-theme="daylight"] { --skeleton-ground: color-mix(in srgb, var(--color-ink) 7%, transparent); --skeleton-light: rgb(255 255 255 / 0.65); }
-.skeleton { position: relative; overflow: hidden; isolation: isolate; background-color: var(--skeleton-ground); }
+:root {
+  --skeleton-ground: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --skeleton-light: color-mix(in srgb, var(--color-ink) 9%, transparent);
+}
+[data-theme='daylight'] {
+  --skeleton-ground: color-mix(in srgb, var(--color-ink) 7%, transparent);
+  --skeleton-light: rgb(255 255 255 / 0.65);
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: var(--skeleton-ground);
+}
 .skeleton::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(100deg, transparent 15%, color-mix(in srgb, var(--accent) 10%, transparent) 40%, var(--skeleton-light) 50%, color-mix(in srgb, var(--accent) 10%, transparent) 60%, transparent 85%);
+  background: linear-gradient(
+    100deg,
+    transparent 15%,
+    color-mix(in srgb, var(--accent) 10%, transparent) 40%,
+    var(--skeleton-light) 50%,
+    color-mix(in srgb, var(--accent) 10%, transparent) 60%,
+    transparent 85%
+  );
   translate: -100% 0;
   animation: skeleton-sweep 1.5s var(--ease-out-cubic) var(--sweep-delay, 0ms) infinite;
 }
 /* `--sweep-delay` on a group staggers its clips, so the light travels a grid in reading order */
-@keyframes skeleton-sweep { 0% { translate: -100% 0; } 70%, 100% { translate: 100% 0; } }
+@keyframes skeleton-sweep {
+  0% {
+    translate: -100% 0;
+  }
+  70%,
+  100% {
+    translate: 100% 0;
+  }
+}
 
 /* A release without artwork: a monogram pressed from its title (ReleaseArt). --art-hue comes from the release's id,
    so each release keeps its own colour even through a rename; the grooves are a record's, the sheen a sleeve's. */
@@ -1055,11 +1808,15 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
    keeps its contrast floor whatever the cover. ══ */
 /* `.art-tone`: the room's accent alone, for A/B's controls outside the room (the picker, the bar's switch), so A wears
    one light wherever it shows; no grounds, no graticule. */
-.art-room, .art-tone {
+.art-room,
+.art-tone {
   /* The lightness at which the hue is most vivid in sRGB (its cusp: red 0.63, violet 0.5, yellow 0.9), fitted to a
      short cosine series. Each light sits at its own hue's cusp, held inside the band where it keeps 4.5:1 on every
      ground, so a red cover lights red, not salmon, a violet one violet, not lavender, a yellow one gold, not murk */
-  --art-cusp: calc(0.741 - 0.127 * cos(var(--art-h) * 1deg) + 0.124 * sin(var(--art-h) * 1deg) + 0.036 * cos(var(--art-h) * 2deg) - 0.012 * sin(var(--art-h) * 2deg) + 0.015 * cos(var(--art-h) * 3deg) - 0.063 * sin(var(--art-h) * 3deg));
+  --art-cusp: calc(
+    0.741 - 0.127 * cos(var(--art-h) * 1deg) + 0.124 * sin(var(--art-h) * 1deg) + 0.036 * cos(var(--art-h) * 2deg) -
+      0.012 * sin(var(--art-h) * 2deg) + 0.015 * cos(var(--art-h) * 3deg) - 0.063 * sin(var(--art-h) * 3deg)
+  );
   --accent: oklch(clamp(0.68, var(--art-cusp), 0.82) clamp(0.012, calc(0.15 * var(--art-k)), 0.19) var(--art-h));
   --accent-soft: color-mix(in oklab, var(--accent) 12%, transparent);
   --accent-dim: color-mix(in oklab, var(--accent) 6%, transparent);
@@ -1070,8 +1827,11 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --color-accent-soft: var(--accent-soft);
   --color-accent-dim: var(--accent-dim);
 }
-[data-theme="daylight"] .art-room, [data-theme="daylight"] .art-tone {
-  --accent: oklch(clamp(0.4, calc(var(--art-cusp) - 0.3), 0.46) clamp(0.015, calc(0.17 * var(--art-k)), 0.19) var(--art-h));
+[data-theme='daylight'] .art-room,
+[data-theme='daylight'] .art-tone {
+  --accent: oklch(
+    clamp(0.4, calc(var(--art-cusp) - 0.3), 0.46) clamp(0.015, calc(0.17 * var(--art-k)), 0.19) var(--art-h)
+  );
   --accent-soft: color-mix(in oklab, var(--accent) 8%, transparent);
   --accent-dim: color-mix(in oklab, var(--accent) 4%, transparent);
   --accent-glow: color-mix(in oklab, var(--accent) 14%, transparent);
@@ -1093,7 +1853,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   isolation: isolate;
   background: var(--color-room-deep);
 }
-[data-theme="daylight"] .art-room {
+[data-theme='daylight'] .art-room {
   --color-room-void: oklch(0.974 calc(0.008 * var(--room-k)) var(--art-h2));
   --color-room-deep: oklch(0.956 calc(0.01 * var(--room-k)) var(--art-h2));
   --color-room-base: oklch(0.932 calc(0.013 * var(--room-k)) var(--art-h2));
@@ -1104,12 +1864,14 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 /* The room's own graticule, in its own light */
 .art-room::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: linear-gradient(var(--graticule) 1px, transparent 1px), linear-gradient(90deg, var(--graticule) 1px, transparent 1px);
+  background-image:
+    linear-gradient(var(--graticule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--graticule) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse 90% 60% at 30% 0%, #000 0%, transparent 70%);
 }
@@ -1126,21 +1888,57 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
      A grey cover's small strong colour (a red coat, a neon sign: `--art-spot-h`/`-k`) lights the lamps instead. */
   --light-h: var(--art-spot-h, var(--art-light-h, var(--art-h)));
   --light-k: var(--art-spot-k, var(--art-k));
-  --light-cusp: calc(0.741 - 0.127 * cos(var(--light-h) * 1deg) + 0.124 * sin(var(--light-h) * 1deg) + 0.036 * cos(var(--light-h) * 2deg) - 0.012 * sin(var(--light-h) * 2deg) + 0.015 * cos(var(--light-h) * 3deg) - 0.063 * sin(var(--light-h) * 3deg));
+  --light-cusp: calc(
+    0.741 - 0.127 * cos(var(--light-h) * 1deg) + 0.124 * sin(var(--light-h) * 1deg) + 0.036 *
+      cos(var(--light-h) * 2deg) - 0.012 * sin(var(--light-h) * 2deg) + 0.015 * cos(var(--light-h) * 3deg) - 0.063 *
+      sin(var(--light-h) * 3deg)
+  );
   --beacon-h: var(--art-beacon-h, var(--light-h));
-  --beacon-cusp: calc(0.741 - 0.127 * cos(var(--beacon-h) * 1deg) + 0.124 * sin(var(--beacon-h) * 1deg) + 0.036 * cos(var(--beacon-h) * 2deg) - 0.012 * sin(var(--beacon-h) * 2deg) + 0.015 * cos(var(--beacon-h) * 3deg) - 0.063 * sin(var(--beacon-h) * 3deg));
+  --beacon-cusp: calc(
+    0.741 - 0.127 * cos(var(--beacon-h) * 1deg) + 0.124 * sin(var(--beacon-h) * 1deg) + 0.036 *
+      cos(var(--beacon-h) * 2deg) - 0.012 * sin(var(--beacon-h) * 2deg) + 0.015 * cos(var(--beacon-h) * 3deg) - 0.063 *
+      sin(var(--beacon-h) * 3deg)
+  );
   --scene-mid: oklch(0.215 calc(0.06 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
-  --scene-horizon: color-mix(in oklch, color-mix(in oklch, oklch(0.42 calc(0.09 * var(--room-k)) var(--art-h)), oklch(0.42 calc(0.09 * var(--room-k)) var(--art-h2)) 30%), oklch(0.42 0.09 70) 20%);
-  --scene-bloom: color-mix(in oklch, oklch(0.62 calc(0.14 * var(--room-k)) var(--art-h) / 0.3), oklch(0.62 calc(0.14 * var(--room-k)) var(--art-h2) / 0.3) 20%);
+  --scene-horizon: color-mix(
+    in oklch,
+    color-mix(
+      in oklch,
+      oklch(0.42 calc(0.09 * var(--room-k)) var(--art-h)),
+      oklch(0.42 calc(0.09 * var(--room-k)) var(--art-h2)) 30%
+    ),
+    oklch(0.42 0.09 70) 20%
+  );
+  --scene-bloom: color-mix(
+    in oklch,
+    oklch(0.62 calc(0.14 * var(--room-k)) var(--art-h) / 0.3),
+    oklch(0.62 calc(0.14 * var(--room-k)) var(--art-h2) / 0.3) 20%
+  );
   --scene-moon: oklch(0.95 calc(0.025 + 0.025 * var(--room-k)) var(--art-h));
   --scene-moon-halo: oklch(0.86 calc(0.05 + 0.04 * var(--room-k)) var(--art-h));
   --scene-star-cool: oklch(0.95 calc(0.01 + 0.02 * var(--room-k)) var(--art-h2));
   --scene-star-warm: oklch(0.93 0.06 80);
   --land-back: oklch(0.4 calc(0.03 * var(--room-k)) var(--art-h2));
   --land-distant: oklch(0.35 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
-  --land-far: color-mix(in oklch, oklch(0.29 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.29 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 25%);
-  --land-signal: color-mix(in oklch, color-mix(in oklch, oklch(0.235 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.235 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 50%), oklch(0.235 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h)) 25%);
-  --land-valley: color-mix(in oklch, oklch(0.19 calc(0.045 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.19 calc(0.045 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 75%);
+  --land-far: color-mix(
+    in oklch,
+    oklch(0.29 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)),
+    oklch(0.29 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 25%
+  );
+  --land-signal: color-mix(
+    in oklch,
+    color-mix(
+      in oklch,
+      oklch(0.235 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)),
+      oklch(0.235 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 50%
+    ),
+    oklch(0.235 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h)) 25%
+  );
+  --land-valley: color-mix(
+    in oklch,
+    oklch(0.19 calc(0.045 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)),
+    oklch(0.19 calc(0.045 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 75%
+  );
   --land-near: oklch(0.15 calc(0.045 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2)));
   --land-fore: oklch(0.11 calc(0.055 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2)));
   --land-haze: oklch(0.36 calc(0.07 * var(--room-k)) var(--art-h));
@@ -1148,33 +1946,65 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   --scene-trace: oklch(clamp(0.66, var(--art-cusp), 0.8) clamp(0.012, calc(0.14 * var(--art-k)), 0.17) var(--art-h));
   --scene-spark: oklch(0.97 calc(0.04 * var(--room-k)) var(--art-h));
   --scene-water: oklch(0.3 calc(0.06 * var(--room-k)) var(--art-h));
-  --scene-lamp: oklch(clamp(0.74, calc(var(--light-cusp) + 0.1), 0.9) clamp(0.03, calc(0.15 * var(--light-k)), 0.19) var(--light-h));
+  --scene-lamp: oklch(
+    clamp(0.74, calc(var(--light-cusp) + 0.1), 0.9) clamp(0.03, calc(0.15 * var(--light-k)), 0.19) var(--light-h)
+  );
   /* Windows and the hearth lean halfway to amber whatever the cover: one warm place in a cool night */
   --scene-window: color-mix(in oklch, var(--scene-lamp), oklch(0.82 0.13 70) 50%);
   --scene-aurora: oklch(0.8 0.12 calc(var(--art-h) + 60));
-  --scene-beacon: oklch(clamp(0.78, calc(var(--beacon-cusp) + 0.14), 0.92) clamp(0.03, calc(0.16 * var(--light-k)), 0.19) var(--beacon-h));
+  --scene-beacon: oklch(
+    clamp(0.78, calc(var(--beacon-cusp) + 0.14), 0.92) clamp(0.03, calc(0.16 * var(--light-k)), 0.19) var(--beacon-h)
+  );
   --scene-cloud: oklch(0.5 calc(0.05 * var(--room-k)) var(--art-h2) / 0.2);
-  --scene-cloud-lit: color-mix(in oklch, oklch(0.82 calc(0.05 * var(--room-k)) var(--art-h) / 0.42), oklch(0.82 calc(0.05 * var(--room-k)) var(--light-h) / 0.42) 50%);
+  --scene-cloud-lit: color-mix(
+    in oklch,
+    oklch(0.82 calc(0.05 * var(--room-k)) var(--art-h) / 0.42),
+    oklch(0.82 calc(0.05 * var(--room-k)) var(--light-h) / 0.42) 50%
+  );
   color: var(--color-ink);
   background: linear-gradient(180deg in oklch, var(--color-room-deep), var(--scene-mid));
 }
-[data-theme="daylight"] .art-scene {
+[data-theme='daylight'] .art-scene {
   --land-back: oklch(0.93 calc(0.02 * var(--room-k)) var(--art-h2));
   --land-fore: oklch(0.7 calc(0.05 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2)));
   --scene-mid: oklch(0.91 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
-  --scene-horizon: color-mix(in oklch, oklch(0.94 calc(0.022 * var(--room-k)) var(--art-h)), oklch(0.94 calc(0.022 * var(--room-k)) var(--art-h2)) 30%);
+  --scene-horizon: color-mix(
+    in oklch,
+    oklch(0.94 calc(0.022 * var(--room-k)) var(--art-h)),
+    oklch(0.94 calc(0.022 * var(--room-k)) var(--art-h2)) 30%
+  );
   --scene-bloom: oklch(0.93 calc(0.04 * var(--room-k)) var(--art-h) / 0.45);
   --land-distant: oklch(0.9 calc(0.03 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
-  --land-far: color-mix(in oklch, oklch(0.86 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.86 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 25%);
-  --land-signal: color-mix(in oklch, color-mix(in oklch, oklch(0.82 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.82 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 50%), oklch(0.82 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h)) 25%);
-  --land-valley: color-mix(in oklch, oklch(0.8 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.8 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 75%);
+  --land-far: color-mix(
+    in oklch,
+    oklch(0.86 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)),
+    oklch(0.86 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 25%
+  );
+  --land-signal: color-mix(
+    in oklch,
+    color-mix(
+      in oklch,
+      oklch(0.82 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)),
+      oklch(0.82 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 50%
+    ),
+    oklch(0.82 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h)) 25%
+  );
+  --land-valley: color-mix(
+    in oklch,
+    oklch(0.8 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)),
+    oklch(0.8 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 75%
+  );
   --land-near: oklch(0.78 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2)));
   --land-haze: oklch(0.93 calc(0.04 * var(--room-k)) var(--art-h));
   --land-rim: oklch(0.99 calc(0.01 * var(--room-k)) var(--art-h));
   /* Daylight's ladder runs light to dark toward the viewer, so a house "one step lighter" than its ground would read
      white; by day it's a step darker, a silhouette like the tree */
-  & .scene-houses { fill: var(--land-fore); }
-  --scene-trace: oklch(clamp(0.42, calc(var(--art-cusp) - 0.28), 0.48) clamp(0.015, calc(0.15 * var(--art-k)), 0.16) var(--art-h));
+  & .scene-houses {
+    fill: var(--land-fore);
+  }
+  --scene-trace: oklch(
+    clamp(0.42, calc(var(--art-cusp) - 0.28), 0.48) clamp(0.015, calc(0.15 * var(--art-k)), 0.16) var(--art-h)
+  );
   --scene-spark: color-mix(in oklab, var(--accent) 50%, transparent);
   --scene-moon: oklch(0.99 0.03 var(--art-h));
   --scene-moon-halo: oklch(0.97 0.06 var(--art-h));
@@ -1184,7 +2014,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 /* The glow behind the hills, like a town beyond them, rising from the land band into the sky */
 .scene-horizon::before {
-  content: "";
+  content: '';
   position: absolute;
   z-index: -10;
   inset: -120% 0 35%;
@@ -1195,34 +2025,62 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 /* The ground the facts stand on: the near hills' own colour, fading into the room's ground, which the tracklist
    below stands on too, so there's no seam (quickly by day, so text sits on cream) */
-.scene-ground { background: linear-gradient(180deg in oklch, var(--land-near), var(--color-room-deep) 9rem); }
-[data-theme="daylight"] .scene-ground { background: linear-gradient(180deg in oklch, var(--land-near), var(--color-room-deep) 5rem); }
+.scene-ground {
+  background: linear-gradient(180deg in oklch, var(--land-near), var(--color-room-deep) 9rem);
+}
+[data-theme='daylight'] .scene-ground {
+  background: linear-gradient(180deg in oklch, var(--land-near), var(--color-room-deep) 5rem);
+}
 /* The join at the ground: a lit horizon line centred on the hamlet's x (--scene-glow-x, from the generator), and its
    glow radiating up behind the cover and title, so the land never meets a seam. */
 .scene-ground::before {
-  content: "";
+  content: '';
   position: absolute;
   z-index: -1;
   inset: 0 0 auto 0;
   height: 7rem;
   pointer-events: none;
-  background: radial-gradient(42% 7rem at var(--scene-glow-x, 50%) 0, color-mix(in oklab, var(--scene-lamp) 9%, transparent), transparent);
+  background: radial-gradient(
+    42% 7rem at var(--scene-glow-x, 50%) 0,
+    color-mix(in oklab, var(--scene-lamp) 9%, transparent),
+    transparent
+  );
 }
 .scene-ground::after {
-  content: "";
+  content: '';
   position: absolute;
   z-index: -1;
   inset: 0 0 auto 0;
   height: 1px;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent 15%, color-mix(in oklab, var(--scene-lamp) 22%, transparent) var(--scene-glow-x, 50%), transparent 85%);
+  background: linear-gradient(
+    90deg,
+    transparent 15%,
+    color-mix(in oklab, var(--scene-lamp) 22%, transparent) var(--scene-glow-x, 50%),
+    transparent 85%
+  );
 }
-[data-theme="daylight"] .scene-ground::before { background: none; }
-[data-theme="daylight"] .scene-ground::after { background: linear-gradient(90deg, transparent 15%, color-mix(in oklab, var(--color-line) 50%, transparent) var(--scene-glow-x, 50%), transparent 85%); }
+[data-theme='daylight'] .scene-ground::before {
+  background: none;
+}
+[data-theme='daylight'] .scene-ground::after {
+  background: linear-gradient(
+    90deg,
+    transparent 15%,
+    color-mix(in oklab, var(--color-line) 50%, transparent) var(--scene-glow-x, 50%),
+    transparent 85%
+  );
+}
 /* The listening room's own join, at half strength: the room is meant to stay calm */
-.scene-calm + .scene-ground::before { opacity: 0.5; }
-.scene-calm + .scene-ground::after { opacity: 0.5; }
-.scene-trace { stroke: var(--scene-trace); }
+.scene-calm + .scene-ground::before {
+  opacity: 0.5;
+}
+.scene-calm + .scene-ground::after {
+  opacity: 0.5;
+}
+.scene-trace {
+  stroke: var(--scene-trace);
+}
 /* A spark of signal travelling the envelope: a bright round head (4 units) with a wider, quieter tail (28 units) just
    behind it, sized in the band's own units (--len is the ridge's length, from generate.ts). It travels over the first
    4.2s of a 7.2s cycle, then rests 3s off the line, so a still frame is mostly just the trace. No filters: 1.3.0 keeps
@@ -1235,17 +2093,50 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   mask-image: linear-gradient(90deg, transparent, rgb(0 0 0 / 0.3) 55%, #000 92%);
   animation: scene-pulse 7.2s ease-in-out infinite;
 }
-.scene-pulse > div { translate: 2.5% 0; animation: scene-pulse-back 7.2s ease-in-out infinite; }
-@keyframes scene-pulse { 0% { translate: -100% 0; } 58%, 100% { translate: 4000% 0; } }
-@keyframes scene-pulse-back { 0% { translate: 2.5% 0; } 58%, 100% { translate: -100% 0; } }
-.scene-star { position: absolute; border-radius: 9999px; background: var(--scene-star-cool); box-shadow: 0 0 4px var(--scene-star-cool); }
+.scene-pulse > div {
+  translate: 2.5% 0;
+  animation: scene-pulse-back 7.2s ease-in-out infinite;
+}
+@keyframes scene-pulse {
+  0% {
+    translate: -100% 0;
+  }
+  58%,
+  100% {
+    translate: 4000% 0;
+  }
+}
+@keyframes scene-pulse-back {
+  0% {
+    translate: 2.5% 0;
+  }
+  58%,
+  100% {
+    translate: -100% 0;
+  }
+}
+.scene-star {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--scene-star-cool);
+  box-shadow: 0 0 4px var(--scene-star-cool);
+}
 /* The scene holds back until its colours settle, then fades in (palette.ts's useRoom) */
-.art-scene :is(.scene-sky, .scene-land) { transition: opacity var(--duration-smooth, 300ms) ease-out; }
-.art-room[data-palette="pending"] .art-scene :is(.scene-sky, .scene-land) { opacity: 0; transition: none; }
-.scene-star-warm { background: var(--scene-star-warm); box-shadow: 0 0 4px var(--scene-star-warm); }
+.art-scene :is(.scene-sky, .scene-land) {
+  transition: opacity var(--duration-smooth, 300ms) ease-out;
+}
+.art-room[data-palette='pending'] .art-scene :is(.scene-sky, .scene-land) {
+  opacity: 0;
+  transition: none;
+}
+.scene-star-warm {
+  background: var(--scene-star-warm);
+  box-shadow: 0 0 4px var(--scene-star-warm);
+}
 /* The brightest four wear Cadence's 4-point sparkle */
-.scene-sparkle::before, .scene-sparkle::after {
-  content: "";
+.scene-sparkle::before,
+.scene-sparkle::after {
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1256,20 +2147,59 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   color: var(--scene-star-cool);
   opacity: 0.6;
 }
-.scene-sparkle::after { rotate: 90deg; }
-.scene-twinkle { animation: scene-twinkle 6s ease-in-out infinite; }
-@keyframes scene-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-.scene-moon { pointer-events: none; }
-[data-theme="daylight"] .scene-star { opacity: 0; }
+.scene-sparkle::after {
+  rotate: 90deg;
+}
+.scene-twinkle {
+  animation: scene-twinkle 6s ease-in-out infinite;
+}
+@keyframes scene-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.scene-moon {
+  pointer-events: none;
+}
+[data-theme='daylight'] .scene-star {
+  opacity: 0;
+}
 /* By day the moon is a pale sun: full, no craters */
-[data-theme="daylight"] .scene-moon path { display: none; }
+[data-theme='daylight'] .scene-moon path {
+  display: none;
+}
 /* The beacon, in the artwork's own light, blooms slowly rather than flickering like a window */
-.scene-beacon-light { animation: scene-bloom 5s ease-in-out infinite; }
-@keyframes scene-bloom { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+.scene-beacon-light {
+  animation: scene-bloom 5s ease-in-out infinite;
+}
+@keyframes scene-bloom {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
 /* The hamlet's windows breathe slowly, a little out of step; by day they're out */
-.scene-lamp { animation: scene-flicker 4.3s ease-in-out infinite alternate; }
-@keyframes scene-flicker { from { opacity: 1; } to { opacity: 0.6; } }
-[data-theme="daylight"] .scene-lamps { display: none; }
+.scene-lamp {
+  animation: scene-flicker 4.3s ease-in-out infinite alternate;
+}
+@keyframes scene-flicker {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.6;
+  }
+}
+[data-theme='daylight'] .scene-lamps {
+  display: none;
+}
 /* Lanterns: a small core with a soft glow, rising very slowly from the valley and swaying, resting mid-air under
    reduced motion. Transform/opacity only, so they composite without repainting the static terrain beneath them. */
 .scene-lantern {
@@ -1280,20 +2210,52 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   animation: scene-lantern-rise var(--duration, 60s) linear infinite;
 }
 @keyframes scene-lantern-rise {
-  0%, 100% { translate: 0 0; opacity: 0; }
-  8% { opacity: 0.85; }
-  50% { translate: 3px -65px; opacity: 0.85; }
-  92% { opacity: 0; }
+  0%,
+  100% {
+    translate: 0 0;
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.85;
+  }
+  50% {
+    translate: 3px -65px;
+    opacity: 0.85;
+  }
+  92% {
+    opacity: 0;
+  }
 }
 /* Clouds: high in the sky, drifting sideways over 90s and back; the HTML box drifts, not its SVG, so it composites */
 .scene-cloud-bank {
   animation: scene-cloud-drift var(--duration, 90s) ease-in-out infinite alternate;
 }
-@keyframes scene-cloud-drift { from { translate: 0 0; } to { translate: var(--drift, 24px) 0; } }
+@keyframes scene-cloud-drift {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: var(--drift, 24px) 0;
+  }
+}
 /* The waterfall's threads: short dashes falling down its face */
-.scene-fall { stroke: var(--land-rim); stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 5 9; opacity: 0.35; animation: scene-fall 1.6s linear infinite; }
+.scene-fall {
+  stroke: var(--land-rim);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-dasharray: 5 9;
+  opacity: 0.35;
+  animation: scene-fall 1.6s linear infinite;
+}
 /* Its threads are twice the fall's height, a whole number of dashes, so sliding down by half loops without a seam */
-@keyframes scene-fall { from { translate: 0 -50%; } to { translate: 0 0; } }
+@keyframes scene-fall {
+  from {
+    translate: 0 -50%;
+  }
+  to {
+    translate: 0 0;
+  }
+}
 /* A shooting star: a thin tail that streaks along its own angle and fades, then waits out the rest of its cycle */
 .scene-shooting {
   width: 110px;
@@ -1307,79 +2269,253 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 }
 /* A life: the head brightens, the tail grows, then catches up as the head burns out, eased out, along its radiant */
 @keyframes scene-shooting {
-  0% { transform: rotate(var(--angle)) translateX(0) scaleX(0.15); opacity: 0; }
-  1.5% { opacity: var(--peak, 1); }
-  3% { transform: rotate(var(--angle)) translateX(calc(var(--len, 120px) * 0.8)) scaleX(1); }
-  4.5%, 100% { transform: rotate(var(--angle)) translateX(calc(var(--len, 120px) * 1.6)) scaleX(0.35); opacity: 0; }
+  0% {
+    transform: rotate(var(--angle)) translateX(0) scaleX(0.15);
+    opacity: 0;
+  }
+  1.5% {
+    opacity: var(--peak, 1);
+  }
+  3% {
+    transform: rotate(var(--angle)) translateX(calc(var(--len, 120px) * 0.8)) scaleX(1);
+  }
+  4.5%,
+  100% {
+    transform: rotate(var(--angle)) translateX(calc(var(--len, 120px) * 1.6)) scaleX(0.35);
+    opacity: 0;
+  }
 }
-[data-theme="daylight"] .scene-shooting { display: none; }
+[data-theme='daylight'] .scene-shooting {
+  display: none;
+}
 /* At rest each lantern hangs mid-air at its own height (`--rest`), never on the water */
-:root[data-motion="reduced"] :is(.scene-lantern, .scene-cloud-bank, .scene-fall) { animation: none; }
-:root[data-motion="reduced"] :is(.scene-pulse, .scene-shooting) { display: none; }
-:root[data-motion="reduced"] .scene-lantern { translate: 0 var(--rest, -40px); opacity: 0.85; }
+:root[data-motion='reduced'] :is(.scene-lantern, .scene-cloud-bank, .scene-fall) {
+  animation: none;
+}
+:root[data-motion='reduced'] :is(.scene-pulse, .scene-shooting) {
+  display: none;
+}
+:root[data-motion='reduced'] .scene-lantern {
+  translate: 0 var(--rest, -40px);
+  opacity: 0.85;
+}
 /* 1.7.2 — the land keeps its full height: clipped at the sides and bottom only, its top fading so nothing ever slabs */
-.scene-land { clip-path: inset(-100vh 0 0 0); mask-image: linear-gradient(transparent, #000 12%); }
+.scene-land {
+  clip-path: inset(-100vh 0 0 0);
+  mask-image: linear-gradient(transparent, #000 12%);
+}
 /* A night replaced by its measured one fades out over the new (generate.ts is the same song, now read) */
-.scene-outgoing { animation: scene-outgoing 450ms var(--ease-out-quart, ease-out) forwards; z-index: 1; }
-@keyframes scene-outgoing { to { opacity: 0; } }
+.scene-outgoing {
+  animation: scene-outgoing 450ms var(--ease-out-quart, ease-out) forwards;
+  z-index: 1;
+}
+@keyframes scene-outgoing {
+  to {
+    opacity: 0;
+  }
+}
 /* The pointer (hooks/ui/use-scene-pointer) eases each depth's translate (its --shift, in px; y at 30%) and the tree's
    and reeds' rotate inline, frame by frame, never by transition; while it does they ride their own layers */
-[data-pointer-live] :is(.scene-depth, .scene-reeds, .scene-pointer-light) { will-change: translate, rotate; }
-[data-pointer-live] [data-pointer-lift] { will-change: opacity; }
-.scene-tree { animation: scene-tree-breathe 9s ease-in-out infinite alternate; }
-@keyframes scene-tree-breathe { from { transform: rotate(-0.15deg); } to { transform: rotate(0.15deg); } }
+[data-pointer-live] :is(.scene-depth, .scene-reeds, .scene-pointer-light) {
+  will-change: translate, rotate;
+}
+[data-pointer-live] [data-pointer-lift] {
+  will-change: opacity;
+}
+.scene-tree {
+  animation: scene-tree-breathe 9s ease-in-out infinite alternate;
+}
+@keyframes scene-tree-breathe {
+  from {
+    transform: rotate(-0.15deg);
+  }
+  to {
+    transform: rotate(0.15deg);
+  }
+}
 .scene-pointer-light {
-  left: 50%; top: 50%; width: 28rem; height: 28rem; margin: -14rem 0 0 -14rem; border-radius: 9999px;
+  left: 50%;
+  top: 50%;
+  width: 28rem;
+  height: 28rem;
+  margin: -14rem 0 0 -14rem;
+  border-radius: 9999px;
   background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 5%, transparent), transparent);
-  mix-blend-mode: plus-lighter; opacity: 0;
+  mix-blend-mode: plus-lighter;
+  opacity: 0;
   translate: calc(var(--px, 0) * 50cqw) calc(var(--py, 0) * 50cqh);
   transition: opacity 600ms ease-out;
 }
-.art-scene[data-pointer] .scene-pointer-light { opacity: 1; }
-[data-theme="daylight"] .scene-pointer-light { display: none; }
-.scene-star[data-pointer-near] { scale: calc(1 + 0.25 * var(--near, 0)); }
-.scene-moon-halo { opacity: calc(var(--halo, 1) + 0.06 * var(--near, 0)); }
+.art-scene[data-pointer] .scene-pointer-light {
+  opacity: 1;
+}
+[data-theme='daylight'] .scene-pointer-light {
+  display: none;
+}
+.scene-star[data-pointer-near] {
+  scale: calc(1 + 0.25 * var(--near, 0));
+}
+.scene-moon-halo {
+  opacity: calc(var(--halo, 1) + 0.06 * var(--near, 0));
+}
 /* Fog sheets: horizontal bands of haze between the planes, drifting opposite ways at their own speeds (boot-mist's way) */
 .scene-fog {
-  height: 14%; margin-top: -7%;
-  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--land-haze) 70%, transparent) 30%, color-mix(in oklab, var(--land-haze) 55%, transparent) 70%, transparent);
+  height: 14%;
+  margin-top: -7%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--land-haze) 70%, transparent) 30%,
+    color-mix(in oklab, var(--land-haze) 55%, transparent) 70%,
+    transparent
+  );
   mask-image: linear-gradient(transparent, #000 45%, #000 55%, transparent);
 }
-.scene-fog-high { opacity: calc(0.2 + 0.25 * var(--weather, 0.5)); animation: scene-fog 90s ease-in-out infinite alternate; --fog: 16px; }
-.scene-fog-mid { opacity: calc(0.15 + 0.2 * var(--weather, 0.5)); animation: scene-fog 70s ease-in-out infinite alternate; --fog: -12px; }
-.scene-fog-low { opacity: calc(0.1 + 0.2 * var(--weather, 0.5)); animation: scene-fog 60s ease-in-out infinite alternate; --fog: 20px; height: 8%; margin-top: -4%; }
-@keyframes scene-fog { from { transform: translateX(0); } to { transform: translateX(var(--fog)); } }
-[data-theme="daylight"] .scene-fog { opacity: 0.3; }
-.scene-lowbank { --drift: 12px; --duration: 110s; }
-.scene-cirrus { border-radius: 9999px; background: linear-gradient(90deg, transparent, var(--scene-cloud-lit) 30%, var(--scene-cloud-lit) 60%, transparent); filter: blur(1px); }
+.scene-fog-high {
+  opacity: calc(0.2 + 0.25 * var(--weather, 0.5));
+  animation: scene-fog 90s ease-in-out infinite alternate;
+  --fog: 16px;
+}
+.scene-fog-mid {
+  opacity: calc(0.15 + 0.2 * var(--weather, 0.5));
+  animation: scene-fog 70s ease-in-out infinite alternate;
+  --fog: -12px;
+}
+.scene-fog-low {
+  opacity: calc(0.1 + 0.2 * var(--weather, 0.5));
+  animation: scene-fog 60s ease-in-out infinite alternate;
+  --fog: 20px;
+  height: 8%;
+  margin-top: -4%;
+}
+@keyframes scene-fog {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--fog));
+  }
+}
+[data-theme='daylight'] .scene-fog {
+  opacity: 0.3;
+}
+.scene-lowbank {
+  --drift: 12px;
+  --duration: 110s;
+}
+.scene-cirrus {
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, var(--scene-cloud-lit) 30%, var(--scene-cloud-lit) 60%, transparent);
+  filter: blur(1px);
+}
 /* Chimney smoke: a thin wisp rising and thinning over 14 s; mid-rise and still under reduced motion */
 .scene-smoke {
-  width: 4px; height: 26px; margin: -26px 0 0 -2px; border-radius: 9999px;
+  width: 4px;
+  height: 26px;
+  margin: -26px 0 0 -2px;
+  border-radius: 9999px;
   background: linear-gradient(transparent, color-mix(in oklab, var(--land-rim) 22%, transparent));
-  filter: blur(1.5px); transform-origin: 50% 100%;
+  filter: blur(1.5px);
+  transform-origin: 50% 100%;
   animation: scene-smoke 14s ease-out infinite;
 }
-@keyframes scene-smoke { 0% { translate: 0 6px; opacity: 0; scale: 0.6 0.4; } 20% { opacity: 0.8; } 100% { translate: 5px -18px; opacity: 0; scale: 1.6 1.2; } }
-.scene-firefly { width: 2px; height: 2px; border-radius: 9999px; background: var(--scene-window); box-shadow: 0 0 6px 2px color-mix(in oklab, var(--scene-window) 60%, transparent); animation: scene-firefly 11s ease-in-out infinite; }
-@keyframes scene-firefly { 0%, 100% { translate: 0 0; opacity: 0; } 25% { opacity: 0.9; } 50% { translate: 14px -10px; opacity: 0.3; } 75% { translate: -6px -18px; opacity: 0.9; } }
+@keyframes scene-smoke {
+  0% {
+    translate: 0 6px;
+    opacity: 0;
+    scale: 0.6 0.4;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  100% {
+    translate: 5px -18px;
+    opacity: 0;
+    scale: 1.6 1.2;
+  }
+}
+.scene-firefly {
+  width: 2px;
+  height: 2px;
+  border-radius: 9999px;
+  background: var(--scene-window);
+  box-shadow: 0 0 6px 2px color-mix(in oklab, var(--scene-window) 60%, transparent);
+  animation: scene-firefly 11s ease-in-out infinite;
+}
+@keyframes scene-firefly {
+  0%,
+  100% {
+    translate: 0 0;
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  50% {
+    translate: 14px -10px;
+    opacity: 0.3;
+  }
+  75% {
+    translate: -6px -18px;
+    opacity: 0.9;
+  }
+}
 /* The hearth and the amp tube breathe with the bass while the song plays (player/signal.ts) */
-.art-scene[data-live] .scene-hearth { animation: none; opacity: calc(0.75 + 0.25 * var(--bass, 0)); }
-.scene-amp .scene-tube-glow { animation: scene-bloom 5s ease-in-out infinite; }
-.art-scene[data-live] .scene-amp .scene-tube-glow { animation: none; opacity: calc(0.18 + 0.3 * var(--bass, 0)); }
-[data-theme="daylight"] .scene-tube-glow { display: none; }
+.art-scene[data-live] .scene-hearth {
+  animation: none;
+  opacity: calc(0.75 + 0.25 * var(--bass, 0));
+}
+.scene-amp .scene-tube-glow {
+  animation: scene-bloom 5s ease-in-out infinite;
+}
+.art-scene[data-live] .scene-amp .scene-tube-glow {
+  animation: none;
+  opacity: calc(0.18 + 0.3 * var(--bass, 0));
+}
+[data-theme='daylight'] .scene-tube-glow {
+  display: none;
+}
 /* The constellation's hairlines arrive once */
-.scene-constellation { animation: scene-constellation 2s ease-out both; }
-@keyframes scene-constellation { from { opacity: 0; } }
+.scene-constellation {
+  animation: scene-constellation 2s ease-out both;
+}
+@keyframes scene-constellation {
+  from {
+    opacity: 0;
+  }
+}
 /* Meteor depths: far thin and dim, near thicker with a soft head */
-.scene-shooting-far { height: 1px; --peak: 0.45; }
-.scene-shooting-mid { height: 1.5px; --peak: 0.7; }
-.scene-shooting-near { height: 2px; --peak: 1; box-shadow: 1px 0 4px var(--scene-star-cool); }
-:root[data-motion="reduced"] :is(.scene-tree, .scene-fog, .scene-smoke, .scene-firefly, .scene-constellation, .scene-amp .scene-tube-glow) { animation: none; }
-:root[data-motion="reduced"] .scene-smoke { translate: 2px -6px; opacity: 0.6; }
-:root[data-motion="reduced"] .scene-outgoing { display: none; }
-:root[data-motion="reduced"] .scene-depth { translate: none; }
+.scene-shooting-far {
+  height: 1px;
+  --peak: 0.45;
+}
+.scene-shooting-mid {
+  height: 1.5px;
+  --peak: 0.7;
+}
+.scene-shooting-near {
+  height: 2px;
+  --peak: 1;
+  box-shadow: 1px 0 4px var(--scene-star-cool);
+}
+:root[data-motion='reduced']
+  :is(.scene-tree, .scene-fog, .scene-smoke, .scene-firefly, .scene-constellation, .scene-amp .scene-tube-glow) {
+  animation: none;
+}
+:root[data-motion='reduced'] .scene-smoke {
+  translate: 2px -6px;
+  opacity: 0.6;
+}
+:root[data-motion='reduced'] .scene-outgoing {
+  display: none;
+}
+:root[data-motion='reduced'] .scene-depth {
+  translate: none;
+}
 
-:root[data-motion="reduced"] .scene-shooting { display: none; }
+:root[data-motion='reduced'] .scene-shooting {
+  display: none;
+}
 /* What moves on the land is HTML laid over it, never SVG inside it: in Chrome, transform and opacity composite only on
    an HTML box, and anything animated in an SVG makes every frame restyle and repaint it */
 /* The signal path's glass: light enough to take the sky's colour, dense enough under its text whatever the sky */
@@ -1389,20 +2525,41 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   backdrop-filter: blur(20px) saturate(1.4);
   box-shadow: 0 24px 60px -28px rgb(0 0 0 / 0.55);
 }
-[data-theme="daylight"] .scene-glass { background: color-mix(in oklab, var(--color-room-void) 60%, transparent); box-shadow: 0 24px 60px -32px rgb(0 0 0 / 0.2); }
-.scene-cover { box-shadow: 0 28px 56px -18px rgb(0 0 0 / 0.75), 0 0 0 1px color-mix(in oklab, var(--accent) 18%, transparent); }
-[data-theme="daylight"] .scene-cover { box-shadow: 0 24px 48px -20px rgb(0 0 0 / 0.3), 0 0 0 1px color-mix(in oklab, var(--accent) 18%, transparent); }
+[data-theme='daylight'] .scene-glass {
+  background: color-mix(in oklab, var(--color-room-void) 60%, transparent);
+  box-shadow: 0 24px 60px -32px rgb(0 0 0 / 0.2);
+}
+.scene-cover {
+  box-shadow:
+    0 28px 56px -18px rgb(0 0 0 / 0.75),
+    0 0 0 1px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+[data-theme='daylight'] .scene-cover {
+  box-shadow:
+    0 24px 48px -20px rgb(0 0 0 / 0.3),
+    0 0 0 1px color-mix(in oklab, var(--accent) 18%, transparent);
+}
 /* A strip that scrolls sideways fades out at its edge instead of being cut */
-.edge-fade-x { mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent); }
+.edge-fade-x {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
+}
 
 /* ══ TOASTS (primitives/Toaster): the talkback on the desk ══
    Sonner draws nothing (`unstyled`) but positions, stacks and swipes; its own CSS is unlayered, so these rules are
    too, and outrank it on purpose (`.toaster` + attributes). Floating glass, a level trace lit along the top from the
    left and an LED on the title, both in --toast-tone. Arrives in 300ms, leaves in 200, swipes with the finger. */
-:root { --toast-lift: 1rem; }
+:root {
+  --toast-lift: 1rem;
+}
 /* On desktop the docked player owns the bottom edge: rise above it while it's there. */
-:root:has(.player-bar) { --toast-lift: calc(5.5rem + 1rem); }
-.toaster[data-sonner-toaster] { z-index: var(--z-floating-ui); font-family: var(--font-sans); --width: 22.5rem; }
+:root:has(.player-bar) {
+  --toast-lift: calc(5.5rem + 1rem);
+}
+.toaster[data-sonner-toaster] {
+  z-index: var(--z-floating-ui);
+  font-family: var(--font-sans);
+  --width: 22.5rem;
+}
 .toaster .toast {
   --toast-tone: var(--accent);
   display: flex;
@@ -1416,30 +2573,77 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   background-size: 100% 1px;
   background-repeat: no-repeat;
 }
-.toaster .toast[data-type="success"] { --toast-tone: var(--color-feedback-success); }
-.toaster .toast[data-type="error"] { --toast-tone: var(--color-feedback-error); }
-.toaster .toast[data-type="warning"] { --toast-tone: var(--color-tube); }
-.toaster .toast:focus-visible { box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32), 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
-[data-theme="daylight"] .toaster .toast { box-shadow: 0 14px 36px -10px rgba(94, 72, 41, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+.toaster .toast[data-type='success'] {
+  --toast-tone: var(--color-feedback-success);
+}
+.toaster .toast[data-type='error'] {
+  --toast-tone: var(--color-feedback-error);
+}
+.toaster .toast[data-type='warning'] {
+  --toast-tone: var(--color-tube);
+}
+.toaster .toast:focus-visible {
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.32),
+    0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+[data-theme='daylight'] .toaster .toast {
+  box-shadow:
+    0 14px 36px -10px rgba(94, 72, 41, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
 
 /* The words, and a lamp column before them that every toast shares, so titles start on one line: the LED lit on the
    title's centre line, or, while the studio works, the room tuning in (`Tuning`, sized to the column). */
-.toaster .toast { --lamp: 1.125rem; }
-.toaster .toast-content { position: relative; display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 0.125rem; padding-left: calc(var(--lamp) + 0.625rem); line-height: 1.35; }
+.toaster .toast {
+  --lamp: 1.125rem;
+}
+.toaster .toast-content {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding-left: calc(var(--lamp) + 0.625rem);
+  line-height: 1.35;
+}
 .toaster .toast-content::before {
   @apply led;
   --led-tone: var(--toast-tone);
-  content: "";
+  content: '';
   position: absolute;
   left: calc(var(--lamp) / 2 - 3px);
   top: calc(0.5lh - 3px);
 }
-.toaster .toast[data-type="loading"] .toast-content::before { display: none; }
-.toaster .toast-icon { position: absolute; left: 1rem; top: 50%; translate: 0 -50%; display: flex; align-items: center; width: var(--lamp); font-size: calc(var(--lamp) / 1.75); }
+.toaster .toast[data-type='loading'] .toast-content::before {
+  display: none;
+}
+.toaster .toast-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  width: var(--lamp);
+  font-size: calc(var(--lamp) / 1.75);
+}
 /* Sonner wraps the loading icon to cross-fade it over a spinner it no longer draws: let it sit in the column. */
-.toaster .toast-icon .sonner-loader { position: static; transform: none; display: flex; }
-.toaster .toast-title { font-size: 0.875rem; font-weight: 600; color: var(--color-ink); }
-.toaster .toast-description { font-size: 0.8125rem; color: var(--color-ink-soft); }
+.toaster .toast-icon .sonner-loader {
+  position: static;
+  transform: none;
+  display: flex;
+}
+.toaster .toast-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.toaster .toast-description {
+  font-size: 0.8125rem;
+  color: var(--color-ink-soft);
+}
 
 /* Undo and friends: a lit chip in the tone of the room; Cancel stays quiet. 44px on touch, 36px for a fine pointer. */
 .toaster .toast-button {
@@ -1452,31 +2656,56 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   font-weight: 600;
   cursor: pointer;
   outline: none;
-  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
-@media (pointer: fine) { .toaster .toast-button { min-height: 2.25rem; } }
-.toaster .toast-button:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+@media (pointer: fine) {
+  .toaster .toast-button {
+    min-height: 2.25rem;
+  }
+}
+.toaster .toast-button:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
 .toaster .toast-action {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1);
 }
-.toaster .toast-action:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
-.toaster .toast-cancel { color: var(--color-ink-muted); background: transparent; }
-.toaster .toast-cancel:hover { color: var(--color-ink); background: color-mix(in srgb, var(--color-ink) 8%, transparent); }
+.toaster .toast-action:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.toaster .toast-cancel {
+  color: var(--color-ink-muted);
+  background: transparent;
+}
+.toaster .toast-cancel:hover {
+  color: var(--color-ink);
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
 
 /* Motion on Mixlog's clock, not Sonner's 400ms: in on the expo ease, out faster; a swipe keeps Sonner's `none`. */
-.toaster .toast[data-swiping="false"] {
-  transition: transform var(--duration-smooth) var(--ease-out-expo), opacity var(--duration-smooth) var(--ease-out-expo),
-    height var(--duration-smooth) var(--ease-out-expo), box-shadow var(--duration-normal) ease;
+.toaster .toast[data-swiping='false'] {
+  transition:
+    transform var(--duration-smooth) var(--ease-out-expo),
+    opacity var(--duration-smooth) var(--ease-out-expo),
+    height var(--duration-smooth) var(--ease-out-expo),
+    box-shadow var(--duration-normal) ease;
 }
-.toaster .toast[data-removed="true"][data-swiping="false"][data-swipe-out="false"][data-front] {
-  transition: transform var(--duration-normal) var(--ease-out-quart), opacity var(--duration-normal) var(--ease-out-quart);
+.toaster .toast[data-removed='true'][data-swiping='false'][data-swipe-out='false'][data-front] {
+  transition:
+    transform var(--duration-normal) var(--ease-out-quart),
+    opacity var(--duration-normal) var(--ease-out-quart);
 }
 /* Stacked behind the front one, only the glass shows. */
-.toaster .toast > * { transition: opacity var(--duration-normal) ease; }
-.toaster .toast[data-expanded="false"][data-front="false"] > * { opacity: 0; }
+.toaster .toast > * {
+  transition: opacity var(--duration-normal) ease;
+}
+.toaster .toast[data-expanded='false'][data-front='false'] > * {
+  opacity: 0;
+}
 
 /* ══ THE PLAYER (components/player): its bar, its playhead and the listening room's record ══ */
 
@@ -1488,7 +2717,7 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   border-top: 1px solid var(--color-line);
 }
 .player-bar::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: -1px 0 auto;
   height: 1px;
@@ -1500,17 +2729,26 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
 .scrubber {
   --track: 4px;
   /* Played, then what's already here from the cloud (`--buffered`, the player's only), then the rest */
-  --scrubber-track: linear-gradient(90deg, var(--accent) var(--fill),
+  --scrubber-track: linear-gradient(
+    90deg,
+    var(--accent) var(--fill),
     color-mix(in srgb, var(--accent) 30%, var(--color-line-strong)) var(--fill) var(--buffered, var(--fill)),
-    var(--color-line-strong) var(--buffered, var(--fill)));
+    var(--color-line-strong) var(--buffered, var(--fill))
+  );
   appearance: none;
   height: 1.25rem;
   background: transparent;
   cursor: pointer;
   border-radius: 9999px;
 }
-.scrubber:disabled { cursor: default; opacity: 0.5; }
-.scrubber:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+.scrubber:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.scrubber:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
 .scrubber::-webkit-slider-runnable-track {
   height: var(--track);
   border-radius: 9999px;
@@ -1529,7 +2767,9 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   border: 0;
   border-radius: 9999px;
   background: var(--color-ink);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent), 0 1px 4px rgb(0 0 0 / 0.4);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 1px 4px rgb(0 0 0 / 0.4);
   scale: 0;
   transition: scale 150ms var(--ease-out-quart);
 }
@@ -1539,54 +2779,112 @@ button.surface-control:not(:disabled):hover { --control-tint: var(--control-tint
   border: 0;
   border-radius: 9999px;
   background: var(--color-ink);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent), 0 1px 4px rgb(0 0 0 / 0.4);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 1px 4px rgb(0 0 0 / 0.4);
   scale: 0;
   transition: scale 150ms var(--ease-out-quart);
 }
-.scrubber:is(:hover, :focus-visible, :active)::-webkit-slider-thumb { scale: 1; }
-.scrubber:is(:hover, :focus-visible, :active)::-moz-range-thumb { scale: 1; }
+.scrubber:is(:hover, :focus-visible, :active)::-webkit-slider-thumb {
+  scale: 1;
+}
+.scrubber:is(:hover, :focus-visible, :active)::-moz-range-thumb {
+  scale: 1;
+}
 @media (pointer: coarse) {
-  .scrubber::-webkit-slider-thumb { scale: 1; }
-  .scrubber::-moz-range-thumb { scale: 1; }
+  .scrubber::-webkit-slider-thumb {
+    scale: 1;
+  }
+  .scrubber::-moz-range-thumb {
+    scale: 1;
+  }
 }
 
 /* While the listening room is open, the Summary underneath keeps no loop running: nothing to see, nothing to pay for */
-body:has([data-listening-room]) .art-scene:not([data-room-scene]) * { animation-play-state: paused; }
+body:has([data-listening-room]) .art-scene:not([data-room-scene]) * {
+  animation-play-state: paused;
+}
 /* A sheet opened from the room (A/B's picker on touch) rises over it, as a dialog does with a mouse */
-body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) { z-index: var(--z-system-dialog); }
+body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) {
+  z-index: var(--z-system-dialog);
+}
 
 /* The listening room's focus: a soft pool of the room's light behind the record, and a night that dims toward its edges */
-.vinyl-halo { background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 14%, transparent), color-mix(in oklab, var(--accent) 5%, transparent) 55%, transparent); }
-.room-vignette { background: radial-gradient(ellipse 75% 70% at 50% 38%, transparent 45%, rgb(0 0 0 / 0.38)); }
-[data-theme="daylight"] .room-vignette { background: radial-gradient(ellipse 75% 70% at 50% 38%, transparent 50%, rgb(0 0 0 / 0.06)); }
+.vinyl-halo {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--accent) 14%, transparent),
+    color-mix(in oklab, var(--accent) 5%, transparent) 55%,
+    transparent
+  );
+}
+.room-vignette {
+  background: radial-gradient(ellipse 75% 70% at 50% 38%, transparent 45%, rgb(0 0 0 / 0.38));
+}
+[data-theme='daylight'] .room-vignette {
+  background: radial-gradient(ellipse 75% 70% at 50% 38%, transparent 50%, rgb(0 0 0 / 0.06));
+}
 /* The listening room with the signal (player/signal.ts, desktop): the low end lifts the dark and lights the halo, and
    each kick makes the stars pulse. `--bass` and `--kick` are set every frame, so nothing here transitions; off, the
    room is as still as ever. Quiet on purpose: the room breathes with the music, it doesn't flash. */
-.art-scene[data-live] .scene-star { scale: calc(1 + var(--kick) * 0.9); }
-.art-scene[data-live] .scene-sparkle { scale: calc(1 + var(--kick) * 1.3); }
-.art-scene[data-live] .scene-moon { scale: calc(1 + var(--bass) * 0.07); }
+.art-scene[data-live] .scene-star {
+  scale: calc(1 + var(--kick) * 0.9);
+}
+.art-scene[data-live] .scene-sparkle {
+  scale: calc(1 + var(--kick) * 1.3);
+}
+.art-scene[data-live] .scene-moon {
+  scale: calc(1 + var(--bass) * 0.07);
+}
 .art-scene[data-live] .vinyl-halo {
-  background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) calc(10% + var(--bass) * 22%), transparent), color-mix(in oklab, var(--accent) calc(3% + var(--bass) * 9%), transparent) 55%, transparent);
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--accent) calc(10% + var(--bass) * 22%), transparent),
+    color-mix(in oklab, var(--accent) calc(3% + var(--bass) * 9%), transparent) 55%,
+    transparent
+  );
   scale: calc(1 + var(--bass) * 0.06 + var(--kick) * 0.05);
 }
-.art-scene[data-live] .room-vignette { opacity: calc(1 - var(--bass) * 0.45); }
+.art-scene[data-live] .room-vignette {
+  opacity: calc(1 - var(--bass) * 0.45);
+}
 /* The land under the record stays quiet: its tops dissolve into the sky rather than meeting the band's edge, the hills
    sit a step darker and the trace is a thread, not a neon */
-.scene-calm { mask-image: linear-gradient(180deg, transparent, #000 45%); }
-:root:not([data-theme="daylight"]) .scene-calm {
+.scene-calm {
+  mask-image: linear-gradient(180deg, transparent, #000 45%);
+}
+:root:not([data-theme='daylight']) .scene-calm {
   --land-distant: oklch(0.27 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2));
-  --land-far: color-mix(in oklch, oklch(0.235 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.235 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 25%);
-  --land-valley: color-mix(in oklch, oklch(0.16 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)), oklch(0.16 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 75%);
+  --land-far: color-mix(
+    in oklch,
+    oklch(0.235 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)),
+    oklch(0.235 calc(0.04 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 25%
+  );
+  --land-valley: color-mix(
+    in oklch,
+    oklch(0.16 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h2)),
+    oklch(0.16 calc(0.035 * var(--room-k) * (1 + 0.6 * var(--art-mix, 0))) var(--art-h3, var(--art-h2))) 75%
+  );
   --land-haze: oklch(0.28 calc(0.05 * var(--room-k)) var(--art-h));
   --land-rim: oklch(0.7 calc(0.06 * var(--room-k)) var(--art-h));
   --scene-cloud: oklch(0.26 calc(0.035 * var(--room-k)) var(--art-h2) / 0.4);
-  --scene-trace: oklch(clamp(0.6, calc(var(--art-cusp) - 0.08), 0.74) clamp(0.01, calc(0.1 * var(--art-k)), 0.08) var(--art-h));
+  --scene-trace: oklch(
+    clamp(0.6, calc(var(--art-cusp) - 0.08), 0.74) clamp(0.01, calc(0.1 * var(--art-k)), 0.08) var(--art-h)
+  );
 }
 
 /* The record. Vinyl is black in every theme, so these are its own colours, not the room's tokens. */
 .vinyl-platter {
-  background: radial-gradient(circle, color-mix(in oklab, var(--color-room-elevated) 80%, black) 64%, var(--color-room-elevated) 66%, color-mix(in oklab, var(--color-room-elevated) 70%, black) 100%);
-  box-shadow: 0 40px 90px -30px rgb(0 0 0 / 0.75), 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent), 0 0 60px -10px color-mix(in srgb, var(--accent) 22%, transparent);
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--color-room-elevated) 80%, black) 64%,
+    var(--color-room-elevated) 66%,
+    color-mix(in oklab, var(--color-room-elevated) 70%, black) 100%
+  );
+  box-shadow:
+    0 40px 90px -30px rgb(0 0 0 / 0.75),
+    0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent),
+    0 0 60px -10px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .vinyl-disc {
   background:
@@ -1596,19 +2894,39 @@ body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) { z-index:
     /* Gaps between tracks, a shade lighter */
     radial-gradient(circle, transparent 52%, oklch(0.21 0 0) 52.4% 53.2%, transparent 53.6%),
     radial-gradient(circle, transparent 71%, oklch(0.21 0 0) 71.4% 72.2%, transparent 72.6%),
-    /* The grooves themselves */
-    repeating-radial-gradient(circle, oklch(0.13 0 0) 0 1.2px, oklch(0.17 0 0) 1.2px 2.4px);
+    /* The grooves themselves */ repeating-radial-gradient(
+      circle,
+      oklch(0.13 0 0) 0 1.2px,
+      oklch(0.17 0 0) 1.2px 2.4px
+    );
   box-shadow: inset 0 0 0 1px oklch(0.3 0 0 / 0.6);
   /* 33⅓ rpm: 1.8 s a turn, linear; it stops where it is when paused, the way a platter does */
   animation: vinyl-spin 1.8s linear infinite paused;
 }
-.vinyl-disc[data-spinning] { animation-play-state: running; }
-@keyframes vinyl-spin { to { rotate: 360deg; } }
-.vinyl-spindle { background: radial-gradient(circle at 40% 35%, oklch(0.95 0 0), oklch(0.6 0 0)); box-shadow: 0 1px 3px rgb(0 0 0 / 0.6); }
+.vinyl-disc[data-spinning] {
+  animation-play-state: running;
+}
+@keyframes vinyl-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+.vinyl-spindle {
+  background: radial-gradient(circle at 40% 35%, oklch(0.95 0 0), oklch(0.6 0 0));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.6);
+}
 /* The light on the record stays put while it turns under it: two soft highlights, kept off the label */
 .vinyl-sheen {
   background:
-    conic-gradient(from 20deg, transparent 0deg, rgb(255 255 255 / 0.11) 28deg, transparent 58deg, transparent 180deg, rgb(255 255 255 / 0.07) 210deg, transparent 240deg),
+    conic-gradient(
+      from 20deg,
+      transparent 0deg,
+      rgb(255 255 255 / 0.11) 28deg,
+      transparent 58deg,
+      transparent 180deg,
+      rgb(255 255 255 / 0.07) 210deg,
+      transparent 240deg
+    ),
     radial-gradient(circle at 32% 26%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%);
   mask-image: radial-gradient(circle, transparent 31%, #000 32%);
 }
@@ -1618,85 +2936,218 @@ body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) { z-index:
   rotate: -24deg;
   transition: rotate 700ms var(--ease-out-quart);
 }
-.vinyl-arm[data-down] { rotate: 0deg; }
-.vinyl-arm-rod { fill: none; stroke: oklch(0.82 0.01 250); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.5)); }
-.vinyl-arm-metal { fill: oklch(0.72 0.01 250); }
-.vinyl-arm-base { fill: oklch(0.3 0.01 250); stroke: oklch(0.5 0.01 250); stroke-width: 0.6; }
-.vinyl-arm-cartridge { fill: var(--color-tube); }
+.vinyl-arm[data-down] {
+  rotate: 0deg;
+}
+.vinyl-arm-rod {
+  fill: none;
+  stroke: oklch(0.82 0.01 250);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.5));
+}
+.vinyl-arm-metal {
+  fill: oklch(0.72 0.01 250);
+}
+.vinyl-arm-base {
+  fill: oklch(0.3 0.01 250);
+  stroke: oklch(0.5 0.01 250);
+  stroke-width: 0.6;
+}
+.vinyl-arm-cartridge {
+  fill: var(--color-tube);
+}
 
 /* A/B (player/ListeningRoom): the room split down the middle, a record and a night each side. The half you don't hear
    is veiled (one backdrop box whose opacity is all that moves), its moon set, its ambient motion still, its record
    dimmed with the needle up: the same night, moon down. The veil fades toward the divider, so the lit side's light
    spills a little across it, and carries on into the ground under its half (`.room-ground-veil`), so the land never
    meets the ground at an edge. Captions keep full ink. */
-.room-divider { background: linear-gradient(180deg, transparent, var(--color-line-strong) 22%, var(--color-line-strong) 78%, transparent); }
-.room-veil, .room-ground-veil {
+.room-divider {
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--color-line-strong) 22%,
+    var(--color-line-strong) 78%,
+    transparent
+  );
+}
+.room-veil,
+.room-ground-veil {
   backdrop-filter: saturate(0.35) brightness(0.8);
   -webkit-backdrop-filter: saturate(0.35) brightness(0.8);
   opacity: 0;
   transition: opacity 250ms var(--ease-out-quart);
 }
 /* By day the idle side greys and lifts, rather than dimming into a hole */
-[data-theme="daylight"] :is(.room-veil, .room-ground-veil) { backdrop-filter: saturate(0.3) brightness(1.04); -webkit-backdrop-filter: saturate(0.3) brightness(1.04); }
-.room-half[data-idle] .room-veil, .room-ground-veil[data-idle] { opacity: 1; }
-.room-half[data-side="a"] .room-veil { mask-image: linear-gradient(to left, transparent, #000 22%); -webkit-mask-image: linear-gradient(to left, transparent, #000 22%); }
-.room-half[data-side="b"] .room-veil { mask-image: linear-gradient(to right, transparent, #000 22%); -webkit-mask-image: linear-gradient(to right, transparent, #000 22%); }
-.room-ground-veil[data-side="a"] {
+[data-theme='daylight'] :is(.room-veil, .room-ground-veil) {
+  backdrop-filter: saturate(0.3) brightness(1.04);
+  -webkit-backdrop-filter: saturate(0.3) brightness(1.04);
+}
+.room-half[data-idle] .room-veil,
+.room-ground-veil[data-idle] {
+  opacity: 1;
+}
+.room-half[data-side='a'] .room-veil {
+  mask-image: linear-gradient(to left, transparent, #000 22%);
+  -webkit-mask-image: linear-gradient(to left, transparent, #000 22%);
+}
+.room-half[data-side='b'] .room-veil {
+  mask-image: linear-gradient(to right, transparent, #000 22%);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 22%);
+}
+.room-ground-veil[data-side='a'] {
   mask-image: linear-gradient(180deg, #000, transparent), linear-gradient(to left, transparent, #000 22%);
   mask-composite: intersect;
   -webkit-mask-image: linear-gradient(180deg, #000, transparent), linear-gradient(to left, transparent, #000 22%);
   -webkit-mask-composite: source-in;
 }
-.room-ground-veil[data-side="b"] {
+.room-ground-veil[data-side='b'] {
   mask-image: linear-gradient(180deg, #000, transparent), linear-gradient(to right, transparent, #000 22%);
   mask-composite: intersect;
   -webkit-mask-image: linear-gradient(180deg, #000, transparent), linear-gradient(to right, transparent, #000 22%);
   -webkit-mask-composite: source-in;
 }
 /* A phone's half has no clear sky beside its record: no moon there */
-.room-half[data-compact] .scene-moon { display: none; }
-.room-half .scene-moon { transition: opacity 250ms var(--ease-out-quart), transform 250ms var(--ease-out-quart); }
-.room-half[data-idle] .scene-moon { opacity: 0; transform: translateY(12px); }
-[data-motion="reduced"] .room-half[data-idle] .scene-moon { transform: none; }
-.room-half[data-idle] .room-scene * { animation-play-state: paused; }
-.room-record { transition: opacity 250ms var(--ease-out-quart); }
-.room-half[data-idle] .room-record { opacity: 0.72; }
-.room-half .vinyl-halo { transition: opacity 250ms var(--ease-out-quart); }
-.room-half[data-idle] .vinyl-halo { opacity: 0; }
-.room-empty { border: 1px dashed var(--color-line-strong); background: radial-gradient(circle, transparent 30%, color-mix(in oklab, var(--color-room-void) 40%, transparent)); }
+.room-half[data-compact] .scene-moon {
+  display: none;
+}
+.room-half .scene-moon {
+  transition:
+    opacity 250ms var(--ease-out-quart),
+    transform 250ms var(--ease-out-quart);
+}
+.room-half[data-idle] .scene-moon {
+  opacity: 0;
+  transform: translateY(12px);
+}
+[data-motion='reduced'] .room-half[data-idle] .scene-moon {
+  transform: none;
+}
+.room-half[data-idle] .room-scene * {
+  animation-play-state: paused;
+}
+.room-record {
+  transition: opacity 250ms var(--ease-out-quart);
+}
+.room-half[data-idle] .room-record {
+  opacity: 0.72;
+}
+.room-half .vinyl-halo {
+  transition: opacity 250ms var(--ease-out-quart);
+}
+.room-half[data-idle] .vinyl-halo {
+  opacity: 0;
+}
+.room-empty {
+  border: 1px dashed var(--color-line-strong);
+  background: radial-gradient(circle, transparent 30%, color-mix(in oklab, var(--color-room-void) 40%, transparent));
+}
 /* A press that holds must never raise the iOS callout or select text */
-.ab-press { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.ab-press {
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
 /* The light on the floor slides under the deck you hear */
 /* Read only by the ground's two pseudo-elements, which take it from their host: inherited, a 250 ms A/B glide would
    restyle the whole split ground (both waves included) each frame. */
-@property --scene-glow-x { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
-.scene-ground::before, .scene-ground::after { --scene-glow-x: inherit; }
+@property --scene-glow-x {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 50%;
+}
+.scene-ground::before,
+.scene-ground::after {
+  --scene-glow-x: inherit;
+}
 /* The playhead's variables are read only by the element they're set on: without `inherits: false`, every bar
    under a wave layer is restyled each frame. --buffered stays unregistered: `var(--buffered, var(--fill))`
    needs it to be able to be missing. */
-@property --fill { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
-@property --share { syntax: "<number>"; inherits: false; initial-value: 0; }
-@property --hover { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
-.room-pair-ground { transition: --scene-glow-x 250ms var(--ease-out-quart); }
+@property --fill {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+@property --share {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+@property --hover {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+.room-pair-ground {
+  transition: --scene-glow-x 250ms var(--ease-out-quart);
+}
 /* An empty side's playhead: a flat trace, the scope's "no signal" */
-.room-flat { background: linear-gradient(color-mix(in oklab, var(--accent) 40%, transparent), color-mix(in oklab, var(--accent) 40%, transparent)) center / 100% 1px no-repeat; }
+.room-flat {
+  background: linear-gradient(
+      color-mix(in oklab, var(--accent) 40%, transparent),
+      color-mix(in oklab, var(--accent) 40%, transparent)
+    )
+    center / 100% 1px no-repeat;
+}
 /* The split ground: one grid, three layouts, so the edges that should meet are the same column's edges */
-.room-ground { container: room-ground / inline-size; }
-.room-console { display: grid; width: 100%; align-items: center; gap: 0.625rem 1rem; }
-.room-console > [data-side="a"] { grid-area: a; }
-.room-console > [data-side="b"] { grid-area: b; }
-.room-console > .ab-switch { grid-area: sw; justify-self: center; }
-.room-console > .room-key-sync { grid-area: sync; justify-self: end; }
-.room-console > .room-key-match { grid-area: match; justify-self: start; }
-.room-console > .room-transport { grid-area: tr; justify-self: center; }
+.room-ground {
+  container: room-ground / inline-size;
+}
+.room-console {
+  display: grid;
+  width: 100%;
+  align-items: center;
+  gap: 0.625rem 1rem;
+}
+.room-console > [data-side='a'] {
+  grid-area: a;
+}
+.room-console > [data-side='b'] {
+  grid-area: b;
+}
+.room-console > .ab-switch {
+  grid-area: sw;
+  justify-self: center;
+}
+.room-console > .room-key-sync {
+  grid-area: sync;
+  justify-self: end;
+}
+.room-console > .room-key-match {
+  grid-area: match;
+  justify-self: start;
+}
+.room-console > .room-transport {
+  grid-area: tr;
+  justify-self: center;
+}
 /* Shares the transport's row and sits at its right end (there are ≥ 188px free either side of the transport) */
-.room-console > .room-volume { grid-area: tr; justify-self: end; }
-.room-console[data-compact] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "b b" "sync match" "sw sw" "tr tr"; }
-.room-console:not([data-compact]) { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "a a a" "b b b" "sync sw match" "tr tr tr"; }
+.room-console > .room-volume {
+  grid-area: tr;
+  justify-self: end;
+}
+.room-console[data-compact] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: 'a a' 'b b' 'sync match' 'sw sw' 'tr tr';
+}
+.room-console:not([data-compact]) {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: 'a a a' 'b b b' 'sync sw match' 'tr tr tr';
+}
 @container room-ground (min-width: 64rem) {
-  .room-console:not([data-compact]) { grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr); grid-template-areas: "a a sw b b" ". sync tr match vol"; }
-  .room-console:not([data-compact]) > .room-volume { grid-area: vol; }
-  .room-console:not([data-compact]) > [data-side="b"] { flex-direction: row-reverse; }
+  .room-console:not([data-compact]) {
+    grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
+    grid-template-areas: 'a a sw b b' '. sync tr match vol';
+  }
+  .room-console:not([data-compact]) > .room-volume {
+    grid-area: vol;
+  }
+  .room-console:not([data-compact]) > [data-side='b'] {
+    flex-direction: row-reverse;
+  }
 }
 
 /* ══ METERS — the loudness waveform (player/LoudnessWave) and the meter bridge (meters/MeterBridge).
@@ -1710,80 +3161,267 @@ body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) { z-index:
 }
 
 /* The bars stand on a horizon (--wave-h above the bottom), the mist is a fifth as tall below it */
-.loudness-wave { height: calc(var(--wave-h) * 1.2); }
-.wave-layer { position: absolute; left: 0; top: 0; pointer-events: none; }
-.wave-rest { fill: var(--wave-rest); }
-.wave-buffered { fill: var(--wave-buffered); clip-path: inset(0 calc(100% - var(--buffered)) 0 0); }
-.wave-hover { fill: color-mix(in srgb, var(--color-ink-muted) 20%, transparent); clip-path: inset(0 calc(100% - var(--hover)) 0 0); }
-.wave-lit { clip-path: inset(0 calc(100% - var(--fill)) 0 0); }
+.loudness-wave {
+  height: calc(var(--wave-h) * 1.2);
+}
+.wave-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+.wave-rest {
+  fill: var(--wave-rest);
+}
+.wave-buffered {
+  fill: var(--wave-buffered);
+  clip-path: inset(0 calc(100% - var(--buffered)) 0 0);
+}
+.wave-hover {
+  fill: color-mix(in srgb, var(--color-ink-muted) 20%, transparent);
+  clip-path: inset(0 calc(100% - var(--hover)) 0 0);
+}
+.wave-lit {
+  clip-path: inset(0 calc(100% - var(--fill)) 0 0);
+}
 .wave-mist {
-  position: absolute; left: 0; top: var(--wave-h); height: calc(var(--wave-h) * 0.2); width: 100%;
-  fill: var(--accent); opacity: 0.12; scale: 1 -1; filter: blur(3px); pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: var(--wave-h);
+  height: calc(var(--wave-h) * 0.2);
+  width: 100%;
+  fill: var(--accent);
+  opacity: 0.12;
+  scale: 1 -1;
+  filter: blur(3px);
+  pointer-events: none;
 }
 .wave-ground {
-  position: absolute; inset-inline: 0; top: var(--wave-h); height: 1px; pointer-events: none;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 40%, var(--color-line-strong)) var(--fill), var(--color-line-strong) var(--fill));
+  position: absolute;
+  inset-inline: 0;
+  top: var(--wave-h);
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 40%, var(--color-line-strong)) var(--fill),
+    var(--color-line-strong) var(--fill)
+  );
 }
 .wave-loudest {
-  position: absolute; top: calc(var(--wave-h) - 3px); width: 2px; height: 7px; translate: -1px 0; border-radius: 9999px;
-  background: var(--accent-secondary); box-shadow: 0 0 6px color-mix(in srgb, var(--accent-secondary) 60%, transparent); pointer-events: none;
+  position: absolute;
+  top: calc(var(--wave-h) - 3px);
+  width: 2px;
+  height: 7px;
+  translate: -1px 0;
+  border-radius: 9999px;
+  background: var(--accent-secondary);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-secondary) 60%, transparent);
+  pointer-events: none;
 }
 .wave-playhead {
-  position: absolute; top: 0; left: var(--fill); width: 2px; height: calc(var(--wave-h) + 2px); translate: -1px 0;
-  border-radius: 9999px; background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: var(--fill);
+  width: 2px;
+  height: calc(var(--wave-h) + 2px);
+  translate: -1px 0;
+  border-radius: 9999px;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+  pointer-events: none;
   transform-origin: bottom;
 }
 /* With the live signal (desktop), the playhead breathes with the level under it: ambient, never meaning. The level
    changes every frame, so the height eases after it: set directly, its top edge jumped several pixels a frame and
    strobed. Reduced motion stops the signal, so it rests. */
-.wave-playhead[data-live] { scale: 1 calc(0.75 + var(--level-1, 0.6) * 0.3); transition: scale 180ms var(--ease-out-quart); }
-.wave-ghost {
-  position: absolute; top: 0; left: var(--hover); height: var(--wave-h); width: 1px; translate: -0.5px 0;
-  background: color-mix(in srgb, var(--color-ink) 45%, transparent); pointer-events: none;
+.wave-playhead[data-live] {
+  scale: 1 calc(0.75 + var(--level-1, 0.6) * 0.3);
+  transition: scale 180ms var(--ease-out-quart);
 }
-.wave-ghost > span { position: absolute; bottom: calc(100% + 4px); left: 50%; translate: -50% 0; white-space: nowrap; }
+.wave-ghost {
+  position: absolute;
+  top: 0;
+  left: var(--hover);
+  height: var(--wave-h);
+  width: 1px;
+  translate: -0.5px 0;
+  background: color-mix(in srgb, var(--color-ink) 45%, transparent);
+  pointer-events: none;
+}
+.wave-ghost > span {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  translate: -50% 0;
+  white-space: nowrap;
+}
 /* The native range lies over it all: keyboard, screen reader and touch for free. At least 44px tall on touch */
 .wave-range {
-  position: absolute; inset-inline: 0; top: 50%; translate: 0 -50%; height: max(100%, 44px); width: 100%;
-  appearance: none; background: transparent; opacity: 0; cursor: pointer; margin: 0;
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  translate: 0 -50%;
+  height: max(100%, 44px);
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
 }
-.wave-range::-webkit-slider-thumb { appearance: none; width: 1px; height: 1px; }
-.loudness-wave:has(.wave-range:focus-visible) { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 4px; border-radius: 0.5rem; }
+.wave-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 1px;
+  height: 1px;
+}
+.loudness-wave:has(.wave-range:focus-visible) {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 4px;
+  border-radius: 0.5rem;
+}
 
 /* The meter bridge's instruments: a rule with ticks, a lit dot, LED segments, a needle, a crest span */
-.meter-rule { position: relative; display: block; top: 50%; height: 2px; translate: 0 -50%; border-radius: 9999px; background: var(--meter-track); }
-.meter-tick { position: absolute; top: -4px; width: 1px; height: 10px; translate: -0.5px 0; background: var(--meter-tick); }
-.meter-dot {
-  position: absolute; top: 50%; width: 9px; height: 9px; translate: -50% -50%; border-radius: 9999px;
-  background: var(--accent); box-shadow: 0 0 8px var(--accent-glow), 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+.meter-rule {
+  position: relative;
+  display: block;
+  top: 50%;
+  height: 2px;
+  translate: 0 -50%;
+  border-radius: 9999px;
+  background: var(--meter-track);
 }
-.meter-span { position: absolute; top: 0; bottom: 0; border-radius: 9999px; background: linear-gradient(90deg, var(--accent), var(--accent-tertiary)); }
-.meter-needle { position: absolute; top: -7px; width: 2px; height: 16px; translate: -1px 0; border-radius: 9999px; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+.meter-tick {
+  position: absolute;
+  top: -4px;
+  width: 1px;
+  height: 10px;
+  translate: -0.5px 0;
+  background: var(--meter-tick);
+}
+.meter-dot {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  translate: -50% -50%;
+  border-radius: 9999px;
+  background: var(--accent);
+  box-shadow:
+    0 0 8px var(--accent-glow),
+    0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.meter-span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-tertiary));
+}
+.meter-needle {
+  position: absolute;
+  top: -7px;
+  width: 2px;
+  height: 16px;
+  translate: -1px 0;
+  border-radius: 9999px;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
 /* The lowest 3 s: a hollow mark you can press, with a 44px target around it */
 .meter-low {
-  position: absolute; top: 50%; width: 11px; height: 11px; translate: -50% -50%; border-radius: 9999px;
-  border: 1.5px solid var(--accent-tertiary); background: var(--color-room-base); cursor: pointer;
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  translate: -50% -50%;
+  border-radius: 9999px;
+  border: 1.5px solid var(--accent-tertiary);
+  background: var(--color-room-base);
+  cursor: pointer;
 }
-.meter-low::before { content: ""; position: absolute; inset: -17px; }
-.meter-low:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 3px; }
-.meter-segment { flex: 1; min-width: 3px; height: 10px; border-radius: 2px; background: var(--meter-track); }
-.meter-segment-lit { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
-.meter-segment-over { background: var(--meter-over); box-shadow: 0 0 6px color-mix(in srgb, var(--meter-over) 50%, transparent); }
-.meter-ceiling { margin-right: 3px; }
+.meter-low::before {
+  content: '';
+  position: absolute;
+  inset: -17px;
+}
+.meter-low:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 3px;
+}
+.meter-segment {
+  flex: 1;
+  min-width: 3px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--meter-track);
+}
+.meter-segment-lit {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+.meter-segment-over {
+  background: var(--meter-over);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--meter-over) 50%, transparent);
+}
+.meter-ceiling {
+  margin-right: 3px;
+}
 
 /* The wide panel docked at the room's right edge (meters/MetersPanel), its edge lit where the cable lands */
-.meters-dock { border-left: 1px solid color-mix(in srgb, var(--accent) 35%, var(--color-line)); box-shadow: -12px 0 32px -16px color-mix(in srgb, var(--accent) 35%, transparent); }
+.meters-dock {
+  border-left: 1px solid color-mix(in srgb, var(--accent) 35%, var(--color-line));
+  box-shadow: -12px 0 32px -16px color-mix(in srgb, var(--accent) 35%, transparent);
+}
 /* The row it reads: its edge lit, as if the cable powers it */
 .row-patched {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 18px -4px color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 18px -4px color-mix(in srgb, var(--accent) 45%, transparent);
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 /* The patch cable between them: a soft glow, the wire, a pulse of signal running it, a jack at each end */
-.patch-cable { position: fixed; inset: 0; width: 100vw; height: 100dvh; pointer-events: none; z-index: var(--z-floating-bar); overflow: visible; transition: opacity 150ms ease-out; }
-.patch-cable path { fill: none; stroke-linecap: round; }
-.patch-glow { stroke: color-mix(in srgb, var(--accent) 40%, transparent); stroke-width: 6; filter: blur(4px); }
-.patch-wire { stroke: color-mix(in srgb, var(--accent) 75%, transparent); stroke-width: 1.5; }
-.patch-pulse { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 8 92; animation: patch-signal 2.4s linear infinite; filter: drop-shadow(0 0 4px var(--accent)); }
-.patch-jack { fill: color-mix(in srgb, var(--accent) 70%, transparent); }
-@keyframes patch-signal { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-:root[data-motion="reduced"] .patch-pulse { display: none; }
+.patch-cable {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+  z-index: var(--z-floating-bar);
+  overflow: visible;
+  transition: opacity 150ms ease-out;
+}
+.patch-cable path {
+  fill: none;
+  stroke-linecap: round;
+}
+.patch-glow {
+  stroke: color-mix(in srgb, var(--accent) 40%, transparent);
+  stroke-width: 6;
+  filter: blur(4px);
+}
+.patch-wire {
+  stroke: color-mix(in srgb, var(--accent) 75%, transparent);
+  stroke-width: 1.5;
+}
+.patch-pulse {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 92;
+  animation: patch-signal 2.4s linear infinite;
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+.patch-jack {
+  fill: color-mix(in srgb, var(--accent) 70%, transparent);
+}
+@keyframes patch-signal {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+:root[data-motion='reduced'] .patch-pulse {
+  display: none;
+}

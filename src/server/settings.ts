@@ -2,6 +2,8 @@ import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { accessEmail } from '#/server/access'
+import { artistPictureUrl, pictureColumns } from '#/server/artists'
 import { db } from '#/server/db'
 import { Id, readWith } from '#/server/input'
 import type { Instant } from '#/lib/time'
@@ -10,6 +12,7 @@ import { DEFAULT_KEEP_DAYS, type KeepDays } from '#/server/shipping'
 
 const KEEP = 'keep_after_release'
 const DEFAULT_ARTIST = 'default_artist'
+const DISPLAY_NAME = 'display_name'
 const stored = (days: KeepDays) => (days === null ? 'forever' : String(days))
 const KeepInput = z.union([z.literal(7), z.literal(14), z.literal(30), z.null()], 'Keep them a week, two weeks, a month, or always.')
 
@@ -55,4 +58,26 @@ export const saveDefaultArtist = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     if (data === null) return void (await db.delete(settings).where(eq(settings.key, DEFAULT_ARTIST)))
     await db.insert(settings).values({ key: DEFAULT_ARTIST, value: data }).onConflictDoUpdate({ target: settings.key, set: { value: data } })
+  })
+
+/** Who Mixlog is signed in as, for Settings → Profile & Security: the email Access vouched for (never typed here), the
+ *  name they gave (null until they do), and the default artist's face, which is the picture beside it. */
+export const getProfile = createServerFn().handler(async () => {
+  const [[row], [artist]] = await db.batch([
+    db.select({ value: settings.value }).from(settings).where(eq(settings.key, DISPLAY_NAME)),
+    db.select({ id: artists.id, name: artists.name, ...pictureColumns }).from(settings).innerJoin(artists, eq(artists.id, settings.value)).where(eq(settings.key, DEFAULT_ARTIST)),
+  ])
+  return {
+    name: (row as { value: string } | undefined)?.value ?? null,
+    email: await accessEmail(),
+    face: artist ? { id: artist.id, name: artist.name, profile_image_url: artistPictureUrl(artist.id, artist) } : null,
+  }
+})
+
+/** The name shown for them. Blank clears it, back to the default artist's name, or the email's. */
+export const saveDisplayName = createServerFn({ method: 'POST' })
+  .validator(readWith(z.string().trim().max(100, 'Names are 100 characters at most.')))
+  .handler(async ({ data }) => {
+    if (!data) return void (await db.delete(settings).where(eq(settings.key, DISPLAY_NAME)))
+    await db.insert(settings).values({ key: DISPLAY_NAME, value: data }).onConflictDoUpdate({ target: settings.key, set: { value: data } })
   })

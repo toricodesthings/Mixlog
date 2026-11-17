@@ -154,8 +154,7 @@ export function useZoom(scroller: RefObject<HTMLDivElement | null>, size: { widt
   useLayoutEffect(() => {
     const el = scroller.current
     if (!el || !anchor.current) return
-    el.scrollLeft = anchor.current.x * el.scrollWidth - el.clientWidth / 2
-    el.scrollTop = anchor.current.y * el.scrollHeight - el.clientHeight / 2
+    el.scrollTo(anchor.current.x * el.scrollWidth - el.clientWidth / 2, anchor.current.y * el.scrollHeight - el.clientHeight / 2)
     anchor.current = null
   }, [scale, scroller])
 

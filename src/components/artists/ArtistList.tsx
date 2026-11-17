@@ -11,24 +11,26 @@ import { EmptyState } from '../shared/EmptyState'
 import { MetaLine } from '../shared/MetaLine'
 import { AddArtistDialog, type ArtistDraft } from './AddArtistDialog'
 import { ArtistAvatar } from './ArtistAvatar'
-import { artistSearch, matchArtists, tracksOf, type ArtistSearch } from './browse'
+import { ARTIST_SORTS, artistSearch, matchArtists, tracksOf, type ArtistSearch } from './browse'
+import { SortMenu } from '../shared/SortMenu'
 
 const VIEWS = [
-  { value: 'cards', label: <span className="max-sm:sr-only">Cards</span>, icon: <LayoutGrid size={16} aria-hidden="true" /> },
+  { value: 'cards', label: <span className="max-sm:sr-only">Card</span>, icon: <LayoutGrid size={16} aria-hidden="true" /> },
   { value: 'list', label: <span className="max-sm:sr-only">List</span>, icon: <LayoutList size={16} aria-hidden="true" /> },
 ] as const
 
-/** Artists: everyone who can be on a track. Search (name or role) and the view above them, as portrait cards
- *  (the default) or a list; all of it in the URL (`?q=&view=&add`), like Upcoming. */
+/** Artists: everyone who can be on a track. Search (name or role), the order and the view above them, as portrait
+ *  cards (the default) or a list; all of it in the URL (`?q=&sort=&view=&add`), like Upcoming. */
 export function ArtistList({ artists }: { artists: ArtistRow[] }) {
   const router = useRouter()
   const navigate = useNavigate()
   const search: ArtistSearch = useSearch({ strict: false })
   // Refining replaces the entry (typing shouldn't flood Back); opening Add pushes one, so Back closes it.
   const set = (next: Partial<ArtistSearch>, replace = true) =>
-    void navigate({ to: '.', search: (prev: ArtistSearch) => artistSearch({ ...prev, ...next }), replace, resetScroll: false })
+    void navigate({ to: '.', search: (prev: Record<string, unknown>) => artistSearch({ ...prev, ...next }), replace, resetScroll: false })
   const query = search.q ?? ''
   const view = search.view ?? 'cards'
+  const sort = search.sort ?? 'name'
   const addArtist = () => set({ add: true }, false)
   // Artists still being saved: in the list at once, replaced by the real ones when the reload lands.
   const [drafts, setDrafts] = useState<ArtistDraft[]>([])
@@ -43,7 +45,7 @@ export function ArtistList({ artists }: { artists: ArtistRow[] }) {
     toast.error(`Couldn’t add ${draft?.name ?? 'the artist'}`, { description: problem })
   }
   const all: (ArtistRow & { draft?: true })[] = [...artists, ...drafts.map((d) => ({ id: d.id, name: d.name, role: d.role, profile_image_url: d.image, track_count: 0, draft: true as const }))]
-  const shown = matchArtists(all, query)
+  const shown = matchArtists(all, query, sort)
   const slide = useHoverSlide()
   const add = (
     <Button onClick={addArtist} aria-label="Add Artist" className="max-sm:w-11 max-sm:px-0">
@@ -63,11 +65,12 @@ export function ArtistList({ artists }: { artists: ArtistRow[] }) {
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-2">
             <SearchField value={query} onValueChange={(q) => set({ q })} aria-label="Search artists" placeholder="Search by name or role" className="flex-1 sm:max-w-md" />
+            <SortMenu options={ARTIST_SORTS} sort={sort} onSort={(s) => set({ sort: s === 'name' ? undefined : s })} />
             <SegmentedControl ariaLabel="View" value={view} onChange={(v) => set({ view: v === 'list' ? 'list' : undefined })} options={VIEWS} />
           </div>
 
           <p className="readout -mb-2 px-1 text-ink-muted" aria-live="polite">
-            {shown.length} of {all.length} · A–Z
+            {shown.length} of {all.length} · {ARTIST_SORTS.find((s) => s.value === sort)!.label}
           </p>
 
           {shown.length === 0 ? (

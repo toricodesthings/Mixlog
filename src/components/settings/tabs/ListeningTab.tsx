@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { LUFS_RANGE, STREAMING_LUFS, lufsOf, useListening, type MatchTo } from '../../../hooks/ui/use-listening'
 import { SPRINGS } from '../../../lib/constants/motion'
@@ -56,7 +56,8 @@ export function ListeningTab() {
 /** A level typed loosely ("14", "-14", "−9.5"): read on leaving or Enter, shown back as understood (always negative, −32 to 0). */
 function LufsInput({ value, onChange }: { value: number; onChange: (lufs: number) => void }) {
   const [text, setText] = useState(String(value))
-  useEffect(() => setText(String(value)), [value])
+  const [seen, setSeen] = useState(value)
+  if (seen !== value) (setSeen(value), setText(String(value)))
   const commit = () => {
     const lufs = lufsOf(text)
     if (lufs === null) return setText(String(value))

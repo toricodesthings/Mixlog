@@ -1,5 +1,5 @@
 import { CalendarDays } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { isTouchFirst } from "../../hooks/ui/use-shell-mode";
 import { deviceZone, formatDay, parseDay, todayIn } from "../../lib/time";
@@ -29,7 +29,8 @@ export function DayInput({ value, onChange, max, required, disabled, row, classN
     const native = useRef<HTMLInputElement>(null);
     const said = useId();
     // The value moved from outside (the picker, a reset): say it in words.
-    useEffect(() => { setText(shown(value)); setProblem(null); }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+    const [seen, setSeen] = useState(value);
+    if (seen !== value) { setSeen(value); setText(shown(value)); setProblem(null); }
 
     if (typeof window !== "undefined" && isTouchFirst()) {
         // Cadence's: the day in words on a pill, and a transparent native input over it takes the tap (the iOS wheel).

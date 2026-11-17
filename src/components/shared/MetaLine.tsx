@@ -1,11 +1,11 @@
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 
 import { cn } from '../../lib/utils'
 
 /** Facts in a row, split by a small lit dot: Oct 12 · EP · 4 tracks · 14:32. Empty facts are left out. One line, the
  *  last fact truncated, for a list row; `wrap` (a page's header, a file's facts) lets whole facts move to the next
  *  line instead, each kept in one piece with its dot, so nothing is cut mid-word on a phone. */
-export function MetaLine({ facts, wrap, className }: { facts: (string | null | undefined)[]; wrap?: boolean; className?: string }) {
+export function MetaLine({ facts, wrap, className }: { facts: ReactNode[]; wrap?: boolean; className?: string }) {
   const shown = facts.filter(Boolean)
   const dot = (
     <span className="size-[3px] shrink-0 rounded-full bg-accent/70 shadow-[0_0_6px_var(--accent)]">

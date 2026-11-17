@@ -37,7 +37,7 @@ function Loading({ children }: { children: string }) {
   )
 }
 
-/** Upcoming or Releases on its way, in the view it was left in: Panels' cards or List's rows. */
+/** Upcoming or Releases on its way, in the view it was left in: Card's cards or List's rows. */
 function ReleaseListPending({ section }: { section: Section }) {
   const { view }: ListSearch = useSearch({ strict: false })
   return (

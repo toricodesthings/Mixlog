@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
@@ -8,6 +8,8 @@ import type { ReleaseData } from '../releases/loaders'
 import { sectionOf } from '../releases/sections'
 import { MeterBridge } from './MeterBridge'
 import { useMetersParam } from './use-meters-param'
+
+const noSubscribe = () => () => {}
 
 /** Where the rows' meter buttons are, so closing hands focus back to the one that opened them. */
 export const metersButton = (versionId: string) => document.querySelector<HTMLElement>(`[data-meters-for="${versionId}"]`)
@@ -27,8 +29,7 @@ export function WithMeters({ data, children }: { data: ReleaseData; children: Re
   const track = version && data.tracks.find((t) => t.id === version.track_id)
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => heading.current?.focus(), [version?.id])
-  const [dock, setDock] = useState<HTMLElement | null>(null)
-  useEffect(() => setDock(document.getElementById(DOCK)), [])
+  const dock = useSyncExternalStore(noSubscribe, () => document.getElementById(DOCK), () => null)
   // The panel's header is exactly as tall as the page's beside it, whatever the page's holds, so their rules meet.
   const [headerH, setHeaderH] = useState<number | null>(null)
   useEffect(() => {

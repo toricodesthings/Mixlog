@@ -8,6 +8,7 @@ import { listArtists, type ArtistRow } from '#/server/artists'
 import { getDefaultArtist } from '#/server/settings'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
 import { useFileDrop } from '../../hooks/ui/use-file-drop'
+import { useObjectFile } from '../../hooks/ui/use-object-url'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { readDuration, uploadArtwork, uploadAudio } from '../../lib/files'
 import { deviceZone, todayIn } from '../../lib/time'
@@ -48,7 +49,7 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
   const { isTouch } = useShellMode()
   const picker = useRef<HTMLInputElement>(null)
   const coverPicker = useRef<HTMLInputElement>(null)
-  const [cover, setCover] = useState<File | null>(null)
+  const [cover, coverUrl, setCover] = useObjectFile()
   const [coverProblem, setCoverProblem] = useState<string | null>(null)
   const [title, setTitle] = useState<string | null>(null) // null: the suggestion
   const [format, setFormat] = useState<ReleaseFormat | null>(null)
@@ -85,14 +86,6 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
     setCoverProblem(problem)
     if (!problem) setCover(file)
   }
-
-  const [coverUrl, setCoverUrl] = useState<string | null>(null)
-  useEffect(() => {
-    if (!cover) return setCoverUrl(null)
-    const url = URL.createObjectURL(cover)
-    setCoverUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [cover])
 
   const measured = useRef(new Set<File>())
   useEffect(() => {
@@ -306,10 +299,8 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
         {!locked && (
           <div
             data-meter-host
-            className={cn(
-              'flex items-center gap-4 rounded-2xl border border-dashed border-line-strong px-4 py-3.5 transition-[border-color,background-color,box-shadow] duration-(--duration-normal)',
-              dragging && 'meter-live border-accent bg-accent-dim glow-accent',
-            )}
+            data-over={dragging ? '' : undefined}
+            className={cn('drop-slot flex items-center gap-4 rounded-2xl px-4 py-3.5', dragging && 'meter-live')}
           >
             <Meter className="h-5 shrink-0" />
             <p className="min-w-0 flex-1 text-sm text-ink-soft">
@@ -360,7 +351,7 @@ export function NewReleaseDialog({ section, files, onFilesChange, onClose }: {
 
 /** Where a file lands on its track: the shared lane menu. A test can't be the final, so it isn't offered one. */
 function TargetMenu({ target, test, disabled, onTarget }: { target: Target; test: boolean; disabled: boolean; onTarget: (target: Target) => void }) {
-  const Icon = TARGET_ICON(target)
+  const Icon = TARGET_ICON[target]
   return (
     <LaneMenu value={target} options={test ? TARGETS.filter((t) => t !== 'final') : TARGETS} onChange={onTarget}>
       <Button variant="secondary" size="sm" aria-label={`Lands in: ${TARGET_LABEL(target)}`} disabled={disabled} className="shrink-0 gap-1.5 px-2.5 sm:w-36 sm:justify-start">

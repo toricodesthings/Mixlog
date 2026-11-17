@@ -109,6 +109,7 @@ export function Picker<T>({ title, icon, eyebrow, groups, keyOf, textOf, renderR
         </EmptyState>
       ) : (
         // Nothing between the listbox and an option is positioned: the light measures each row against the listbox
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role -- listbox; the field holds focus (aria-activedescendant)
         <ul id={`${id}-list`} role="listbox" aria-label={title} {...slide.group} className="relative -mx-1 flex max-h-[min(34rem,62dvh)] flex-col overflow-y-auto px-1 pb-1">
           {slide.light}
           {shown.map((g, i) => {
@@ -130,9 +131,11 @@ export function Picker<T>({ title, icon, eyebrow, groups, keyOf, textOf, renderR
                     {g.items.map((item) => {
                       const on = current === item
                       return (
+                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- keys live on the search field (aria-activedescendant)
                         <li
                           key={keyOf(item)}
                           id={optionId(item)}
+                          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role -- listbox option; the field holds focus (aria-activedescendant)
                           role="option"
                           aria-selected={on}
                           {...slide.row}

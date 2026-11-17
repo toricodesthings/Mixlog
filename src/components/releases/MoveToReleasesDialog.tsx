@@ -29,7 +29,8 @@ export function MoveToReleasesDialog(data: ReleaseData) {
   const [state, setState] = useState<{ status: 'idle' | 'moving' } | { status: 'failed'; message: string }>({ status: 'idle' })
   const ready = tracks.length > 0 && tracks.every((t) => lanesOf(t.id, versions).final) && releasedOn !== '' && releasedOn <= today
   const pruned = prunedOf(versions).length
-  const until = moveBackWindow(Date.now(), keepDays)?.until
+  const [now] = useState(() => Date.now())
+  const until = moveBackWindow(now, keepDays)?.until
 
   const move = async () => {
     setState({ status: 'moving' })

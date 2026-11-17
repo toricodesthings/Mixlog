@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState, type FocusEvent, type PointerEvent, type RefObject } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type FocusEvent, type PointerEvent, type RefObject } from "react";
 
 import { TWEENS } from "../../lib/constants/motion";
 import { cn } from "../../lib/utils";
@@ -32,7 +32,7 @@ export function useHoverSlide(className = "rounded-2xl bg-accent-dim") {
 
 function Light({ set, className }: { set: RefObject<(box: Box | null) => void>; className: string }) {
     const [box, setBox] = useState<Box | null>(null);
-    set.current = setBox;
+    useImperativeHandle(set, () => setBox);
     const shown = useRef(false);
     // Where it last was, so it fades out in place instead of collapsing.
     const last = useRef<Box>({ x: 0, y: 0, width: 0, height: 0 });

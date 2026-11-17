@@ -1,15 +1,15 @@
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair } from 'jose'
 import { expect, test } from 'vitest'
 
-import { isAllowed } from '#/server/access'
+import { accessClaims, isAllowed } from '#/server/access'
 
 const team = 'https://mixlog-test.cloudflareaccess.com'
 const aud = 'app-aud'
 const { publicKey, privateKey } = await generateKeyPair('RS256')
 const keys = createLocalJWKSet({ keys: [{ ...(await exportJWK(publicKey)), alg: 'RS256' }] })
 
-const sign = (claims: { iss?: string; aud?: string; exp?: string } = {}, key = privateKey) =>
-  new SignJWT({})
+const sign = (claims: { iss?: string; aud?: string; exp?: string; email?: string } = {}, key = privateKey) =>
+  new SignJWT(claims.email ? { email: claims.email } : {})
     .setProtectedHeader({ alg: 'RS256' })
     .setIssuer(claims.iss ?? team)
     .setAudience(claims.aud ?? aud)
@@ -30,4 +30,9 @@ test('refuses everything else', async () => {
   expect(await isAllowed(request(await sign({ exp: '-1m' })), team, aud, keys)).toBe(false)
   expect(await isAllowed(request(await sign({}, stranger)), team, aud, keys)).toBe(false)
   expect(await isAllowed(request(await sign()), team, '', keys)).toBe(false)
+})
+
+test('reads the email from a valid token only', async () => {
+  expect((await accessClaims(request(await sign({ email: 'kai@example.com' })), team, aud, keys))?.email).toBe('kai@example.com')
+  expect(await accessClaims(request(await sign({ email: 'kai@example.com', aud: 'other-app' })), team, aud, keys)).toBeNull()
 })

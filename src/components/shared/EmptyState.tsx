@@ -8,7 +8,7 @@ export function EmptyState({ title, readout, flat, phantom, action, children }: 
   title: string
   readout?: string
   flat?: boolean
-  /** The rare accent: only where nothing else on screen holds it (see src/AGENTS.md §6). */
+  /** The rare accent: only where nothing else on screen holds it (see src/AGENTS.md, "Look"). */
   phantom?: boolean
   /** The one next step, if there is one. */
   action?: ReactNode

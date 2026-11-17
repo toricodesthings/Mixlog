@@ -147,7 +147,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [canTrim] = useState(() => typeof window !== 'undefined' && volumeSticks())
   const prefs = useListening()
 
-  const trim = decks.split && prefs.match && canTrim && decks.a && decks.b ? matchOf(decks.a.lufs, decks.b.lufs, ceilingOf(prefs)) : null
+  const matched = decks.split && prefs.match && canTrim && decks.a && decks.b ? matchOf(decks.a.lufs, decks.b.lufs, ceilingOf(prefs)) : null
+  const [trimA, trimB] = matched ? [matched.a, matched.b] : [null, null]
+  const trim = useMemo(() => (trimA === null || trimB === null ? null : { a: trimA, b: trimB }), [trimA, trimB])
   /** What the gains read, kept current for the handlers that run between renders. */
   const live = useRef({ playing, volume, muted, sync: prefs.sync, trim })
   live.current = { playing, volume, muted, sync: prefs.sync, trim }
@@ -306,7 +308,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
     // The state, and what the <audio> events and effects below need
     return { state, apply, sideAt, el, commit, cancel }
-  }, [decks, playing, loading, pending, canTrim, trim?.a, trim?.b])
+  }, [decks, playing, loading, pending, canTrim, trim])
   const { state } = engine
 
   // Space plays and pauses, ←/→ move 5 s, as in every music app and DAW: unless the key belongs to what has focus.

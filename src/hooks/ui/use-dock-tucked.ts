@@ -9,7 +9,8 @@ const TRAVEL = 24
  */
 export function useDockTucked(pathname: string) {
   const [tucked, setTucked] = useState(false)
-  useEffect(() => setTucked(false), [pathname])
+  const [page, setPage] = useState(pathname)
+  if (page !== pathname) (setPage(pathname), setTucked(false))
   useEffect(() => {
     const anchors = new WeakMap<Element, number>()
     const onScroll = (e: Event) => {

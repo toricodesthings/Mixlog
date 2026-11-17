@@ -46,7 +46,7 @@ export function MeterBridge({ t, version, headingRef, onClose, docked }: {
   const a = version.analysis
   const body = isMeasured(a) ? <Measurements t={t} version={version} a={a} /> : a ? <Unread /> : <Unmeasured version={version} />
   return (
-    <section role="region" aria-label={`Meters, ${label}`} className={cn('meter-bridge @container flex flex-col', docked ? 'h-full' : 'gap-4')}>
+    <section aria-label={`Meters, ${label}`} className={cn('meter-bridge @container flex flex-col', docked ? 'h-full' : 'gap-4')}>
       <header className={cn('flex items-center gap-3', docked && 'layer-shell-header signal-rule h-(--dock-header-h,var(--shell-header-h)) shrink-0 px-5')}>
         <span data-meters-jack className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
           <Activity size={18} aria-hidden="true" />

@@ -23,7 +23,7 @@ const problems = [];
 for (const entry of readdirSync(join(root, "src"), { recursive: true })) {
     const full = join(root, "src", entry);
     const rel = relative(root, full).replaceAll("\\", "/");
-    if (!/\.(ts|tsx)$/.test(entry) || /\.d\.ts$/.test(entry) || EXEMPT.has(rel) || statSync(full).isDirectory()) continue;
+    if (!/\.(ts|tsx)$/.test(entry) || entry.endsWith(".d.ts") || EXEMPT.has(rel) || statSync(full).isDirectory()) continue;
     readFileSync(full, "utf8").split("\n").forEach((line, i) => {
         const code = line.trimStart();
         if (line.includes("time-ok") || code.startsWith("//") || code.startsWith("*")) return;

@@ -3,7 +3,7 @@ import { AudioWaveform, Clapperboard, File, Film, Gauge, Image, Layers, MicVocal
 import { lanesOf } from '#/server/lanes'
 import { isMeasured } from '#/server/loudness'
 import type { ReleaseRow, TrackRow, VersionRow } from '#/server/releases'
-import { formatMoment, todayIn, type Zone } from '../../lib/time'
+import { dayOf, formatDay, formatMoment, todayIn, type Zone } from '../../lib/time'
 import type { Playable } from '../player/Player'
 import { dateLabel } from './browse'
 import { releaseLink, sectionOf, type Part, type Section } from './sections'
@@ -47,6 +47,9 @@ export function versionLabel(version: Pick<VersionRow, 'kind' | 'number' | 'is_f
   const name = version.is_final ? 'Final' : (KIND_LABEL[version.kind] ?? version.kind)
   return section === 'released' ? name : `${name} v${version.number}`
 }
+
+/** The day a version landed, "Nov 15": what its row says. The minute it landed waits one layer down, in the row's tip. */
+export const landedOf = (version: Pick<VersionRow, 'created_at'>, zone: Zone) => formatDay(dayOf(version.created_at, zone), todayIn(zone))
 
 /** What a version's row and its meters call it: what changed (its note), else its filename without the extension. */
 export const nameOf = (version: Pick<VersionRow, 'note' | 'filename'>) => version.note || version.filename.replace(/\.[^.]+$/, '')

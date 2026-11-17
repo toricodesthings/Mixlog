@@ -9,10 +9,10 @@ import { saveLate } from '../meters/save'
 /** Where a file can land on a track: a lane, or an alternate's row. */
 export type Target = Lane | Exclude<AudioKind, 'master' | 'mix'>
 
-/** A file on its way: queued, sending (its share sent, since `startedAt`, for the time left; then `phase`, once it's all
+/** A file on its way: queued, sending (its share sent, and the seconds it took, for the time left; then `phase`, once it's all
  *  sent) or failed with why. */
 export type Pending = {
-  key: number; file: File; target: Target; replaces?: string; note?: string; state: 'queued' | 'sending' | 'failed'; sent: number; startedAt: number
+  key: number; file: File; target: Target; replaces?: string; note?: string; state: 'queued' | 'sending' | 'failed'; sent: number; elapsed: number
   phase?: Phase; error?: string
 }
 export type Phase = 'measuring' | 'storing'
@@ -48,7 +48,9 @@ export function useLaneUpload(trackId: string) {
     if (pending.some((p) => p.state === 'sending')) return
     const next = pending.find((p) => p.state === 'queued')
     if (!next) return
-    update(next.key, { state: 'sending', sent: 0, startedAt: performance.now(), phase: undefined, error: undefined })
+    const startedAt = performance.now()
+    // eslint-disable-next-line react/set-state-in-effect -- the queue runner: marking the file as sending is what stops this effect starting it twice
+    update(next.key, { state: 'sending', sent: 0, elapsed: 0, phase: undefined, error: undefined })
     let shown = 0
     void (async () => {
       try {
@@ -57,7 +59,7 @@ export function useLaneUpload(trackId: string) {
         const { id, late } = await uploadAudio(
           { trackId, kind, file: next.file, contentType: audioTypeOf(next.file.name, next.file.type)!, durationMs: await readDuration(next.file), final, replaces: next.replaces, note: next.note },
           // Only when the whole percent shown changes: progress fires about every 50 ms, and each re-renders every lane
-          (sent) => Math.round(sent * 100) !== shown && ((shown = Math.round(sent * 100)), update(next.key, { sent })),
+          (sent) => Math.round(sent * 100) !== shown && ((shown = Math.round(sent * 100)), update(next.key, { sent, elapsed: (performance.now() - startedAt) / 1000 })),
           (phase) => update(next.key, { phase }),
         )
         saveLate(id, late, () => void router.invalidate())
@@ -76,7 +78,7 @@ export function useLaneUpload(trackId: string) {
     /** Queues files for their targets (from `sortDrop`, or one picked file). `replaces` names the file each overwrites
      *  (Releases); `note` is what changed ("Final of v3"). */
     add: (files: { file: File; target: Target }[], { replaces, note }: { replaces?: string; note?: string } = {}) =>
-      setPending((all) => [...all, ...files.map((f) => ({ ...f, replaces, note, key: nextKey.current++, state: 'queued' as const, sent: 0, startedAt: 0 }))]),
+      setPending((all) => [...all, ...files.map((f) => ({ ...f, replaces, note, key: nextKey.current++, state: 'queued' as const, sent: 0, elapsed: 0 }))]),
     retry: (key: number) => update(key, { state: 'queued' }),
     dismiss: (key: number) => setPending((all) => all.filter((p) => p.key !== key)),
   }

@@ -34,6 +34,7 @@ it('keeps an artist’s links, adds https when it’s left off, drops repeats an
 
 it('turns the live picture on (erasing an upload) and an upload turns it off', async () => {
   const { id } = await call(createArtist, { name: 'Kai', role: null })
+  const other = (await call(createArtist, { name: 'Nova', role: null })).id
   const links = ['https://open.spotify.com/artist/1']
   const upload = () => addArtistProfile(new Request('https://mixlog.test', { method: 'POST', body: 'png', headers: { 'content-type': 'image/png', 'content-length': '3' } }), id)
   expect((await upload()).status).toBe(201)
@@ -49,4 +50,5 @@ it('turns the live picture on (erasing an upload) and an upload turns it off', a
 
   await upload()
   expect(await call(getArtist, id)).toMatchObject({ live_picture: false, uploaded: true })
+  expect(await call(getArtist, other)).toMatchObject({ uploaded: false, profile_image_url: null }) // only the one artist
 })

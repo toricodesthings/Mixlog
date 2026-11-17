@@ -63,7 +63,7 @@ export function UploadDialog({ t }: { t: TrackState }) {
   }
   const drop = useDropTarget({ onFiles: take })
   const choose = (next: Target) => (setTarget(next), setNote(null))
-  const Icon = TARGET_ICON(target)
+  const Icon = TARGET_ICON[target]
   const label = TARGET_LABEL(target)
 
   return (
@@ -86,7 +86,7 @@ export function UploadDialog({ t }: { t: TrackState }) {
             <legend className="readout mb-2 text-ink-muted">Upload as</legend>
             <div className="grid grid-cols-5 gap-2">
               {TARGETS.map(({ target: option, hint }) => {
-                const OptionIcon = TARGET_ICON(option)
+                const OptionIcon = TARGET_ICON[option]
                 return (
                   <label
                     key={option}
@@ -114,11 +114,9 @@ export function UploadDialog({ t }: { t: TrackState }) {
           type="button"
           {...drop.props}
           data-meter-host
+          data-over={drop.over ? '' : undefined}
           onClick={() => input.current?.click()}
-          className={cn(
-            'press flex min-h-44 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-line-strong px-6 py-8 text-center transition-[border-color,background-color,box-shadow] duration-(--duration-normal) hover:border-accent/60 hover:bg-accent-dim',
-            drop.over && 'meter-live border-accent bg-accent-dim glow-accent',
-          )}
+          className={cn('drop-slot press flex min-h-44 flex-col items-center justify-center gap-3 rounded-3xl px-6 py-8 text-center', drop.over && 'meter-live')}
         >
           <Meter className="h-6" />
           <span className="font-display text-lg font-semibold text-ink">{drop.over ? 'Let go to add them' : isTouch ? `Choose ${target === 'final' ? 'the final' : 'files'}` : `Drop ${target === 'final' ? 'the final' : 'files'} here`}</span>

@@ -31,7 +31,9 @@ export function SettingsDialog() {
   return (
     <Dialog open onOpenChange={(isOpen) => !isOpen && void close()}>
       <DialogContent
-        className="block min-w-0 !bg-panel-raised ![backdrop-filter:none] ![-webkit-backdrop-filter:none] h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] !max-w-[1200px] gap-0 overflow-hidden rounded-[2rem] p-0 outline-hidden !translate-x-[-50%] !translate-y-[-50%] !left-[50%] !top-[50%]"
+        className="block min-w-0 !bg-panel-raised ![backdrop-filter:none] ![-webkit-backdrop-filter:none] !max-w-none gap-0 overflow-hidden rounded-[2rem] p-0 outline-hidden !translate-x-[-50%] !translate-y-[-50%] !left-[50%] !top-[50%]"
+        // 1rem of room on every side, up to 1720px wide: the same on all four edges
+        style={{ width: 'min(calc(100vw - 2rem), 1720px)', height: 'calc(100vh - 2rem)' }}
         hideCloseButton
       >
         <DialogTitle className="sr-only">Settings</DialogTitle>

@@ -257,8 +257,9 @@ function useRelease(id: string | null) {
   const [readFor, setReadFor] = useState<string | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  if (!id && readFor) setReadFor(null)
   useEffect(() => {
-    if (!id) return void setReadFor(null)
+    if (!id) return
     let live = true
     loadRelease('upcoming', id)
       .then((d) => live && (setData(d), setReadFor(id)))

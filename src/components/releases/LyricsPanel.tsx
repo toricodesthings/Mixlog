@@ -174,7 +174,7 @@ function WritingRoom({ open, onClose, lyrics, title }: { open: boolean; onClose:
               <div className="shrink-0 border-b border-line/30 px-4 py-2.5 sm:px-8">
                 <SectionBar field={field} lyrics={lyrics} className="mx-auto max-w-[48rem]" />
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-6 sm:px-8 sm:py-10" onClick={(e) => e.target === e.currentTarget && field.current?.focus()}>
+              <div role="presentation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-6 sm:px-8 sm:py-10" onClick={(e) => e.target === e.currentTarget && field.current?.focus()}>
                 <div className="surface-card mx-auto flex min-h-full w-full max-w-[48rem] flex-col rounded-3xl border border-transparent px-6 py-8 transition-colors focus-within:border-accent/25 sm:px-14 sm:py-14">
                   {/* The whole page takes a click, not just the lines written so far */}
                   <LyricsField ref={field} lyrics={lyrics} label={`${title} lyrics`} className="flex-1 text-[1.0625rem] leading-[1.85]" />

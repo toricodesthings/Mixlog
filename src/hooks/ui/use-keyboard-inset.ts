@@ -14,10 +14,7 @@ export function useKeyboardInset(active: boolean) {
 
     useEffect(() => {
         const vv = window.visualViewport;
-        if (!active || !vv) {
-            setInset(0);
-            return;
-        }
+        if (!active || !vv) return;
         const read = () => {
             const covered = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
             const next = covered >= KEYBOARD_MIN ? covered : 0;
@@ -33,5 +30,5 @@ export function useKeyboardInset(active: boolean) {
         };
     }, [active]);
 
-    return { inset, last };
+    return { inset: active ? inset : 0, last };
 }

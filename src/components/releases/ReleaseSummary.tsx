@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Pause, Play } from 'lucide-react'
 import { useReducedMotionConfig } from 'framer-motion'
-import { useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 
 import { isFinal } from '#/server/files'
 import { playOf } from '#/server/lanes'
@@ -283,8 +283,8 @@ function MarqueeTitle({ title }: { title: string }) {
   const text = () => h1.current?.firstElementChild ?? null
 
   /** The cycle, from its start: rest, out, rest, back. The rests are fixed seconds, so the offsets follow the length. */
-  const loop = () => {
-    const el = text()
+  const loop = useCallback(() => {
+    const el = h1.current?.firstElementChild
     if (!el) return
     const glide = (shift / MARQUEE_SPEED) * 1000
     const total = 2 * (glide + MARQUEE_REST)
@@ -301,7 +301,7 @@ function MarqueeTitle({ title }: { title: string }) {
       ],
       { duration: total, iterations: Infinity },
     )
-  }
+  }, [shift])
   useLayoutEffect(() => {
     if (!moving) return
     loop()
@@ -309,7 +309,7 @@ function MarqueeTitle({ title }: { title: string }) {
       run.current?.cancel()
       run.current = null
     }
-  }, [moving, shift])
+  }, [moving, loop])
 
   /** Hover: back to the start from where it is on screen (never a jump), quicker the closer it is, then held. */
   const rewind = () => {

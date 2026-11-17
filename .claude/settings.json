@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/claude-format.mjs\" queue" }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/claude-format.mjs\" flush",
+            "statusMessage": "Formatting edited files"
+          }
+        ]
+      }
+    ]
+  }
+}

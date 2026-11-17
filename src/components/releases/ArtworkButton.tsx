@@ -1,9 +1,10 @@
 import { useRouter } from '@tanstack/react-router'
 import { ImagePlus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { ARTWORK_ACCEPT, artworkProblem } from '#/server/files'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
+import { useObjectFile } from '../../hooks/ui/use-object-url'
 import { uploadArtwork } from '../../lib/files'
 import { cn } from '../../lib/utils'
 import { Tip, Transfer } from '../primitives'
@@ -29,14 +30,7 @@ export function ArtworkButton({ releaseId, title, artworkId, onFailure, size = '
   }
   const [sent, setSent] = useState(0)
   // The picked file is the cover at once, under the ring that says it isn't stored yet.
-  const [picked, setPicked] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
-  useEffect(() => {
-    if (!picked) return setPreview(null)
-    const url = URL.createObjectURL(picked)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [picked])
+  const [, preview, setPicked] = useObjectFile()
   const label = status === 'failed' ? 'Try the artwork again' : artworkId ? 'Replace the artwork' : 'Add artwork'
 
   const send = async (file: File | undefined) => {

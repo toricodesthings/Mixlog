@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { sqlite } from '../../support/cloudflare-workers'
 import { call } from '../../support/start'
 import { createRelease, moveToUpcoming, shipRelease, unshipRelease } from '#/server/releases'
-import { getSettings, saveKeepDays } from '#/server/settings'
+import { createArtist } from '#/server/artists'
+import { getProfile, getSettings, saveDefaultArtist, saveDisplayName, saveKeepDays } from '#/server/settings'
 import { erasePruned } from '#/server/versions'
 
 // How long what didn't ship is kept, from Settings through Move to Releases, Move back and the cleanup cron.
@@ -47,5 +48,18 @@ describe('keep after release', () => {
     expect(await erasePruned()).toBe(0)
     await unshipRelease(id, Date.now() + 365 * DAY)
     await expect(call(moveToUpcoming, id)).rejects.toThrow(/already in Upcoming/)
+  })
+})
+
+describe('profile', () => {
+  it('has no name and no face until given, then keeps both; a blank name clears it', async () => {
+    expect(await call(getProfile)).toEqual({ name: null, email: null, face: null })
+    await call(saveDisplayName, '  Kai Lark ')
+    const { id } = await call(createArtist, { name: 'Kai', role: null })
+    await call(saveDefaultArtist, id)
+    expect(await call(getProfile)).toMatchObject({ name: 'Kai Lark', face: { id, name: 'Kai', profile_image_url: null } })
+    await call(saveDisplayName, '   ')
+    expect((await call(getProfile)).name).toBeNull()
+    await expect(call(saveDisplayName, 'x'.repeat(101))).rejects.toThrow('100 characters')
   })
 })

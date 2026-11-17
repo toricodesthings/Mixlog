@@ -1,12 +1,13 @@
 import { Link, useRouter } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BadgeCheck, BadgePlus, ChevronRight, Download, ImagePlus, ListMusic, Plus, Radio, Save, UserRound, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { updateArtist, type ArtistProfile } from '#/server/artists'
 import { ARTWORK_ACCEPT, artworkProblem } from '#/server/files'
 import { pictureLink } from '#/server/live-picture'
 import { useDropTarget } from '../../hooks/ui/use-drop-target'
+import { useObjectFile } from '../../hooks/ui/use-object-url'
 import { uploadArtistProfile } from '../../lib/files'
 import { SPRINGS } from '../../lib/constants/motion'
 import { cn } from '../../lib/utils'
@@ -33,10 +34,9 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
   const [savedRoles, setSavedRoles] = useState(artist.other_roles)
   const [links, setLinks] = useState(artist.links)
   const [draft, setDraft] = useState('')
-  const [profile, setProfile] = useState<File | null>(null)
+  const [profile, preview, setProfile] = useObjectFile()
   const [live, setLive] = useState(artist.live_picture)
   const [savedLive, setSavedLive] = useState(artist.live_picture)
-  const [preview, setPreview] = useState<string | null>(null)
   const [sent, setSent] = useState(0)
   const [shownName, setShownName] = useState(artist.name) // the saved name, on the page at once
   const [busy, setBusy] = useState(false) // only the picture's bytes keep it busy
@@ -51,13 +51,6 @@ export function ArtistEditor({ artist }: { artist: ArtistProfile }) {
   const dirty = name.trim() !== shownName || role !== (artist.role ?? '') || otherRoles.join() !== savedRoles.join() || profile !== null || live !== savedLive || links.join() !== artist.links.join() || draft.trim() !== ''
 
   const { guard, allow } = useLeaveGuard(dirty && !busy, shownName)
-
-  useEffect(() => {
-    if (!profile) return setPreview(null)
-    const url = URL.createObjectURL(profile)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [profile])
 
   const pick = (file: File | undefined) => {
     if (!file) return

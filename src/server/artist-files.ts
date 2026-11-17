@@ -22,7 +22,7 @@ export async function addArtistProfile(request: Request, artistId: string): Prom
   const key = artistProfileKey(artistId, crypto.randomUUID())
   await env.FILES.put(key, request.body, { httpMetadata: { contentType: contentType! } })
   try {
-    await db.update(artists).set({ profileImageKey: key, profileImageType: contentType, profileImageSize: size, livePicture: false }) // an upload ends the live picture.where(eq(artists.id, artistId))
+    await db.update(artists).set({ profileImageKey: key, profileImageType: contentType, profileImageSize: size, livePicture: false }).where(eq(artists.id, artistId)) // an upload ends the live picture
   } catch (error) {
     await env.FILES.delete(key)
     throw error

@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { Info, LogOut, type LucideIcon } from 'lucide-react'
+import { LogOut, type LucideIcon } from 'lucide-react'
 
 import { NAV_GROUP, NAV_GROUP_LABEL, NavigationRow } from '../layout/NavigationRow'
 import { UtilitySheet } from '../shared/UtilitySheet'
 import { SETTINGS_CATEGORIES, SettingsContent } from './SettingsContent'
-import { SIGN_OUT_URL } from './tabs/AboutTab'
+import { SIGN_OUT_URL } from './tabs/AccountTab'
 import { useSettingsParam } from './use-settings-param'
 
 interface MenuGroup {
@@ -12,12 +12,12 @@ interface MenuGroup {
   items: Array<{ id: string; label: string; icon: LucideIcon }>
 }
 
-/** The menu's categories under their headings; About sits apart at the bottom. */
+/** The menu's categories under their headings, in the dialog's order. */
 function menuGroups(): MenuGroup[] {
   const groups: MenuGroup[] = []
   for (const item of SETTINGS_CATEGORIES) {
     if ('isHeader' in item) groups.push({ label: item.label, items: [] })
-    else if (item.id !== 'about') groups.at(-1)?.items.push({ id: item.id, label: item.label, icon: item.icon })
+    else groups.at(-1)?.items.push({ id: item.id, label: item.label, icon: item.icon })
   }
   return groups.filter((group) => group.items.length > 0)
 }
@@ -57,11 +57,6 @@ export function SettingsSheet() {
               </nav>
             </section>
           ))}
-          <div className={NAV_GROUP}>
-            <NavigationRow icon={Info} onClick={() => void open('about')}>
-              About Mixlog
-            </NavigationRow>
-          </div>
           <div className={NAV_GROUP}>
             <a href={SIGN_OUT_URL} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-[0.9375rem] text-ink-soft hover:bg-white/[0.04]">
               <LogOut size={18} aria-hidden="true" className="text-ink-muted" />

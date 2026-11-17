@@ -1,12 +1,11 @@
-import { File, FlaskConical, ListMusic, SquareSplitHorizontal } from 'lucide-react'
+import { File, ListMusic, SquareSplitHorizontal } from 'lucide-react'
 import { useMemo, type CSSProperties } from 'react'
 
-import { isFinal } from '#/server/files'
 import { laneOf, lanesOf } from '#/server/lanes'
 import { isMeasured } from '#/server/loudness'
 import type { ReleaseRow, TrackRow, VersionRow } from '#/server/releases'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
-import { deviceZone, formatMoment, todayIn } from '../../lib/time'
+import { deviceZone } from '../../lib/time'
 import { cn } from '../../lib/utils'
 import { reading } from '../meters/MeterBridge'
 import { TONE } from '../player/ABSwitch'
@@ -14,9 +13,11 @@ import type { Side } from '../player/ab'
 import type { Playable } from '../player/Player'
 import { Button, Led } from '../primitives'
 import { EmptyState } from '../shared/EmptyState'
+import { MetaLine } from '../shared/MetaLine'
 import { Picker, type PickerGroup } from '../shared/Picker'
 import type { ReleaseData } from './loaders'
-import { FINAL_ICON, KIND_ICON, formatOf, isComparable, latestOf, nameOf, playableOf, versionLabel, versionText } from './stacks'
+import { FINAL_ICON, KIND_ICON, isComparable, landedOf, latestOf, nameOf, playableOf, versionLabel, versionText } from './stacks'
+import { Format } from './VersionRow'
 
 /** `mark`: its track's newest bounce, or the one before it (`latestOf`), told apart where there are two. */
 type Row = { track: TrackRow; version: VersionRow; mark?: 'newest' | 'previous' }
@@ -50,7 +51,8 @@ export const playableFrom = (release: ReleaseRow, row: Row) => playableOf(releas
 
 /**
  * Pick for A or B (`?pick=a|b`): the release's versions in their lanes, each row read like its row in Tracks (number,
- * what changed, format, when it landed) with its integrated loudness, then the side it's on. The lane holding this
+ * what changed and its newest/previous pill, and under it the format and day it landed) with its integrated loudness, then the
+ * side it's on. The lane holding this
  * side's version is lit; what's on the table wears its side's badge; picking the other side's version swaps the two.
  * `tone`: the room's light, so A is one colour in the room and here.
  */
@@ -68,7 +70,6 @@ export function VersionPicker({ side, data, failed, onRetry, tone, on, onPick, o
 }) {
   const { isCompact } = useShellMode()
   const zone = deviceZone()
-  const today = todayIn(zone)
   const here = on[side]?.versionId
   // Stable across the room's re-renders (the playhead, a side loading), so the list doesn't jump back to its row
   const groups = useMemo(() => (data ? pickGroups(data).map((g) => ({ ...g, lit: g.items.some((r) => r.version.id === here) })) : null), [data, here])
@@ -99,7 +100,6 @@ export function VersionPicker({ side, data, failed, onRetry, tone, on, onPick, o
         const lane = laneOf(v)
         const at = sideOf(v.id)
         const lufs = isMeasured(v.analysis) ? v.analysis.lufs : null
-        const test = !isFinal(v.content_type)
         const Mark = KIND_ICON[v.kind] ?? File
         // The same columns, and the same classes, as VersionRow's, so the two read alike
         const number = lane ? (
@@ -113,26 +113,21 @@ export function VersionPicker({ side, data, failed, onRetry, tone, on, onPick, o
           </span>
         )
         const name = lane ? nameOf(v) : versionLabel(v, 'upcoming')
-        const format = (
-          <span className={cn('readout flex shrink-0 items-center gap-1.5', test ? 'text-ink-muted' : 'text-ink-soft')}>
-            {test && <FlaskConical size={13} aria-hidden="true" />}
-            {formatOf(v.filename)}
-            {test && <span className="sr-only">, test bounce</span>}
-          </span>
-        )
-        // Haze, as a tag: findable at a glance, quieter than the final's Signal
+        // A pill beside the name, found while scanning names: Newest in Haze (quieter than the final's Signal), Previous
+        // a neutral tint. A soft fill, no border, so it reads as a tag, never a button or the round side badge.
         const tag = mark && (
-          <span className={cn('readout shrink-0 whitespace-nowrap', mark === 'newest' ? 'text-accent-tertiary' : 'text-ink-muted')}>
+          <span className={cn('readout shrink-0 rounded-full px-2 py-0.5 whitespace-nowrap', mark === 'newest' ? 'bg-accent-tertiary/15 text-accent-tertiary' : 'bg-line text-ink-soft')}>
             <span className="sr-only">, </span>
             {mark === 'newest' ? 'Newest' : 'Previous'}
           </span>
         )
-        const when = formatMoment(v.created_at, zone, today)
         const loudness = (
           <span data-numeric className={cn('readout shrink-0 whitespace-nowrap text-ink-soft', !isCompact && 'w-28 text-right')}>
             {lufs === null ? 'Not measured' : `${reading(lufs)} LUFS`}
           </span>
         )
+        // On a phone the number leads the facts and the loudness ends them, wrapping whole rather than cut short.
+        const facts = <MetaLine wrap={isCompact} facts={[isCompact && number, <Format key="f" version={v} />, landedOf(v, zone), isCompact && loudness]} />
         const badge = (
           <span className="flex w-8 shrink-0 justify-center">
             {at && (
@@ -146,30 +141,17 @@ export function VersionPicker({ side, data, failed, onRetry, tone, on, onPick, o
             )}
           </span>
         )
-        if (isCompact)
-          return (
-            <>
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-2">
-                <span className="line-clamp-2 text-[0.9375rem] leading-snug font-medium break-words text-ink">{name}</span>
-                <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
-                  {number}
-                  {tag}
-                  {format}
-                  {loudness}
-                  <span className="readout basis-full whitespace-nowrap text-ink-muted">{when}</span>
-                </span>
-              </span>
-              {badge}
-            </>
-          )
         return (
           <>
-            {number}
-            <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium text-ink">{name}</span>
-            {tag}
-            {format}
-            <span className="readout w-36 shrink-0 text-right whitespace-nowrap text-ink-muted">{when}</span>
-            {loudness}
+            {!isCompact && number}
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-2">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className={cn('min-w-0 text-[0.9375rem] leading-snug font-medium text-ink', isCompact ? 'line-clamp-2 break-words' : 'truncate')}>{name}</span>
+                {tag}
+              </span>
+              {facts}
+            </span>
+            {!isCompact && loudness}
             {badge}
           </>
         )

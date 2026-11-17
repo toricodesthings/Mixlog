@@ -32,7 +32,7 @@ const Content = ({ className = "", sideOffset = 10, ...props }: RadixTooltip.Too
 
 /* ── Tip ────────────────────────────────────────────────────────────
  * The canonical one-liner tooltip for interactive, icon-only controls
- * (§6.6). Composes the themed Root/Trigger/Portal/Content/Arrow so callers
+ * (src/AGENTS.md, "Access"). Composes the themed Root/Trigger/Portal/Content/Arrow so callers
  * never re-derive the boilerplate. Pair with an `aria-label` on the child for
  * assistive tech; `Tip` carries the visible, themed hint. Requires a
  * `Tooltip.Provider` ancestor (mounted once in `providers.tsx`). */

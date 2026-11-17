@@ -7,8 +7,8 @@ import type { Pending, Phase } from './use-lane-upload'
 
 /** A file's bar and what it says: "12.4 of 48.0 MB · 20 s left", then, once it's all sent, MEASURING while the meter
  *  is still reading it and STORING while it's written. */
-export function UploadProgress({ name, size, sent, startedAt, phase }: { name: string; size: number; sent: number; startedAt?: number; phase?: Phase }) {
-  const left = startedAt ? timeLeft(sent * size, size, (performance.now() - startedAt) / 1000) : null
+export function UploadProgress({ name, size, sent, elapsed, phase }: { name: string; size: number; sent: number; elapsed?: number; phase?: Phase }) {
+  const left = elapsed ? timeLeft(sent * size, size, elapsed) : null
   const after = phase ?? (sent >= 1 ? 'storing' : undefined)
   return (
     <span className="flex flex-col gap-1 pt-1">
@@ -31,7 +31,7 @@ export function UploadProgress({ name, size, sent, startedAt, phase }: { name: s
  *  name, its bar. A failure keeps the row
  *  with its reason and Try again; nothing half-sent is kept. */
 export function UploadRow({ pending, onRetry, onDismiss, className }: { pending: Pending; onRetry: () => void; onDismiss: () => void; className?: string }) {
-  const { file, state, sent, startedAt, phase, error } = pending
+  const { file, state, sent, elapsed, phase, error } = pending
   return (
     <li className={cn('surface-item flex min-h-14 items-center gap-3 rounded-2xl py-2 pr-1 pl-4', className)}>
       <span className="flex size-5 shrink-0 items-center justify-center">
@@ -44,7 +44,7 @@ export function UploadRow({ pending, onRetry, onDismiss, className }: { pending:
         ) : state === 'queued' ? (
           <span className="readout text-ink-muted">Waiting its turn</span>
         ) : (
-          <UploadProgress name={file.name} size={file.size} sent={sent} startedAt={startedAt} phase={phase} />
+          <UploadProgress name={file.name} size={file.size} sent={sent} elapsed={elapsed} phase={phase} />
         )}
       </span>
       {state === 'failed' && (

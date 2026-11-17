@@ -110,10 +110,10 @@ function CanvasFrame({ track, number, released, versions }: { track: TrackRow; n
       <div
         {...drop.props}
         data-meter-host
+        data-over={drop.over ? '' : undefined}
         className={cn(
-          'group relative aspect-[9/16] w-full overflow-hidden rounded-2xl border bg-room-void shadow-[0_18px_40px_-24px_rgb(0_0_0/0.7)] transition-[border-color,box-shadow] duration-(--duration-normal)',
-          current ? 'border-line-light' : 'border-dashed border-line-strong',
-          drop.over && 'border-accent glow-accent',
+          'group relative aspect-[9/16] w-full overflow-hidden rounded-2xl bg-room-void shadow-[0_18px_40px_-24px_rgb(0_0_0/0.7)]',
+          current ? 'border border-line-light transition-[border-color,box-shadow] duration-(--duration-normal) data-over:border-accent data-over:glow-accent' : 'drop-slot',
         )}
       >
         {current ? (

@@ -1,7 +1,7 @@
 import { cn } from "../../lib/utils";
 
 /** A console LED. Decorative: whatever it lights (current page, on air) is also said in words or aria.
- *  `phantom` is the rare light (src/AGENTS.md §6): at most one on screen. */
+ *  `phantom` is the rare light (src/AGENTS.md, "Look"): at most one on screen. */
 export function Led({ tone = "accent", lit = true, breathe, className }: {
     tone?: "accent" | "tube" | "phantom";
     lit?: boolean;

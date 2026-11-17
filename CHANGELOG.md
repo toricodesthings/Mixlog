@@ -6,6 +6,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- Settings has Profile & Security: who you're signed in as, a display name you can change, and Sign out.
+- Artists can be sorted by name, by most tracks or by role.
+
+### Changed
+
+- Settings opens with Mixlog first, and About Mixlog now describes it and links to the repository, issues and licence.
+- Settings fills the window on a wide screen, as Cadence's does.
+- Upcoming and Releases offer Card then List, as Artists does, with Card first and the default.
+- Version rows show the name in full over one quiet line (format, day); its tip has the time, filename and size.
+- A lossless file wears a gem beside its format, as a test bounce wears the flask.
+- Every drop zone shares one dashed slot that lights solid under a file; empty lanes say what's missing and how to fill.
+- A/B's picker marks the newest bounce and the one before it with a pill beside the name.
+
+### Fixed
+
+- Uploading one artist's picture no longer gives it to every artist.
+
 ## [1.7.4] - 2026-11-16
 
 ### Added

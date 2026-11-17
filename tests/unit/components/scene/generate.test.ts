@@ -61,7 +61,7 @@ describe('sceneOf', () => {
     for (const [id, fp, zone] of SWEEP) {
       for (const frame of [1920, 1280, 840]) {
         const { land } = sceneOf(id, fp, zone, frame)
-        for (const d of [land.back, land.distant, land.far, land.signal, land.banks, land.near, land.tree, land.treeLeaves, land.treeLimbs, land.treeLit, land.knoll]) expect(d).toMatch(/^[MLQHVZAa\d\s,.\-]+$/)
+        for (const d of [land.back, land.distant, land.far, land.signal, land.banks, land.near, land.tree, land.treeLeaves, land.treeLimbs, land.treeLit, land.knoll]) expect(d).toMatch(/^[MLQHVZAa\d\s,.-]+$/)
         for (const d of [land.back, land.distant, land.far, land.signal]) expect(ridgeOf(d).length, `${id}@${frame}`).toBeGreaterThanOrEqual(12)
       }
     }
