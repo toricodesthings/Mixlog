@@ -11,7 +11,7 @@ Read [`docs/MANIFESTO.md`](docs/MANIFESTO.md) (local only) before any change, es
 
 ## Code
 
-- TanStack Start (SPA) on one Cloudflare Worker; D1 metadata, private R2 files, Cloudflare Access as the only door. No Hono, SSR, hand-rolled auth or second service.
+- TanStack Start (SPA) on one Cloudflare Worker; D1 metadata, private R2 files, Cloudflare Access as the only door to the artist's data (the public meter's host serves none). No Hono, SSR, hand-rolled auth or second service.
 - Before writing code: native binding (`env.FILES`, `env.DB` via Drizzle) → web platform → installed dependency → a new one (pinned, maintained, Workers-safe, removes more code than it adds).
 - Tests mirror `src/` in `tests/unit/` (pure logic) or `tests/integration/` (over `tests/support/`), imported via `#/`. Logic that can break ships with a test.
 

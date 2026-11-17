@@ -7,9 +7,13 @@ import { readFileSync } from 'node:fs'
 import pkg from './package.json' with { type: 'json' }
 import { parseChangelog } from './src/lib/changelog'
 
+/** The public meter's hostname, from wrangler.jsonc's `vars` (the one place it's set); empty means no meter host. */
+const meterHost = /"METER_HOST"\s*:\s*"([^"]*)"/.exec(readFileSync('wrangler.jsonc', 'utf8'))?.[1] ?? ''
+
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    __METER_HOST__: JSON.stringify(meterHost),
     __CHANGELOG__: JSON.stringify(parseChangelog(readFileSync('CHANGELOG.md', 'utf8'))),
   },
   resolve: { tsconfigPaths: true },

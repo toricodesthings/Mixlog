@@ -176,3 +176,32 @@ fn a_wav_decodes_and_measures() {
 fn unknown_bytes_are_unreadable() {
     assert!(matches!(mixlog_meter::measure_bytes(vec![7; 10_000], "ogg"), Err(mixlog_meter::decode::Fail::Unreadable)));
 }
+
+#[test]
+fn low_end() {
+    let low = |s: &[f32]| run(s, 2).low;
+    assert!(low(&sine(&[(-20.0, 10.0)], 50.0, 0.0, 1.0)).unwrap() >= 0.97);
+    assert!(low(&sine(&[(-20.0, 10.0)], 1000.0, 0.0, 1.0)).unwrap() <= 0.01);
+    // 50 Hz and 1 kHz at equal RMS: half the energy is low.
+    let a = sine(&[(-20.0, 10.0)], 50.0, 0.0, 1.0);
+    let b = sine(&[(-20.0, 10.0)], 1000.0, 0.0, 1.0);
+    let mix: Vec<f32> = a.iter().zip(&b).map(|(x, y)| x + y).collect();
+    near(low(&mix), 0.5, 0.03);
+    assert_eq!(low(&vec![0.0; RATE as usize * 2 * 2]), None);
+    // L = −R cancels in mid: no low end to read.
+    assert_eq!(low(&sine(&[(-20.0, 10.0)], 50.0, 0.0, -1.0)), None);
+}
+
+#[test]
+fn opus_decodes_and_measures() {
+    // 5 s stereo 1 kHz sine at −20 dBFS, its WAV source made and encoded with:
+    //   ffmpeg -f lavfi -i "aevalsrc=0.1*sin(2*PI*1000*t)|0.1*sin(2*PI*1000*t):s=48000:d=5" -c:a pcm_s24le src.wav
+    //   ffmpeg -i src.wav -c:a libopus -b:a 128k -map_metadata -1 -fflags +bitexact sine-1k-20dbfs.opus
+    let a = mixlog_meter::measure_bytes(include_bytes!("fixtures/sine-1k-20dbfs.opus").to_vec(), "opus").unwrap();
+    assert_eq!((a.format.codec, a.format.rate, a.format.bits, a.format.channels), ("opus", 48_000, None, 2));
+    // No lost or extra frames: exactly the source's 5 s. Kept pre-skip would read 5006 ms (312 frames of silence).
+    assert_eq!(a.readings.ms, 5_000);
+    // The WAV source reads −20.0 LUFS (a stereo 1 kHz sine reads its level, Tech 3341); Opus is lossy.
+    near(a.readings.lufs, -20.0, 0.5);
+    assert!(a.format.kbps.is_some());
+}

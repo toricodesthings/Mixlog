@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as MeterRouteImport } from './routes/meter'
 import { Route as ReleasesRouteImport } from './routes/releases'
 import { Route as TrashRouteImport } from './routes/trash'
 import { Route as UpcomingRouteImport } from './routes/upcoming'
@@ -52,6 +53,11 @@ const ArtistsRoute = ArtistsRouteImport.update({
 const ChangelogRoute = ChangelogRouteImport.update({
   id: '/changelog',
   path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeterRoute = MeterRouteImport.update({
+  id: '/meter',
+  path: '/meter',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReleasesRoute = ReleasesRouteImport.update({
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/artists': typeof ArtistsRouteWithChildren
   '/changelog': typeof ChangelogRoute
+  '/meter': typeof MeterRoute
   '/releases': typeof ReleasesRouteWithChildren
   '/trash': typeof TrashRoute
   '/upcoming': typeof UpcomingRouteWithChildren
@@ -229,6 +236,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/changelog': typeof ChangelogRoute
+  '/meter': typeof MeterRoute
   '/trash': typeof TrashRoute
   '/api/uploads': typeof ApiUploadsRouteWithChildren
   '/artists/$artistId': typeof ArtistsArtistIdRoute
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/artists': typeof ArtistsRouteWithChildren
   '/changelog': typeof ChangelogRoute
+  '/meter': typeof MeterRoute
   '/releases': typeof ReleasesRouteWithChildren
   '/trash': typeof TrashRoute
   '/upcoming': typeof UpcomingRouteWithChildren
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/'
     | '/artists'
     | '/changelog'
+    | '/meter'
     | '/releases'
     | '/trash'
     | '/upcoming'
@@ -320,6 +330,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/changelog'
+    | '/meter'
     | '/trash'
     | '/api/uploads'
     | '/artists/$artistId'
@@ -347,6 +358,7 @@ export interface FileRouteTypes {
     | '/'
     | '/artists'
     | '/changelog'
+    | '/meter'
     | '/releases'
     | '/trash'
     | '/upcoming'
@@ -379,6 +391,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArtistsRoute: typeof ArtistsRouteWithChildren
   ChangelogRoute: typeof ChangelogRoute
+  MeterRoute: typeof MeterRoute
   ReleasesRoute: typeof ReleasesRouteWithChildren
   TrashRoute: typeof TrashRoute
   UpcomingRoute: typeof UpcomingRouteWithChildren
@@ -411,6 +424,13 @@ declare module '@tanstack/react-router' {
       path: '/changelog'
       fullPath: '/changelog'
       preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/meter': {
+      id: '/meter'
+      path: '/meter'
+      fullPath: '/meter'
+      preLoaderRoute: typeof MeterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/releases': {
@@ -693,6 +713,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArtistsRoute: ArtistsRouteWithChildren,
   ChangelogRoute: ChangelogRoute,
+  MeterRoute: MeterRoute,
   ReleasesRoute: ReleasesRouteWithChildren,
   TrashRoute: TrashRoute,
   UpcomingRoute: UpcomingRouteWithChildren,

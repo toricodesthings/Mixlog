@@ -7,6 +7,7 @@ import { call } from '../../support/start'
 import { uploadAudio } from '#/lib/files'
 import { db } from '#/server/db'
 import { arpeggio } from '#/server/dev'
+import { METER } from '#/server/loudness'
 import { measureMissing } from '#/server/meter'
 import { createRelease, fileVersion, getRelease, moveToReleases, moveToUpcoming, saveAnalysis, stampScenes, updateRelease } from '#/server/releases'
 import { tracks, versions } from '#/server/schema'
@@ -43,8 +44,8 @@ describe('a bounce’s analysis', () => {
     expect(await analysisOf(id)).toMatchObject({ lufs: -10 })
     await call(saveAnalysis, { versionId: id, analysis: reading({ lufs: -11 }) })
     expect(await analysisOf(id)).toMatchObject({ lufs: -10 })
-    await call(saveAnalysis, { versionId: id, analysis: reading({ meter: 2, lufs: -12 }) })
-    expect(await analysisOf(id)).toMatchObject({ meter: 2, lufs: -12 })
+    await call(saveAnalysis, { versionId: id, analysis: reading({ meter: 3, lufs: -12 }) })
+    expect(await analysisOf(id)).toMatchObject({ meter: 3, lufs: -12 })
   })
 
   it('is never written to a pruned version', async () => {
@@ -124,8 +125,8 @@ describe('the nightly meter', () => {
     const junk = await uploadAudio({ trackId: song, kind: 'mix', file: new File([new Uint8Array(5000).fill(7)], 'junk.ogg'), contentType: 'audio/ogg', durationMs: null }, () => {})
 
     expect(await measureMissing()).toBe(2)
-    expect(await analysisOf(wav.id)).toMatchObject({ meter: 1, source: 'worker', format: { codec: 'pcm', rate: 22_050, channels: 1 }, ms: 8000, correlation: null })
-    expect(await analysisOf(junk.id)).toEqual({ meter: 1, unreadable: true })
+    expect(await analysisOf(wav.id)).toMatchObject({ meter: METER, source: 'worker', format: { codec: 'pcm', rate: 22_050, channels: 1 }, ms: 8000, correlation: null })
+    expect(await analysisOf(junk.id)).toEqual({ meter: METER, unreadable: true })
     expect(await measureMissing()).toBe(0)
   })
 })

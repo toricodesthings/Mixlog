@@ -10,6 +10,8 @@ const CLIP: f32 = 1.0 - 1e-6;
 const CLIP_RUN: u32 = 3;
 /// Readings every 100 ms; the short-term window and the DR block are 3 s (30 hops).
 const HOPS_PER_WINDOW: usize = 30;
+/// Low end is the share of energy below this.
+const LOW_HZ: f64 = 120.0;
 
 pub struct Meter {
     rate: u32,
@@ -32,6 +34,36 @@ pub struct Meter {
     runs: Vec<u32>,
     clipped: u32,
     sums: Vec<f64>,
+    // Low end: the mid signal through a 4th-order Butterworth low-pass at 120 Hz, and both energies.
+    low_pass: [Biquad; 2],
+    low_sq: f64,
+    mid_sq: f64,
+}
+
+/// An RBJ low-pass biquad (transposed direct form II).
+#[derive(Clone, Copy)]
+struct Biquad {
+    b: [f64; 3],
+    a: [f64; 2],
+    z: [f64; 2],
+}
+
+impl Biquad {
+    fn low_pass(rate: u32, hz: f64, q: f64) -> Biquad {
+        let w = 2.0 * std::f64::consts::PI * hz / rate as f64;
+        let alpha = w.sin() / (2.0 * q);
+        let a0 = 1.0 + alpha;
+        let c = w.cos();
+        let b1 = (1.0 - c) / a0;
+        Biquad { b: [b1 / 2.0, b1, b1 / 2.0], a: [-2.0 * c / a0, (1.0 - alpha) / a0], z: [0.0; 2] }
+    }
+
+    fn run(&mut self, x: f64) -> f64 {
+        let y = self.b[0] * x + self.z[0];
+        self.z[0] = self.b[1] * x - self.a[0] * y + self.z[1];
+        self.z[1] = self.b[2] * x - self.a[1] * y;
+        y
+    }
 }
 
 impl Meter {
@@ -57,6 +89,9 @@ impl Meter {
             runs: vec![0; channels],
             clipped: 0,
             sums: vec![0.0; channels],
+            low_pass: [Biquad::low_pass(rate, LOW_HZ, 0.541), Biquad::low_pass(rate, LOW_HZ, 1.307)],
+            low_sq: 0.0,
+            mid_sq: 0.0,
         })
     }
 
@@ -94,6 +129,7 @@ impl Meter {
                     self.runs[c] = 0;
                 }
             }
+            self.low_end(frame);
             if self.channels >= 2 {
                 let (l, r) = (frame[0] as f64, frame[1] as f64);
                 sums[0] += l * l;
@@ -113,6 +149,14 @@ impl Meter {
         self.momentary.push(self.ebu.loudness_momentary().unwrap_or(f64::NEG_INFINITY));
         self.short_term.push(self.ebu.loudness_shortterm().unwrap_or(f64::NEG_INFINITY));
         Ok(())
+    }
+
+    fn low_end(&mut self, frame: &[f32]) {
+        let mid = frame.iter().map(|&x| x as f64).sum::<f64>() / self.channels as f64;
+        let first = self.low_pass[0].run(mid);
+        let lp = self.low_pass[1].run(first);
+        self.mid_sq += mid * mid;
+        self.low_sq += lp * lp;
     }
 
     fn close_block(&mut self) {
@@ -135,6 +179,7 @@ impl Meter {
                     self.block[c].0 += (x as f64) * (x as f64);
                     self.block[c].1 = self.block[c].1.max(x.abs());
                 }
+                self.low_end(frame);
                 if self.channels >= 2 {
                     let (l, r) = (frame[0] as f64, frame[1] as f64);
                     self.ll += l * l;
@@ -182,6 +227,7 @@ impl Meter {
             plr: lufs.map(|l| round1((true_peak - l).max(0.0))),
             dr: dr(&self.blocks),
             correlation: self.correlation(),
+            low: if self.mid_sq > 0.0 { Some(round2((self.low_sq / self.mid_sq).min(1.0))) } else { None },
             clipped: self.clipped,
             dc: self.sums.iter().map(|s| db((s / self.frames as f64).abs(), -120.0)).collect(),
             loudest,

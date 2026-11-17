@@ -3,17 +3,19 @@
 import { z } from 'zod'
 
 /** Bump with any change to meter/ that moves a reading; the cron re-measures older ones. */
-export const METER = 1
+export const METER = 2
 
 /** Rounded to 0.1, as the meter writes it. */
 const db = (min: number, max: number) => z.number().min(min).max(max).transform((v) => Math.round(v * 10) / 10)
 const unit = z.number().min(-1).max(1)
+/** 0–1, rounded to 0.01. */
+const unit01 = z.number().min(0).max(1).transform((v) => Math.round(v * 100) / 100)
 
 const measured = z.object({
   meter: z.int().positive(),
   source: z.enum(['device', 'worker']),
   format: z.object({
-    codec: z.enum(['pcm', 'flac', 'mp3', 'aac', 'alac', 'vorbis']),
+    codec: z.enum(['pcm', 'flac', 'mp3', 'aac', 'alac', 'vorbis', 'opus']),
     rate: z.int().min(8_000).max(768_000),
     bits: z.int().min(8).max(64).nullable(),
     channels: z.int().min(1).max(32),
@@ -29,12 +31,14 @@ const measured = z.object({
   plr: db(0, 100).nullable(),
   dr: z.int().min(0).max(40).nullable(),
   correlation: z.object({ mean: unit, min: unit, minAtMs: z.int().min(0) }).nullable(),
+  /** The share of energy below 120 Hz (meter 2); absent on meter 1, null in silence. */
+  low: unit01.nullable().optional(),
   clipped: z.int().min(0),
   dc: z.array(db(-120, 0)).max(32),
   loudest: z.object({ atMs: z.int().min(0), lufs: db(-70, 10) }).nullable(),
   wave: z.array(db(-70, 10)).length(256),
 })
-// A file the meter couldn't decode (Opus, DRM): stamped so the cron doesn't retry it nightly; the bridge reads NO READING.
+// A file the meter couldn't decode (WebM, DRM): stamped so the cron doesn't retry it nightly; the bridge reads NO READING.
 const unreadable = z.object({ meter: z.int().positive(), unreadable: z.literal(true) })
 export const analysisInput = z.union([measured, unreadable])
 export type Analysis = z.infer<typeof analysisInput>
@@ -136,7 +140,6 @@ const WAVE_STUB = 0.04
 /** A bar's height, 0–1, for a short-term loudness reading. */
 export const heightOf = (lufs: number) => Math.min(1, Math.max(WAVE_STUB, 10 ** ((lufs - WAVE_TOP) / 20)))
 
-const unit01 = z.number().min(0).max(1).transform((v) => Math.round(v * 100) / 100)
 const clamp01 = (v: number) => Math.round(Math.min(1, Math.max(0, v)) * 100) / 100
 /** `v` mapped linearly so `from` lands at 0 and `to` lands at 1, clamped to 0–1. */
 const lerp01 = (v: number, from: number, to: number) => clamp01((v - from) / (to - from))

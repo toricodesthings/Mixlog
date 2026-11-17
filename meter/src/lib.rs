@@ -3,6 +3,7 @@
 pub mod analysis;
 pub mod decode;
 pub mod measure;
+pub mod opus;
 
 use std::cell::RefCell;
 use std::io::{self, Read, Seek, SeekFrom};

@@ -39,6 +39,8 @@ pub struct Readings {
     pub plr: Option<f64>,
     pub dr: Option<u32>,
     pub correlation: Option<Correlation>,
+    /// The share of the mid signal's energy below 120 Hz; none in silence.
+    pub low: Option<f64>,
     pub clipped: u32,
     pub dc: Vec<f64>,
     pub loudest: Option<Loudest>,

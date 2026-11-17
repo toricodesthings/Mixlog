@@ -11,7 +11,8 @@ const MOTION_KEY = 'mixlog.motion'
  * references) because `APPEARANCE_BOOT` inlines its source into <head>, ahead of the first paint.
  */
 function applyAppearance() {
-  let theme = 'blue-hour'
+  // The public meter follows the system until someone chooses; the app is Blue Hour until then.
+  let theme = typeof __METER_HOST__ === 'string' && __METER_HOST__ && location.hostname === __METER_HOST__ ? 'system' : 'blue-hour'
   let motion = 'system'
   try {
     theme = localStorage.getItem('mixlog.theme') ?? theme

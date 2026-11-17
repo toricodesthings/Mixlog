@@ -5,6 +5,12 @@
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "src/server.ts", // TanStack Start's handler, plus the cleanup cron
 	"preview_urls": false, // Old versions don't stay reachable with production data; nothing uses previews.
+	"workers_dev": false, // Only the domain below answers.
+	// The app, and the public meter (METER_HOST). Access protects the whole Worker; the meter's host has its own Bypass app.
+	"routes": [
+		{ "pattern": "themixlog.app", "custom_domain": true },
+		{ "pattern": "loudornot.themixlog.app", "custom_domain": true },
+	],
 	// Failures only: the code logs warnings and errors (src/server/log.ts), never the happy path, so no line per request
 	// either. Issues groups errors and 5xx responses; traces sample 1% of requests, enough to see where time goes.
 	"observability": {
@@ -27,6 +33,9 @@
 	// Cloudflare Access: Zero Trust → Access → Applications → your app. Not secrets.
 	"vars": {
 		"ACCESS_TEAM_DOMAIN": "https://pitoursirak.cloudflareaccess.com",
-		"ACCESS_AUD": "6544c11e79935c486b9e5503171004d821c23c791e18174796652fae5fba2c06" // the application's "Application Audience (AUD) Tag"
+		"ACCESS_AUD": "6544c11e79935c486b9e5503171004d821c23c791e18174796652fae5fba2c06", // the application's "Application Audience (AUD) Tag"
+		// The public meter's hostname (a Custom Domain in `routes`, bypassed in Access): it serves the meter page and
+		// nothing else (src/server/meter-host.ts). Empty in forks that don't want one.
+		"METER_HOST": "loudornot.themixlog.app",
 	},
 }

@@ -1,13 +1,14 @@
-import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type HTMLAttributes, type KeyboardEvent, type ReactNode } from 'react'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { cn } from '../../lib/utils'
-import { clock } from './controls'
+import { formatLength } from '../releases/browse'
 import type { Side } from './ab'
 import { usePlayer, usePlayheadIf, type Playable, type Wave } from './Player'
 import { heightOf, pool } from './wave'
 
 const DRAWN = { bridge: 56, room: 72, pair: 56 }
+const clock = (seconds: number) => formatLength(seconds * 1000)
 
 /**
  * A song's loudness over its length, and a playhead: capsule bars on a horizon with mist below (the scene's skyline,
@@ -36,16 +37,6 @@ export function LoudnessWave({ item, wave: { bars: wave, ms, loudestMs }, size =
   const share = length ? Math.min(1, now / length) : 0
 
   const box = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(0)
-  useEffect(() => {
-    const el = box.current
-    if (!el) return
-    const observer = new ResizeObserver(([entry]) => setWidth(Math.floor(entry.contentRect.width)))
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-  const step = isTouch ? 6 : 5
-  const heights = useMemo(() => pool(wave, Math.max(16, Math.floor(width / step))).map(heightOf), [wave, width, step])
   const [hover, setHover] = useState<number | null>(null)
   // Where it's lit, buffered and pointed at, on the few layers that draw them (`[data-playhead-read]`), never on the
   // wave itself: set there, every bar under it would restyle. The player's frame loop writes the same two while playing.
@@ -54,13 +45,14 @@ export function LoudnessWave({ item, wave: { bars: wave, ms, loudestMs }, size =
   const pointed = `${(hover ?? 0) * 100}%`
   // Layers come and go (the hover's, the playhead's, all of them on a resize): each new one is given them too
   const hovering = hover !== null
-  useLayoutEffect(() => {
+  const paint = () => {
     for (const el of box.current?.querySelectorAll<HTMLElement>('[data-playhead-read]') ?? []) {
       el.style.setProperty('--fill', fill)
       el.style.setProperty('--buffered', filled)
       el.style.setProperty('--hover', pointed)
     }
-  }, [fill, filled, pointed, width, hovering, active])
+  }
+  useLayoutEffect(paint, [fill, filled, pointed, hovering, active])
 
   const go = (to: number) => {
     const at = Math.min(1, Math.max(0, to))
@@ -76,38 +68,31 @@ export function LoudnessWave({ item, wave: { bars: wave, ms, loudestMs }, size =
     go((now + by) / length)
   }
 
-  const drawn = DRAWN[size]
   return (
     <div className={cn('flex w-full items-center gap-3', className)}>
       <span data-numeric className="w-10 shrink-0 text-right text-xs text-ink-muted">{clock(now)}</span>
       {/* On a shared axis, the shorter file's wave ends where its sound does */}
-      <div className="min-w-0 flex-1">
-      <div
-        ref={box}
-        className="loudness-wave relative min-w-0"
+      <div ref={box} className="min-w-0 flex-1">
+      <WaveBars
+        wave={{ bars: wave, ms, loudestMs }}
+        size={size}
         data-active={active || undefined}
         data-playhead={deck ?? (active || undefined)}
-        style={{
-          '--wave-h': `${drawn}px`,
-          width: axis && length ? `${Math.min(100, (length / axis) * 100)}%` : undefined,
-        } as CSSProperties}
+        style={{ width: axis && length ? `${Math.min(100, (length / axis) * 100)}%` : undefined }}
         onPointerMove={isTouch ? undefined : (event) => {
           const r = event.currentTarget.getBoundingClientRect()
           setHover(Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)))
         }}
         onPointerLeave={() => setHover(null)}
-      >
-        {width > 0 && (
+        onDrawn={paint}
+        layers={(bars) => (
           <>
-            <Bars heights={heights} width={width} height={drawn} className="wave-layer wave-rest" />
-            <Bars heights={heights} width={width} height={drawn} className="wave-layer wave-buffered" read />
-            {hover !== null && <Bars heights={heights} width={width} height={drawn} className="wave-layer wave-hover" read />}
-            <Bars heights={heights} width={width} height={drawn} className="wave-layer wave-lit" lit read />
-            <Bars heights={heights} width={width} height={drawn} className="wave-mist" />
+            {bars('wave-layer wave-buffered', { read: true })}
+            {hover !== null && bars('wave-layer wave-hover', { read: true })}
+            {bars('wave-layer wave-lit', { lit: true, read: true })}
           </>
         )}
-        <span aria-hidden="true" data-playhead-read className="wave-ground" />
-        {loudestMs != null && ms > 0 && <span aria-hidden="true" className="wave-loudest" style={{ left: `${(loudestMs / ms) * 100}%` }} />}
+      >
         {active && <span aria-hidden="true" data-signal data-playhead-read className="wave-playhead" />}
         {hover !== null && (
           <span aria-hidden="true" data-playhead-read className="wave-ghost">
@@ -125,9 +110,56 @@ export function LoudnessWave({ item, wave: { bars: wave, ms, loudestMs }, size =
           aria-valuetext={`${clock(now)} of ${clock(length)}`}
           className="wave-range"
         />
-      </div>
+      </WaveBars>
       </div>
       <span data-numeric className="w-10 shrink-0 text-xs text-ink-muted">{clock(length)}</span>
+    </div>
+  )
+}
+
+type Layer = (className: string, as?: { lit?: boolean; read?: boolean }) => ReactNode
+
+/**
+ * The bars alone, with no player and no playhead: the horizon, its mist, the ground and the loudest tick, at the
+ * box's own width. `layers` adds bar layers (drawn under the loudest tick), `children` anything above it.
+ */
+export function WaveBars({ wave: { bars: wave, ms, loudestMs }, size = 'bridge', className, style, layers, onDrawn, children, ...box }: {
+  wave: Wave
+  size?: keyof typeof DRAWN
+  layers?: (bars: Layer) => ReactNode
+  /** After the layers are drawn at a new width (so a player can give them the playhead's variables). */
+  onDrawn?: () => void
+  children?: ReactNode
+} & Omit<HTMLAttributes<HTMLDivElement>, 'children'>) {
+  const { isTouch } = useShellMode()
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => setWidth(Math.floor(entry.contentRect.width)))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- only a new width redraws the layers
+  useLayoutEffect(() => onDrawn?.(), [width])
+  const step = isTouch ? 6 : 5
+  const heights = useMemo(() => pool(wave, Math.max(16, Math.floor(width / step))).map(heightOf), [wave, width, step])
+  const drawn = DRAWN[size]
+  const bars: Layer = (name, as) => <Bars heights={heights} width={width} height={drawn} className={name} {...as} />
+  return (
+    <div ref={ref} {...box} className={cn('loudness-wave relative min-w-0', className)} style={{ '--wave-h': `${drawn}px`, ...style } as CSSProperties}>
+      {width > 0 && (
+        <>
+          {bars('wave-layer wave-rest')}
+          {layers?.(bars)}
+          {bars('wave-mist')}
+        </>
+      )}
+      {/* Lit up to the playhead where there is one; --fill is written over by its player */}
+      <span aria-hidden="true" data-playhead-read className="wave-ground" style={{ '--fill': '0%' } as CSSProperties} />
+      {loudestMs != null && ms > 0 && <span aria-hidden="true" className="wave-loudest" style={{ left: `${(loudestMs / ms) * 100}%` }} />}
+      {children}
     </div>
   )
 }

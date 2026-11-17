@@ -3,9 +3,10 @@
 use std::cell::RefCell;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::rc::Rc;
+use std::sync::OnceLock;
 
 use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::{self, Decoder, DecoderOptions};
+use symphonia::core::codecs::{self, CodecRegistry, Decoder, DecoderOptions};
 use symphonia::core::errors::Error as SymError;
 use symphonia::core::formats::{FormatOptions, FormatReader};
 use symphonia::core::io::{MediaSource, MediaSourceStream, MediaSourceStreamOptions};
@@ -17,7 +18,7 @@ use crate::measure::Meter;
 
 #[derive(Debug)]
 pub enum Fail {
-    /// A format or codec the meter can't decode (Opus, DRM). Not a failed upload, only no reading.
+    /// A format or codec the meter can't decode (WebM, DRM). Not a failed upload, only no reading.
     Unreadable,
     Other(String),
 }
@@ -55,7 +56,7 @@ impl Session {
         let codec = codec_name(p.codec).ok_or(Fail::Unreadable)?;
         let lossless = matches!(codec, "pcm" | "flac" | "alac");
         let bits = if lossless { p.bits_per_sample.or(p.bits_per_coded_sample) } else { None };
-        let decoder = symphonia::default::get_codecs().make(p, &DecoderOptions::default()).map_err(|_| Fail::Unreadable)?;
+        let decoder = codecs().make(p, &DecoderOptions::default()).map_err(|_| Fail::Unreadable)?;
         let id = track.id;
         Ok(Session { reader, decoder, track: id, meter: None, buf: None, codec, rate: 0, bits, channels: 0 })
     }
@@ -104,6 +105,17 @@ impl Session {
     }
 }
 
+/// Symphonia's decoders plus Opus.
+fn codecs() -> &'static CodecRegistry {
+    static REGISTRY: OnceLock<CodecRegistry> = OnceLock::new();
+    REGISTRY.get_or_init(|| {
+        let mut r = CodecRegistry::new();
+        symphonia::default::register_enabled_codecs(&mut r);
+        r.register_all::<crate::opus::OpusDecoder>();
+        r
+    })
+}
+
 fn codec_name(c: codecs::CodecType) -> Option<&'static str> {
     use codecs::*;
     Some(match c {
@@ -112,7 +124,8 @@ fn codec_name(c: codecs::CodecType) -> Option<&'static str> {
         CODEC_TYPE_AAC => "aac",
         CODEC_TYPE_ALAC => "alac",
         CODEC_TYPE_VORBIS => "vorbis",
-        c if symphonia::default::get_codecs().get_codec(c).is_some_and(|d| d.short_name.starts_with("pcm")) => "pcm",
+        CODEC_TYPE_OPUS => "opus",
+        c if codecs().get_codec(c).is_some_and(|d| d.short_name.starts_with("pcm")) => "pcm",
         _ => return None,
     })
 }

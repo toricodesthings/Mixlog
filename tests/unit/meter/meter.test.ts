@@ -10,7 +10,7 @@ beforeAll(() => {
 })
 
 /** 24-bit / 48 kHz stereo sine at −23 dBFS. */
-function wav(seconds: number): Uint8Array {
+function wav(seconds: number, hz = 1000): Uint8Array {
   const frames = seconds * RATE
   const out = new Uint8Array(44 + frames * 6)
   const view = new DataView(out.buffer)
@@ -21,7 +21,7 @@ function wav(seconds: number): Uint8Array {
   text(36, 'data'); view.setUint32(40, frames * 6, true)
   const a = 10 ** (-23 / 20)
   for (let n = 0; n < frames; n++) {
-    const x = Math.round(a * Math.sin((2 * Math.PI * 1000 * n) / RATE) * 8_388_607)
+    const x = Math.round(a * Math.sin((2 * Math.PI * hz * n) / RATE) * 8_388_607)
     for (const c of [0, 1]) {
       const at = 44 + n * 6 + c * 3
       out[at] = x & 0xff; out[at + 1] = (x >> 8) & 0xff; out[at + 2] = (x >> 16) & 0xff
@@ -56,6 +56,18 @@ describe('meter (committed pkg)', () => {
     const a = seekable(mp3, 'mp3')
     expect(a.format.codec).toBe('mp3')
     expect(Math.abs(a.lufs + 10.7)).toBeLessThanOrEqual(0.2)
+  })
+
+  it('reads low end: most of a 50 Hz tone, almost none of a 1 kHz one', () => {
+    expect(seekable(wav(5, 50), 'wav').low).toBeGreaterThanOrEqual(0.97)
+    expect(seekable(bytes, 'wav').low).toBeLessThanOrEqual(0.01)
+  })
+
+  it('reads Opus at 48 kHz', () => {
+    const opus = new Uint8Array(readFileSync(new URL('../../../meter/tests/fixtures/sine-1k-20dbfs.opus', import.meta.url)))
+    const a = seekable(opus, 'opus')
+    expect(a.format).toMatchObject({ codec: 'opus', rate: RATE, bits: null, channels: 2 })
+    expect(a.ms).toBe(5_000)
   })
 
   it('calls bytes it can’t decode unreadable, without crashing', () => {

@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- A public meter page: drop a bounce, read it on your device, nothing uploaded. Its own host comes with the domain.
+- Low end: the share of a song's energy below 120 Hz, in the meters' More fold.
+- The meter reads Opus files.
+
+### Changed
+
+- Each meter's tip says one more plain fact about what it reads.
+
 ## [1.7.5] - 2026-11-17
 
 ### Added

@@ -12,6 +12,7 @@ The Worker side: `src/server/`, `src/server.ts` (Start's handler + the daily cro
 ## Requests and auth
 
 - Every answer gets `securityHeaders`; non-`GET`/`HEAD` calls must pass `sameOrigin`. Never drop either from `requestMiddleware`.
+- **The meter host** (`METER_HOST`, outside Access): `server.ts` asks `meterHostAnswer` before Start sees the request: an allowlist (the page and built files) answers, every `/_serverFn/`, `/api/` and non-`GET`/`HEAD` request is a bare 404, and any other address gets the page shell as a 404, never its own route. `x-robots-tag` is dropped there. Empty `METER_HOST` turns it off.
 - Every server function runs the `access` function middleware (function, not request, because the build prerenders the shell without a token). `isAllowed` fails closed (missing config, token or any verification error → 403), skipped only under `import.meta.env.DEV`. A change to it changes `tests/unit/server/access.test.ts`. No passwords, sessions, cookies, users or tenancy.
 - **Logging** is `report` only (`log.ts`): warnings and failures, never the happy path. `failures`/`routeFailures` log anything not `isAnswer` and answer `SERVER_FAILED`, never the raw message, stack or SQL. A failure turned into an answer is `report('warn', …)`. Pass the error itself, not its string.
 

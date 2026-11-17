@@ -13,6 +13,7 @@ Everything in `src/` except `server/`: the SPA the browser runs, in the manifest
 - Data comes from server functions. File bytes are the exception: only `lib/files.ts` talks to the `/api` routes (XHR for uploads, for progress).
 - `lib/` is client-safe. One of each: `lib/nav.ts` (destinations; nothing else lists them), `lib/files.ts`, `lib/time.ts`.
 - Routes are thin: params, a loader from `components/releases/loaders.ts`, a shared page. Never edit `routeTree.gen.ts`.
+- A route with `staticData: { bare: true }` (only `/meter`, the public meter) renders in `meter/MeterShell`, never `AppShell`: no rail, player, Settings, loaders or server functions. On `__METER_HOST__` the router rewrites `/` ⇄ `/meter`.
 - Preloads are reused for 5s, so a write must call `router.invalidate()` (never awaited before the screen moves).
 - **The URL says where you are.** Page, part, search, filter, sort, view, open dialog and Settings are path or search params (validated in `validateSearch`, defaults left out). Only what a URL can't hold (picked files, a half-typed form) stays in memory. Writes are POST server functions whose result lands in the URL.
 - Browser storage holds per-device conveniences only, every access in `try`/`catch`.
@@ -38,7 +39,7 @@ Musician words, never storage words; an artist is *on* a track (main or featured
 - No hardcoded hex: add a semantic token to `styles/app.css`. Use the active-palette tokens (`accent*`), never the named `signal`/`tube`/`haze`. Surface tints are tuned per mode only in `app.css`.
 - **Concentric corners:** child radius = parent radius − padding between them (and changes with it at `sm:`); a filling cover takes `rounded-[inherit]`. Side-by-side controls share one height and radius (44px, `rounded-xl`).
 - **Every surface wears an instrument.** Reach for the existing ones first (`app.css` "SIGNAL GIMMICKS"): `Meter` for whatever plays, `Scope` (`flat` = no signal) atop every `EmptyState`, `Led`, `readout` lettering, `signal-rule`, `playhead-sweep`, `glass-edge`. Waiting is `Tuning` (work), `Transfer` (bytes) or `Skeleton` (known shape), never a stock spinner.
-- Meter deltas read in Haze, never green or red. Platform logos (`simple-icons`) in ink, never brand colour.
+- A reading is laid out once, in `meters/Readings.tsx` (`Reading`), for the bridge and the public meter alike; `WaveBars` (`player/LoudnessWave.tsx`) draws a wave with no player. Meter deltas read in Haze, never green or red. Platform logos (`simple-icons`) in ink, never brand colour.
 - **Phantom:** at most one moment per screen (passing `phantom` to `Led`, `Meter` or `Scope` spends it); never a fill, control or feedback colour. When in doubt, Signal.
 - When `BrandMark` changes, re-render `public/brand/` PNGs (180, 192, 512) and `public/favicon.ico`.
 

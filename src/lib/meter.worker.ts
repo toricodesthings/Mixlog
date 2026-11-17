@@ -16,8 +16,15 @@ async function measure(job: Job): Promise<object> {
   await init({ module_or_path: wasmUrl })
   if ('file' in job) {
     const reader = new FileReaderSync()
-    const read = (at: number, length: number) => new Uint8Array(reader.readAsArrayBuffer(job.file.slice(at, at + length)))
-    return measure_seekable(job.file.size, read, job.hint)
+    const size = job.file.size
+    // The furthest byte read, posted at most every 1% (an M4A's index at the end jumps it early; that's fine).
+    let posted = 0
+    const read = (at: number, length: number) => {
+      const share = Math.min(1, (at + length) / size)
+      if (share - posted >= 0.01) scope.postMessage({ progress: (posted = share) })
+      return new Uint8Array(reader.readAsArrayBuffer(job.file.slice(at, at + length)))
+    }
+    return measure_seekable(size, read, job.hint)
   }
   const response = await fetch(job.url)
   if (!response.ok || !response.body) throw new Error('Couldn’t read the file.')

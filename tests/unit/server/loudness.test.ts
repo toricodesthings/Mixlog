@@ -15,6 +15,14 @@ describe('analysisInput', () => {
     expect(analysisInput.safeParse(reading({ wave: Array(255).fill(-20) })).success).toBe(false)
     expect(analysisInput.safeParse(reading({ lufs: -90 })).success).toBe(false)
   })
+  it('takes low end, or none (meter 1, or silence), and refuses it out of range', () => {
+    const { low: _, ...meter1 } = reading({ meter: 1 })
+    expect(analysisInput.safeParse(meter1).success).toBe(true)
+    expect(analysisInput.parse(reading({ low: null }))).toMatchObject({ low: null })
+    expect(analysisInput.parse(reading({ low: 0.384 }))).toMatchObject({ low: 0.38 })
+    expect(analysisInput.safeParse(reading({ low: 1.2 })).success).toBe(false)
+    expect(analysisInput.safeParse(reading({ low: -0.1 })).success).toBe(false)
+  })
 })
 
 describe('normalizationOf', () => {
@@ -76,8 +84,8 @@ describe('deltaOf', () => {
     expect(deltaOf(reading({ correlation: { mean: 0.79, min: 0.3, minAtMs: 0 } }), reading())?.correlation).toEqual({ by: -0.03, same: false })
   })
   it('is null across meters or without a reading', () => {
-    expect(deltaOf(reading({ meter: 2 }), reading())).toBeNull()
-    expect(deltaOf({ meter: 1, unreadable: true }, reading())).toBeNull()
+    expect(deltaOf(reading({ meter: 1 }), reading())).toBeNull()
+    expect(deltaOf({ meter: 2, unreadable: true }, reading())).toBeNull()
   })
 })
 
