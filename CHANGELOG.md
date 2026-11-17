@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-17
+
 ### Added
 
 - A public meter page: drop a bounce, read it on your device, nothing uploaded. Its own host comes with the domain.
