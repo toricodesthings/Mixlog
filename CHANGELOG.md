@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.7.5] - 2026-11-17
+
 ### Added
 
 - Settings has Profile & Security: who you're signed in as, a display name you can change, and Sign out.
