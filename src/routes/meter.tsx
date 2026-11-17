@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 
 import { MeterPage } from '#/components/meter/MeterPage'
 import { Scope } from '#/components/primitives'
@@ -6,6 +6,10 @@ import { Scope } from '#/components/primitives'
 // The public meter: bare (MeterShell), and on its own host it's the whole site (router.tsx). Not in lib/nav.ts.
 export const Route = createFileRoute('/meter')({
   staticData: { bare: true },
+  // A leaf route fuzzy-matches longer paths (/meter/x, or /x on the meter host); those are this page's not-found.
+  beforeLoad: ({ location }) => {
+    if (!/^\/meter\/?$/.test(location.pathname)) throw notFound()
+  },
   head: () => ({
     meta: [
       { title: 'Meter · Mixlog' },
