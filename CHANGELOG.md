@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-11-17
+
 ### Changed
 
 - The public meter fills wide screens: Mixlog's name by the mark, a sliding theme switch and a dropzone that lights up.
