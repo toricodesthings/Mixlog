@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Changed
+
+- The public meter fills wide screens: Mixlog's name by the mark, a sliding theme switch and a dropzone that lights up.
+- The public meter's dropzone is a frosted window onto Mixlog's loading scene; a bounce in zooms through it to measure.
+- The loading scene's valley mist drifts in three wind-blown layers between the ranges; the meter's window shows fainter stars.
+- The public meter is named LoudorNot in its top bar and tab title.
+- The public meter plays the measured file on your device, with its loudness wave as the playhead. Nothing is uploaded.
+- The public meter refuses a drop of several files at once and says to drop one.
+
 ## [1.8.0] - 2026-11-17
 
 ### Added

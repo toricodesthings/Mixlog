@@ -12,8 +12,8 @@ export const Route = createFileRoute('/meter')({
   },
   head: () => ({
     meta: [
-      { title: 'Meter · Mixlog' },
-      { name: 'description', content: 'Measure a bounce on your own device: loudness, true peak, phase, low end and what each platform does to it. Nothing is uploaded.' },
+      { title: 'LoudorNot Meter · Mixlog' },
+      { name: 'description', content: 'LoudorNot measures a bounce on your own device: loudness, true peak, phase, low end and what each platform does to it. Nothing is uploaded.' },
     ],
   }),
   component: MeterPage,

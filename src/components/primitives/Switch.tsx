@@ -20,4 +20,21 @@ const Switch = ({ className, ...props }: React.ComponentProps<typeof SwitchPrimi
     </SwitchPrimitives.Root>
 );
 
-export { Switch }
+/** A switch with something riding its knob (the sun or the moon), sliding on the shared snap spring. 44px to the touch. */
+const IconSwitch = ({ className, children, ...props }: React.ComponentProps<typeof SwitchPrimitives.Root>) => (
+    <SwitchPrimitives.Root
+        className={cn(
+            "group relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center rounded-full bg-room-surface-muted shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-colors duration-(--duration-normal) data-[state=checked]:bg-accent-soft",
+            "before:absolute before:-inset-1.5 before:content-['']",
+            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-room-base",
+            className
+        )}
+        {...props}
+    >
+        <SwitchPrimitives.Thumb className="pointer-events-none flex size-6 translate-x-1 items-center justify-center rounded-full bg-ink text-room-deep shadow-md [transition:translate_var(--spring-snap),scale_var(--spring-snap)] group-active:scale-x-110 data-[state=checked]:translate-x-7">
+            {children}
+        </SwitchPrimitives.Thumb>
+    </SwitchPrimitives.Root>
+);
+
+export { IconSwitch, Switch }

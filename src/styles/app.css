@@ -105,6 +105,8 @@
   --duration-expressive: 450ms;
   --spring-snap: 400ms linear(0, 0.2271, 0.5535, 0.7826, 0.9088, 0.9679, 0.9918, 0.9997, 1.0015, 1.0013, 1.0008, 1, 1);
   /* Liquid: leaves with some speed and settles with a breath of overshoot (under 1%), never a bounce: glass answering a hand */
+  /* The meter's walk to the window: a critically-near spring (damping 0.72), a 4% settle, no rebound you'd count */
+  --spring-window: 800ms linear(0, 0.06, 0.1979, 0.3659, 0.5328, 0.6806, 0.8013, 0.8929, 0.9577, 0.9999, 1.0242, 1.0357, 1.0384, 1.0357, 1.0303, 1.0238, 1.0174, 1.0118, 1.0073, 1.0039, 1.0015, 0.9999, 0.999, 0.9986, 0.9985, 1);
   --spring-liquid: 340ms linear(0, 0.38, 0.66, 0.84, 0.94, 0.985, 1.004, 1.007, 1.005, 1.002, 1, 1);
   --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
   --morph-in: 200ms var(--ease-out-expo);
@@ -1429,19 +1431,58 @@ button.surface-control:not(:disabled):hover {
 .boot-ground {
   height: max(36%, 20.84vw);
 }
+/* The haze: three bands of soft clouds lying in the valley, one per depth, so the ranges hide and are hidden by it. Wind,
+   not a loop: each drifts across and back on its own long cycle, nearer ones farther and faster, and now and then a
+   gust stretches one thin before it settles. The cycles never line up, so the valley never looks the same twice. */
 .boot-mist {
-  top: 38%;
-  height: 22%;
-  background: linear-gradient(180deg, transparent, var(--boot-haze) 55%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent);
-  animation: boot-mist 60s ease-in-out infinite alternate;
+  --drift: 3%;
+  inset-inline: -12%;
+  top: 36%;
+  height: 26%;
+  /* Every cloud fades out inside the band, so it never shows an edge */
+  background:
+    radial-gradient(22% 40% at 16% 55%, var(--boot-haze), transparent),
+    radial-gradient(30% 34% at 47% 50%, var(--boot-haze), transparent),
+    radial-gradient(20% 42% at 80% 56%, var(--boot-haze), transparent),
+    radial-gradient(60% 30% at 50% 58%, var(--boot-haze), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+  animation:
+    boot-drift 61s ease-in-out -23s infinite alternate,
+    boot-gust 37s ease-in-out -11s infinite;
 }
-@keyframes boot-mist {
+.boot-mist-far {
+  --drift: 1.5%;
+  top: 26%;
+  height: 18%;
+  opacity: 0.55;
+  scale: -1 1;
+  animation-duration: 89s, 53s;
+  animation-delay: -41s, -29s;
+}
+.boot-mist-near {
+  --drift: 5%;
+  top: 50%;
+  height: 16%;
+  opacity: 0.5;
+  animation-duration: 43s, 29s;
+  animation-delay: -7s, -19s;
+}
+@keyframes boot-drift {
   from {
-    translate: -16px 0;
+    translate: calc(var(--drift) * -1) 0;
   }
   to {
-    translate: 16px 0;
+    translate: var(--drift) 0;
+  }
+}
+@keyframes boot-gust {
+  0%,
+  72%,
+  100% {
+    transform: none;
+  }
+  84% {
+    transform: scale(1.12, 0.8);
   }
 }
 /* A tube's box: 80 × 130 of the ground's 400 units, so it scales with the valley */
@@ -1466,6 +1507,53 @@ button.surface-control:not(:disabled):hover {
 }
 [data-theme='daylight'] :is(.boot-tube-light, .boot-reflection) {
   display: none;
+}
+
+/* The public meter's dropzone, a window onto the boot's night (meter/MeterPage): frosted and quieter at rest, then the
+   window comes up to fill the screen and clears, a walk to the glass on a soft spring (800ms, ZOOM_MS). The
+   boot's mark and words then come up over this same night, and it flies off with them. Reduced motion, at once. */
+.meter-window {
+  transition: clip-path var(--spring-window);
+}
+.meter-window > .boot-sky {
+  opacity: 0.8;
+  transition: opacity 800ms var(--ease-out-quart);
+}
+/* The glass frosts the valley but only softens the sky, so even the faintest stars come through as points */
+.meter-window :is(.boot-ground, .boot-depth-sky) {
+  filter: blur(8px);
+  transition: filter 800ms var(--ease-out-quart);
+}
+.meter-window .boot-depth-sky {
+  filter: blur(0.6px);
+}
+.boot-star-faint {
+  display: none;
+}
+.meter-window .boot-star-faint {
+  display: block;
+  min-width: 1.5px;
+  min-height: 1.5px;
+  opacity: 0.6;
+  transition: opacity 800ms var(--ease-out-quart);
+}
+.meter-window[data-through] :is(.boot-ground, .boot-depth-sky) {
+  filter: blur(0);
+}
+.meter-window[data-through] > .boot-sky {
+  opacity: 1;
+}
+/* Through the glass, the sky is the boot's own again */
+.meter-window[data-through] .boot-star-faint {
+  opacity: 0;
+  animation: none;
+}
+/* Come through the window, the mark and words arrive in 500ms, landing with the zoom (ZOOM_MS) */
+.boot-through :is(.boot-stage, .boot-wordmark) {
+  animation-duration: 500ms;
+}
+:root[data-motion='reduced'] :is(.meter-window, .meter-window > .boot-sky, .meter-window .boot-ground, .meter-window .boot-depth-sky, .boot-star-faint) {
+  transition: none;
 }
 
 /* The wordmark, flanked by two rules fading away from it */

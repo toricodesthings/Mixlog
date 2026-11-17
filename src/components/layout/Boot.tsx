@@ -1,4 +1,4 @@
-import { Fragment, useEffect } from 'react'
+import { Fragment, useEffect, type ReactNode } from 'react'
 
 import { cn } from '../../lib/utils'
 import { BrandMark } from '../primitives'
@@ -16,12 +16,17 @@ const STARS = SCENE.sky.stars.filter(([, , size]) => size > 1)
   .map(([left, top, size, warm]) => [left, top * 0.9, size, warm] as const)
   .filter(([left, top]) => Math.abs(left - 50) > 16 || top < 24)
   .slice(0, 24)
+/** The faint tier the boot leaves out: only the meter's window shows it (`.boot-star-faint`), a deeper sky through glass */
+const FAINT = SCENE.sky.stars.filter(([, , size]) => size <= 1)
+  .map(([left, top, size]) => [left, top * 0.9, size] as const)
+  .slice(0, 60)
 
 /** The first thing anyone sees, before the app has arrived (it's in the shell HTML, so CSS alone runs it): a quiet
  *  night over a still valley, and the mark drawing itself in and back out as the room tunes in. It stays over the shell
  *  until the first page is ready (`AppShell`), then flies in: each depth grows from the crest's peak, nearer ones more,
- *  like a drone pushing into the valley, as it fades. */
-export function Boot({ leaving, onLeft }: { leaving: boolean; onLeft: () => void }) {
+ *  like a drone pushing into the valley, as it fades. `children` sit under the wordmark (the meter's progress); with
+ *  `scene={false}` it draws only the mark and the words, over a night that's already on screen (the meter's window). */
+export function Boot({ leaving, onLeft, scene = true, children }: { leaving: boolean; onLeft: () => void; scene?: boolean; children?: ReactNode }) {
   useEffect(() => {
     if (!leaving) return
     const timer = setTimeout(onLeft, LEAVE_MS)
@@ -29,19 +34,8 @@ export function Boot({ leaving, onLeft }: { leaving: boolean; onLeft: () => void
   }, [leaving, onLeft])
 
   return (
-    <div role="status" className={cn('boot bg-atmosphere layer-loading-screen fixed inset-0 overflow-hidden', leaving && 'boot-leaving')}>
-      <div aria-hidden="true" className="boot-sky absolute inset-0">
-        <div className="boot-depth boot-depth-sky absolute inset-0">
-          {STARS.map(([left, top, size, warm], i) => (
-            <span
-              key={i}
-              className={cn('boot-star', warm && 'boot-star-warm', i === 0 && 'boot-sparkle', i % 8 === 4 && 'boot-twinkle')}
-              style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, animationDelay: `${-i * 1.3}s` }}
-            />
-          ))}
-        </div>
-        <Ground />
-      </div>
+    <div role="status" className={cn('boot layer-loading-screen fixed inset-0 overflow-hidden', scene ? 'bg-atmosphere' : 'boot-through', leaving && 'boot-leaving')}>
+      {scene && <Outside />}
       <div className="boot-stage relative flex h-full flex-col items-center justify-center gap-8">
         <div className="boot-mark relative">
           <div aria-hidden="true" className="boot-aura" />
@@ -52,7 +46,34 @@ export function Boot({ leaving, onLeft }: { leaving: boolean; onLeft: () => void
           <span className="sr-only">Loading </span>Mixlog
           <span aria-hidden="true" className="boot-rule boot-rule-r" />
         </p>
+        {children}
       </div>
+    </div>
+  )
+}
+
+/** The night outside the room: the stars and the valley, everything but the mark. The boot draws it; the public meter's
+ *  dropzone is a window onto it (`.boot` on an ancestor gives it its colours). */
+export function Outside() {
+  return (
+    <div aria-hidden="true" className="boot-sky absolute inset-0">
+      <div className="boot-depth boot-depth-sky absolute inset-0">
+        {STARS.map(([left, top, size, warm], i) => (
+          <span
+            key={i}
+            className={cn('boot-star', warm && 'boot-star-warm', i === 0 && 'boot-sparkle', i % 8 === 4 && 'boot-twinkle')}
+            style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, animationDelay: `${-i * 1.3}s` }}
+          />
+        ))}
+        {FAINT.map(([left, top, size], i) => (
+          <span
+            key={`f${i}`}
+            className={cn('boot-star boot-star-faint', i % 6 === 3 && 'boot-twinkle')}
+            style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, animationDelay: `${-i * 2.3}s` }}
+          />
+        ))}
+      </div>
+      <Ground />
     </div>
   )
 }
@@ -113,8 +134,8 @@ const Depth = ({ depth, children }: { depth: number; children: React.ReactNode }
   </div>
 )
 
-/** Two ranges deep in the room's language (the generator's own back and distant peaks, flattened), mist lying between
- *  them, the lit crest with amp tubes at its edges, and a still lake holding the glow. Every layer shares one viewBox and
+/** Two ranges deep in the room's language (the generator's own back and distant peaks, flattened), mist drifting in three
+ *  bands (behind the back range, between the two, and a wisp over the distant range's foot, each moving with its depth), the lit crest with amp tubes at its edges, and a still lake holding the glow. Every layer shares one viewBox and
  *  the box keeps the viewBox's height in view (`.boot-ground`), so the mist's HTML band lines up between the ranges.
  *  Only the mist and the tubes' light move, each on a box of its own; the tubes are HTML pinned to the screen's edges. */
 function Ground() {
@@ -122,6 +143,7 @@ function Ground() {
   return (
     <div className="boot-ground absolute inset-x-0 bottom-0">
       <Depth depth={1}>
+        <div className="boot-mist boot-mist-far absolute" />
         <svg {...ground}>
           <g transform="translate(0 130) scale(1 .65)">
             <path d={land.back} fill="var(--boot-land-back)" />
@@ -130,7 +152,7 @@ function Ground() {
         </svg>
       </Depth>
       <Depth depth={2}>
-        <div className="boot-mist absolute inset-x-0" />
+        <div className="boot-mist absolute" />
       </Depth>
       <Depth depth={3}>
         <svg {...ground}>
@@ -139,6 +161,7 @@ function Ground() {
             <path d={land.distantRim} fill="none" stroke="var(--boot-rim)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" opacity=".35" />
           </g>
         </svg>
+        <div className="boot-mist boot-mist-near absolute" />
       </Depth>
       <Depth depth={5}>
         <svg {...ground}>
