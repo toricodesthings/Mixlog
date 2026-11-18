@@ -9,6 +9,7 @@ import { cn } from '../../lib/utils'
 import { Reading, ReadingHead, reading } from '../meters/Readings'
 import { WaveBars } from '../player/LoudnessWave'
 import { Boot, Outside } from '../layout/Boot'
+import { MeterAbout } from './MeterAbout'
 import { BrandMark, Button, IconSwitch, Led, Meter, Progress, Scope, Tip } from '../primitives'
 import { formatLength } from '../releases/browse'
 import { formatOf } from '../releases/stacks'
@@ -42,6 +43,7 @@ export function MeterPage() {
   /** Through the window: the boot's mark comes up a quarter of the way in, so it has
    *  finished arriving (`.boot-through`) as the zoom lands. */
   const [arrived, setArrived] = useState(false)
+  const [about, setAbout] = useState(false)
   const [box, setBox] = useState<HTMLElement | null>(null)
   const clip = useWindow(box)
   const input = useRef<HTMLInputElement>(null)
@@ -210,7 +212,14 @@ export function MeterPage() {
           )}
         </div>
       )}
-      <footer className={cn(passing, 'readout mx-auto pb-2 text-center text-ink-muted')}>v{__APP_VERSION__}</footer>
+      <footer className={cn(passing, 'readout mx-auto flex items-center justify-center gap-1 pb-2 text-center text-ink-muted')}>
+        <span>v{__APP_VERSION__}</span>
+        <span aria-hidden="true">·</span>
+        <button type="button" onClick={() => setAbout(true)} className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-2 transition-colors hover:text-accent focus-visible:text-accent focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-hidden">
+          built by tori
+        </button>
+      </footer>
+      <MeterAbout open={about} onClose={() => setAbout(false)} />
 
       {((through && arrived) || leaving) && (
         <Boot leaving={leaving} onLeft={left} scene={false}>

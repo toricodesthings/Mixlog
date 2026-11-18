@@ -2,7 +2,7 @@ import { useLocation, useSearch } from '@tanstack/react-router'
 import type { CSSProperties } from 'react'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
-import { Skeleton, Tuning } from '../primitives'
+import { Skeleton } from '../primitives'
 import { Page } from '../layout/Page'
 import type { ListSearch } from './browse'
 import { SECTIONS, sectionCrumb, type Section } from './sections'
@@ -20,21 +20,7 @@ export function PagePending() {
   const [, top, releaseId] = useLocation({ select: (l) => l.pathname.split('/') })
   const section: Section | null = top === 'upcoming' ? 'upcoming' : top === 'releases' ? 'released' : null
   if (section) return releaseId ? <ReleasePending section={section} /> : <ReleaseListPending section={section} />
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <Loading>Loading</Loading>
-    </div>
-  )
-}
-
-/** Said once per pending page, where its facts will be: the room tuning in. */
-function Loading({ children }: { children: string }) {
-  return (
-    <span role="status" className="readout flex items-center gap-2 text-ink-muted">
-      <Tuning />
-      {children}
-    </span>
-  )
+  return <span role="status" className="sr-only">Loading</span>
 }
 
 /** Upcoming or Releases on its way, in the view it was left in: Card's cards or List's rows. */
@@ -43,15 +29,13 @@ function ReleaseListPending({ section }: { section: Section }) {
   return (
     <Page title={SECTIONS[section].label}>
       <div aria-busy="true" className="flex flex-col gap-5">
+        <span role="status" className="sr-only">{`Loading ${SECTIONS[section].label}`}</span>
         <div className="flex flex-wrap items-center gap-2">
           <Skeleton className="h-11 basis-full rounded-full sm:basis-64 sm:flex-1" />
           <Skeleton className="h-11 w-60 rounded-full" />
           <Skeleton className="size-11 rounded-xl" />
           <Skeleton className="h-11 w-32 rounded-full" />
         </div>
-        <span className="-mb-2 px-1">
-          <Loading>{`Loading ${SECTIONS[section].label}`}</Loading>
-        </span>
         {view === 'list' ? (
           <div className="surface-card flex flex-col gap-1 rounded-3xl p-2">
             {Array.from({ length: 5 }, (_, i) => (
@@ -112,7 +96,6 @@ function ReleasePending({ section }: { section: Section }) {
         }
         crumbs={[sectionCrumb(section)]}
         lead={<Skeleton className="size-14 rounded-2xl" />}
-        meta={<Loading>Loading</Loading>}
         bar={
           !isDesktop && (
             <div className="-mx-4 -mt-2 mb-5 flex gap-2 overflow-hidden px-4 pb-1 sm:-mx-6 sm:px-6">

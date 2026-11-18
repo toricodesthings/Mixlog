@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- The public meter shows the loading screen on a first visit, as the app does.
+- A "built by tori" link under the public meter opens About in a sheet or dialog.
+- Settings → About is now written in Tori's own voice.
+
+### Removed
+
+- The small "Loading" readout at the top of a page on its way; the loading screen and page shapes say it.
+
 ## [1.8.2] - 2026-11-18
 
 ### Added
@@ -14,8 +24,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ### Changed
 
-- Full-screen meters and the public meter: Penalty and More side by side, roomier platform rows warming with the cut.
-- Full-screen More stays open, its readings grouped into peaks, loudness, low end and phase, and the file.
+- Full-screen meters and the public meter: roomier Penalty rows, warming toward amber the more a platform turns it down.
+- Full-screen More opens by default, its readings grouped into peaks, loudness, low end and phase, and the file.
 
 ## [1.8.1] - 2026-11-17
 

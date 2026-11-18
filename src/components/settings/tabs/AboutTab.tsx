@@ -23,7 +23,8 @@ function Pill({ icon: Icon, accent, children }: { icon: LucideIcon; accent?: boo
 /** One of the four equal links under the description: an icon over its name, the same box each. */
 const LINK_CARD = 'min-h-20 flex-col gap-2 px-3 text-center'
 
-export function AboutTab() {
+/** `meter`: shown over the public meter, whose host serves no other page, so no changelog link. */
+export function AboutTab({ meter = false }: { meter?: boolean }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -48,17 +49,17 @@ export function AboutTab() {
       <SettingsSection title="Product" className="mb-0">
         <div className="flex flex-col gap-3 rounded-[1.4rem] border border-white/[0.04] bg-white/[0.02] p-5 text-sm leading-6 text-ink-soft">
           <p className={expanded ? undefined : 'line-clamp-3'}>
-            Mixlog is one place for one artist’s music in progress: every bounce, master, artwork, Canvas and video, versioned and playable anywhere. Open it, tap a track, and hear the right version, without digging through a chat or a folder called final_FINAL_v3.
+            Hey, this is Tori! I made Mixlog because I was tired of digging through chats and folders called final_FINAL_v3 to find the right bounce. I wanted one place for my music in progress: every bounce, master, artwork, Canvas and video, versioned and playable anywhere, so I can open it, tap a track, and just hear the right version.
           </p>
           {/* Opens by sliding its height, never a jump; reduced motion changes it in place. */}
           <div className={cn('-mt-3 grid transition-[grid-template-rows] duration-(--duration-normal) ease-(--ease-out-expo)', expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')} aria-hidden={!expanded}>
             <div className="min-h-0 overflow-hidden">
               <div className="flex flex-col gap-3 pt-3">
               <p>
-                It’s open source and made to be forked: your copy runs on your own Cloudflare account, behind your own sign-in, with your files in a private bucket nothing else can reach. It never overwrites a bounce, and it collects no analytics.
+                I built it open source so you can fork it: your copy runs on your own Cloudflare account, behind your own sign-in, with your files in a private bucket nothing else can reach. I made sure it never overwrites a bounce, and I don’t collect any analytics.
               </p>
               <p>
-                Found a bug, or want to suggest something? The repository is on GitHub. If Mixlog is useful to you, the best way to support it is to star the repository and show it to another artist. Thanks for being here!
+                Found a bug, or have an idea? I’d love to hear it: the repository is on GitHub. If Mixlog is useful to you, the best way to support me is to star the repository and show it to another artist. Thanks for being here!
               </p>
               </div>
             </div>
@@ -74,7 +75,7 @@ export function AboutTab() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className={cn('grid grid-cols-2 gap-3', meter ? 'sm:grid-cols-3' : 'sm:grid-cols-4')}>
           <Button asChild variant="secondary" className={LINK_CARD}>
             <a href={SOURCE_URL} target="_blank" rel="noreferrer">
               <svg aria-hidden="true" viewBox="0 0 24 24" width={20} height={20} className="shrink-0 fill-accent">
@@ -85,12 +86,14 @@ export function AboutTab() {
               </span>
             </a>
           </Button>
+          {!meter && (
           <Button asChild variant="secondary" className={LINK_CARD}>
             <Link to="/changelog">
               <ScrollText size={20} className="text-accent" aria-hidden="true" />
               Changelog
             </Link>
           </Button>
+          )}
           <Button asChild variant="secondary" className={LINK_CARD}>
             <a href={`${SOURCE_URL}/issues`} target="_blank" rel="noreferrer">
               <CircleAlert size={20} className="text-accent" aria-hidden="true" />

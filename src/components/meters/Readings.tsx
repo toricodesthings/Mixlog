@@ -70,8 +70,8 @@ export function Reading({
   name: string
   deltas?: Deltas | null
   onLowPhase?: () => void
-  /** Filling the screen (the public meter, the full-screen bridge): Penalty and More side by side and always open,
-   *  Penalty's rows roomier and warming, More in sections. */
+  /** Filling the screen (the public meter, the full-screen bridge): Penalty's rows roomier and warming, More open
+   *  and in sections. */
   full?: boolean
 }) {
   const delta = (key: Headline, unit: string, word: [string, string]) =>
@@ -134,18 +134,15 @@ export function Reading({
           </Instrument>
         </div>
       </Group>
-      {/* Full screen (the public meter, the bridge filling the screen), Penalty and More sit side by side. */}
-      <div className={cn('grid items-start gap-5', full && '@5xl:grid-cols-2')}>
-        {a.lufs !== null && <Penalty a={a} full={full} />}
-        <Group
-          icon={<SlidersHorizontal size={16} />}
-          title="More"
-          summary="Peaks, range, low end, DC and the file"
-          fixed={full}
-        >
-          {full ? <TechnicalSections name={name} a={a} /> : <Technical name={name} a={a} />}
-        </Group>
-      </div>
+      {a.lufs !== null && <Penalty a={a} full={full} />}
+      <Group
+        icon={<SlidersHorizontal size={16} />}
+        title="More"
+        summary="Peaks, range, low end, DC and the file"
+        open={full}
+      >
+        {full ? <TechnicalSections name={name} a={a} /> : <Technical name={name} a={a} />}
+      </Group>
     </>
   )
 }
@@ -221,56 +218,43 @@ export function Group({
   title,
   summary,
   open: initially = false,
-  fixed,
   children,
 }: {
   icon: ReactNode
   title: string
   summary: string
   open?: boolean
-  /** Always open, with no way to close it. */
-  fixed?: boolean
   children: ReactNode
 }) {
-  const [toggled, setOpen] = useState(initially)
-  const open = fixed || toggled
+  const [open, setOpen] = useState(initially)
   const id = `${useId()}-body`
-  const head = (
-    <>
-      <span
-        aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-dim text-accent"
-      >
-        {icon}
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-display text-[0.9375rem] font-semibold text-ink">{title}</span>
-        <span data-numeric className="truncate text-[0.8125rem] text-ink-muted">
-          {summary}
-        </span>
-      </span>
-    </>
-  )
   return (
     <section className="surface-item rounded-2xl border border-line/40">
-      {fixed ? (
-        <div className="flex min-h-16 items-center gap-3 px-4 py-3">{head}</div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          aria-expanded={open}
-          aria-controls={id}
-          className="press flex min-h-16 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left"
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={id}
+        className="press flex min-h-16 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left"
+      >
+        <span
+          aria-hidden="true"
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-dim text-accent"
         >
-          {head}
-          <ChevronDown
-            size={18}
-            aria-hidden="true"
-            className={cn('shrink-0 text-ink-muted transition-transform duration-200', open && 'rotate-180')}
-          />
-        </button>
-      )}
+          {icon}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="font-display text-[0.9375rem] font-semibold text-ink">{title}</span>
+          <span data-numeric className="truncate text-[0.8125rem] text-ink-muted">
+            {summary}
+          </span>
+        </span>
+        <ChevronDown
+          size={18}
+          aria-hidden="true"
+          className={cn('shrink-0 text-ink-muted transition-transform duration-200', open && 'rotate-180')}
+        />
+      </button>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -457,7 +441,7 @@ export function Penalty({ a, full }: { a: Measured; full?: boolean }) {
         : `${reading(low, 1, true)} dB everywhere`
       : `${reading(low, 1, true)} to ${reading(high, 1, true)} dB`
   return (
-    <Group icon={<Volume2 size={16} />} title="Penalty" summary={summary} open fixed={full}>
+    <Group icon={<Volume2 size={16} />} title="Penalty" summary={summary} open>
       {/* In short runs, by what happens to the song, the biggest change first (a platform with no change is left as is). */}
       <div className={cn('-my-2 flex flex-col gap-3', full && '@container')}>
         {[
@@ -672,17 +656,21 @@ function FactName({ k, tip }: Pick<Fact, 'k' | 'tip'>) {
 
 /**
  * More on a full screen: the readings in short sections (peaks, loudness, low end and phase, the file), each a quiet
- * heading over a roomy two-across grid, a name over its value, the file's format as chips rather than a sentence.
+ * heading beside (or, narrow, over) a roomy grid, a name over its value, the file's format as chips rather than a sentence.
  */
 function TechnicalSections({ name, a }: { name: string; a: Measured }) {
   const facts = factsOf(name, a)
   const parts = [...new Set(facts.map((f) => f.part))]
   return (
-    <div className="flex flex-col gap-8 py-1">
+    <div className="-my-1 flex flex-col divide-y divide-line/40">
       {parts.map((part) => (
-        <section key={part} aria-label={part} className="flex flex-col gap-4">
-          <h4 className="readout text-accent">{part}</h4>
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-6">
+        <section
+          key={part}
+          aria-label={part}
+          className="grid gap-4 py-6 first:pt-1 last:pb-1 @3xl:grid-cols-[11rem_1fr] @3xl:gap-8"
+        >
+          <h4 className="readout pt-0.5 text-accent">{part}</h4>
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-6 @3xl:grid-cols-4">
             {facts
               .filter((f) => f.part === part)
               .map(({ icon: Icon, k, v, unit, tip }) => (
