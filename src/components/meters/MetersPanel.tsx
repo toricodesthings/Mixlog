@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { SPRINGS, TWEENS } from '../../lib/constants/motion'
+import { cn } from '../../lib/utils'
 import type { ReleaseData } from '../releases/loaders'
 import { sectionOf } from '../releases/sections'
 import { MeterBridge } from './MeterBridge'
@@ -40,7 +41,9 @@ export function WithMeters({ data, children }: { data: ReleaseData; children: Re
     return () => observer.disconnect()
   }, [dock])
 
+  const [full, setFull] = useState(false)
   const close = () => {
+    setFull(false)
     const id = version!.id
     void meters.close().then(() => metersButton(id)?.focus())
   }
@@ -54,16 +57,16 @@ export function WithMeters({ data, children }: { data: ReleaseData; children: Re
             <motion.aside
               key="meters"
               id={`meters-${version.id}`}
-              onKeyDown={(e) => e.key === 'Escape' && close()}
+              onKeyDown={(e) => e.key === 'Escape' && (full ? setFull(false) : close())}
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: '26rem', opacity: 1, transition: SPRINGS.GLIDE }}
+              animate={{ width: full ? '100vw' : '26rem', opacity: 1, transition: SPRINGS.GLIDE }}
               exit={{ width: 0, opacity: 0, transition: TWEENS.FADE }}
               style={headerH ? ({ '--dock-header-h': `${headerH}px` } as CSSProperties) : undefined}
-              className="meters-dock surface-shell h-full shrink-0 overflow-hidden"
+              className={cn('meters-dock h-full shrink-0 overflow-hidden', full ? 'layer-fullscreen-surface fixed inset-y-0 right-0 bg-room-deep/80 backdrop-blur-3xl backdrop-saturate-150' : 'surface-shell')}
             >
               <AnimatePresence mode="popLayout" initial={false}>
-                <motion.div key={version.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={TWEENS.FADE} className="h-full w-[26rem]">
-                  <MeterBridge docked t={{ data, release: data.release, track, section: sectionOf(data.release) }} version={version} headingRef={heading} onClose={close} />
+                <motion.div key={version.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={TWEENS.FADE} className={cn('h-full', full ? 'w-full' : 'w-[26rem]')}>
+                  <MeterBridge docked t={{ data, release: data.release, track, section: sectionOf(data.release) }} version={version} headingRef={heading} onClose={close} full={full} onFull={() => setFull((f) => !f)} />
                 </motion.div>
               </AnimatePresence>
             </motion.aside>

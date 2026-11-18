@@ -6,7 +6,7 @@ import { useAppearance } from '../../hooks/ui/use-appearance'
 import { useShellMode } from '../../hooks/ui/use-shell-mode'
 import { measure } from '../../lib/meter'
 import { cn } from '../../lib/utils'
-import { Reading, reading } from '../meters/Readings'
+import { Reading, ReadingHead, reading } from '../meters/Readings'
 import { WaveBars } from '../player/LoudnessWave'
 import { Boot, Outside } from '../layout/Boot'
 import { BrandMark, Button, IconSwitch, Led, Meter, Progress, Scope, Tip } from '../primitives'
@@ -56,7 +56,11 @@ export function MeterPage() {
     setState({ step: 'measuring', file, share: 0 })
     // A quick file still waits out the zoom and a beat of the boot, so the walk through the window never cuts short.
     const [a] = await Promise.all([
-      measure(file, (share) => !controller.signal.aborted && setState({ step: 'measuring', file, share }), controller.signal),
+      measure(
+        file,
+        (share) => !controller.signal.aborted && setState({ step: 'measuring', file, share }),
+        controller.signal,
+      ),
       new Promise((done) => setTimeout(done, zoomMs() + 300)),
     ])
     if (controller.signal.aborted) return
@@ -101,11 +105,7 @@ export function MeterPage() {
   })
 
   const chooseButton = (label: string) => (
-    <Button
-      size="lg"
-      onClick={choose}
-      className={cn('gap-2', isPhone && 'w-full')}
-    >
+    <Button size="lg" onClick={choose} className={cn('gap-2', isPhone && 'w-full')}>
       <FileAudio size={18} aria-hidden="true" />
       {label}
     </Button>
@@ -115,7 +115,10 @@ export function MeterPage() {
   /** Measured: the night flies off with the boot, onto the reading. Unread, the window just closes back to the dropzone. */
   const outward = leaving && state.step === 'read'
   // The room fades past as the window comes up to meet you.
-  const passing = cn('[transition:opacity_500ms_var(--ease-out-quart),scale_var(--spring-window)]', through && 'scale-105 opacity-0')
+  const passing = cn(
+    '[transition:opacity_500ms_var(--ease-out-quart),scale_var(--spring-window)]',
+    through && 'scale-105 opacity-0',
+  )
 
   return (
     <div className="flex min-h-dvh flex-col safe-top safe-bottom px-4 sm:px-8">
@@ -150,8 +153,12 @@ export function MeterPage() {
       <header className={cn(passing, 'mx-auto flex w-full max-w-6xl items-center justify-between py-4')}>
         <h1 data-meter-host className="flex items-center gap-2.5">
           <BrandMark className="size-9" />
-          <span className="font-display text-[1.375rem] font-semibold leading-tight tracking-tight text-ink sm:text-2xl">Mixlog</span>
-          <span className="font-display text-[1.375rem] font-medium leading-tight tracking-tight text-accent sm:text-2xl">LoudorNot</span>
+          <span className="font-display text-[1.375rem] font-semibold leading-tight tracking-tight text-ink sm:text-2xl">
+            Mixlog
+          </span>
+          <span className="font-display text-[1.375rem] font-medium leading-tight tracking-tight text-accent sm:text-2xl">
+            LoudorNot
+          </span>
         </h1>
         <ModeSwitch />
       </header>
@@ -174,7 +181,9 @@ export function MeterPage() {
                     ? 'Choose a bounce'
                     : 'Drop a bounce'
             }
-            action={isPhone || state.step === 'unsupported' ? null : chooseButton(failed ? 'Choose another' : 'Choose a file')}
+            action={
+              isPhone || state.step === 'unsupported' ? null : chooseButton(failed ? 'Choose another' : 'Choose a file')
+            }
           >
             {state.step === 'unreadable'
               ? 'Mixlog can’t read this format yet. WAV, AIFF, FLAC, MP3, M4A, OGG and Opus work.'
@@ -271,26 +280,31 @@ function Dropzone({
           'drop-slot group relative my-auto flex min-h-[min(30rem,52dvh)] w-full flex-col items-center justify-center gap-3 rounded-[2rem] px-6 py-12 text-center',
           lit && 'meter-live',
           // The frame and its tint go as you pass through it
-        through && 'border-transparent! bg-transparent! shadow-none!',
+          through && 'border-transparent! bg-transparent! shadow-none!',
         )}
       >
-        <div className={cn('flex flex-col items-center gap-3 [transition:opacity_400ms_var(--ease-out-quart),scale_var(--spring-window)]', through && 'scale-110 opacity-0')}>
-        {over ? <Meter live={lit} className="mb-3 h-10 gap-1 [&>span]:w-2" /> : <Scope flat className="mb-3" />}
-        <p className="readout flex items-center gap-2 text-accent">
-          {lit && <Led tone="phantom" />}
-          {lit ? '+48V · Input armed' : readout}
-        </p>
-        <h2
-          ref={ref}
-          tabIndex={-1}
-          className="font-display text-3xl font-semibold tracking-tight text-ink outline-hidden sm:text-4xl"
+        <div
+          className={cn(
+            'flex flex-col items-center gap-3 [transition:opacity_400ms_var(--ease-out-quart),scale_var(--spring-window)]',
+            through && 'scale-110 opacity-0',
+          )}
         >
-          {over === 'many' ? 'One at a time' : lit ? 'Drop to measure' : title}
-        </h2>
-        <p role="status" className="max-w-sm text-balance text-ink-soft">
-          {over === 'many' ? 'Drop a single bounce to measure it.' : children}
-        </p>
-        {action && <div className="mt-5">{action}</div>}
+          {over ? <Meter live={lit} className="mb-3 h-10 gap-1 [&>span]:w-2" /> : <Scope flat className="mb-3" />}
+          <p className="readout flex items-center gap-2 text-accent">
+            {lit && <Led tone="phantom" />}
+            {lit ? '+48V · Input armed' : readout}
+          </p>
+          <h2
+            ref={ref}
+            tabIndex={-1}
+            className="font-display text-3xl font-semibold tracking-tight text-ink outline-hidden sm:text-4xl"
+          >
+            {over === 'many' ? 'One at a time' : lit ? 'Drop to measure' : title}
+          </h2>
+          <p role="status" className="max-w-sm text-balance text-ink-soft">
+            {over === 'many' ? 'Drop a single bounce to measure it.' : children}
+          </p>
+          {action && <div className="mt-5">{action}</div>}
         </div>
       </section>
     </>
@@ -313,7 +327,11 @@ function useWindow(el: HTMLElement | null) {
     observer.observe(el)
     addEventListener('resize', measure)
     addEventListener('scroll', measure, { capture: true, passive: true })
-    return () => (observer.disconnect(), removeEventListener('resize', measure), removeEventListener('scroll', measure, { capture: true }))
+    return () => (
+      observer.disconnect(),
+      removeEventListener('resize', measure),
+      removeEventListener('scroll', measure, { capture: true })
+    )
   }, [el])
   return clip
 }
@@ -404,7 +422,10 @@ function Listen({ file, a }: { file: File; a: Measured }) {
     )
   }
   return (
-    <section aria-label="Listen" className="surface-item flex flex-col items-center gap-4 rounded-2xl border border-line/40 px-4 pt-8 pb-4">
+    <section
+      aria-label="Listen"
+      className="surface-item flex flex-col items-center gap-4 rounded-2xl border border-line/40 px-4 pt-8 pb-4"
+    >
       <audio
         ref={audio}
         preload="metadata"
@@ -483,7 +504,11 @@ function Listen({ file, a }: { file: File; a: Measured }) {
         </button>
         {skip(10)}
       </div>
-      {unplayable && <p role="status" className="text-[0.8125rem] text-ink-muted">This browser can’t play this format.</p>}
+      {unplayable && (
+        <p role="status" className="text-[0.8125rem] text-ink-muted">
+          This browser can’t play this format.
+        </p>
+      )}
     </section>
   )
 }
@@ -493,51 +518,46 @@ function Read({ file, a, onAnother }: { file: File; a: Measured; onAnother?: () 
   useEffect(() => ref.current?.focus(), [file])
   // What you'd ask first (the song, its format and length) up front; the file's specs one layer down, under (i).
   const title = file.name.replace(/\.[^.]+$/, '')
-  const specs = [a.format.bits && `${a.format.bits}-bit`, `${Math.round(a.format.rate / 100) / 10} kHz`, sizeOf(file.size)]
+  const specs = [
+    a.format.bits && `${a.format.bits}-bit`,
+    `${Math.round(a.format.rate / 100) / 10} kHz`,
+    sizeOf(file.size),
+  ]
     .filter(Boolean)
     .join(' · ')
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex items-center gap-4">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-          <Music size={22} aria-hidden="true" />
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h2
-            ref={ref}
-            tabIndex={-1}
-            title={file.name}
-            className="truncate font-display text-2xl font-semibold leading-tight tracking-tight text-ink outline-hidden"
-          >
-            {title}
-          </h2>
-          <p data-numeric className="readout flex items-center gap-2 text-ink-muted">
-            <span>
-              {formatOf(file.name)} · {formatLength(a.ms)}
-            </span>
-            <Tip label={specs} side="bottom" toggle>
-              <button
-                type="button"
-                aria-label={`File details: ${specs}`}
-                className="press -m-3 flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-accent"
-              >
-                <Info size={14} aria-hidden="true" />
-              </button>
-            </Tip>
-          </p>
-        </div>
+      <ReadingHead
+        icon={Music}
+        large
+        title={title}
+        fullTitle={file.name}
+        line={`${formatOf(file.name)} · ${formatLength(a.ms)}`}
+        headingRef={ref}
+        after={
+          <Tip label={specs} side="bottom" toggle>
+            <button
+              type="button"
+              aria-label={`File details: ${specs}`}
+              className="press -m-3 flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-accent"
+            >
+              <Info size={14} aria-hidden="true" />
+            </button>
+          </Tip>
+        }
+      >
         {onAnother && (
           <Button onClick={onAnother} className="shrink-0">
             <FileAudio size={16} aria-hidden="true" />
             Measure another
           </Button>
         )}
-      </header>
+      </ReadingHead>
       <p role="status" className="sr-only">
         Measured. {a.lufs === null ? 'Silent' : `${reading(a.lufs)} LUFS`}, {reading(a.truePeak, 1, true)} dB true peak.
       </p>
       <Listen file={file} a={a} />
-      <Reading a={a} name={file.name} />
+      <Reading a={a} name={file.name} full />
     </div>
   )
 }

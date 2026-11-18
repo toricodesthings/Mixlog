@@ -106,7 +106,35 @@
   --spring-snap: 400ms linear(0, 0.2271, 0.5535, 0.7826, 0.9088, 0.9679, 0.9918, 0.9997, 1.0015, 1.0013, 1.0008, 1, 1);
   /* Liquid: leaves with some speed and settles with a breath of overshoot (under 1%), never a bounce: glass answering a hand */
   /* The meter's walk to the window: a critically-near spring (damping 0.72), a 4% settle, no rebound you'd count */
-  --spring-window: 800ms linear(0, 0.06, 0.1979, 0.3659, 0.5328, 0.6806, 0.8013, 0.8929, 0.9577, 0.9999, 1.0242, 1.0357, 1.0384, 1.0357, 1.0303, 1.0238, 1.0174, 1.0118, 1.0073, 1.0039, 1.0015, 0.9999, 0.999, 0.9986, 0.9985, 1);
+  --spring-window: 800ms
+    linear(
+      0,
+      0.06,
+      0.1979,
+      0.3659,
+      0.5328,
+      0.6806,
+      0.8013,
+      0.8929,
+      0.9577,
+      0.9999,
+      1.0242,
+      1.0357,
+      1.0384,
+      1.0357,
+      1.0303,
+      1.0238,
+      1.0174,
+      1.0118,
+      1.0073,
+      1.0039,
+      1.0015,
+      0.9999,
+      0.999,
+      0.9986,
+      0.9985,
+      1
+    );
   --spring-liquid: 340ms linear(0, 0.38, 0.66, 0.84, 0.94, 0.985, 1.004, 1.007, 1.005, 1.002, 1, 1);
   --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
   --morph-in: 200ms var(--ease-out-expo);
@@ -1552,7 +1580,14 @@ button.surface-control:not(:disabled):hover {
 .boot-through :is(.boot-stage, .boot-wordmark) {
   animation-duration: 500ms;
 }
-:root[data-motion='reduced'] :is(.meter-window, .meter-window > .boot-sky, .meter-window .boot-ground, .meter-window .boot-depth-sky, .boot-star-faint) {
+:root[data-motion='reduced']
+  :is(
+    .meter-window,
+    .meter-window > .boot-sky,
+    .meter-window .boot-ground,
+    .meter-window .boot-depth-sky,
+    .boot-star-faint
+  ) {
   transition: none;
 }
 
@@ -2982,11 +3017,8 @@ body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) {
     /* Gaps between tracks, a shade lighter */
     radial-gradient(circle, transparent 52%, oklch(0.21 0 0) 52.4% 53.2%, transparent 53.6%),
     radial-gradient(circle, transparent 71%, oklch(0.21 0 0) 71.4% 72.2%, transparent 72.6%),
-    /* The grooves themselves */ repeating-radial-gradient(
-      circle,
-      oklch(0.13 0 0) 0 1.2px,
-      oklch(0.17 0 0) 1.2px 2.4px
-    );
+    /* The grooves themselves */
+    repeating-radial-gradient(circle, oklch(0.13 0 0) 0 1.2px, oklch(0.17 0 0) 1.2px 2.4px);
   box-shadow: inset 0 0 0 1px oklch(0.3 0 0 / 0.6);
   /* 33⅓ rpm: 1.8 s a turn, linear; it stops where it is when paused, the way a platter does */
   animation: vinyl-spin 1.8s linear infinite paused;
@@ -3246,6 +3278,26 @@ body:has([data-listening-room]) :is(.mobile-sheet-shell, .sheet-fade) {
   --meter-track: var(--color-line-light);
   --meter-tick: var(--color-ink-muted);
   --meter-over: var(--accent-secondary);
+}
+
+/* A platform's change on a full screen, warming from ink toward Tube the further it turns the song down:
+   `--heat` 0–100%, also the bar's length */
+.penalty-heat {
+  color: color-mix(in oklab, var(--meter-over) var(--heat, 0%), var(--color-ink));
+}
+.penalty-bar {
+  display: block;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--meter-track);
+}
+.penalty-bar > span {
+  display: block;
+  height: 100%;
+  min-width: 6px;
+  width: var(--heat, 0%);
+  border-radius: inherit;
+  background: color-mix(in oklab, var(--meter-over) var(--heat, 0%), var(--color-ink-soft));
 }
 
 /* The bars stand on a horizon (--wave-h above the bottom), the mist is a fifth as tall below it */

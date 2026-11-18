@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+### Added
+
+- A full-screen button beside Close on the wide meters panel.
+
+### Changed
+
+- Full-screen meters and the public meter: Penalty and More side by side, roomier platform rows warming with the cut.
+- Full-screen More stays open, its readings grouped into peaks, loudness, low end and phase, and the file.
+
 ## [1.8.1] - 2026-11-17
 
 ### Changed
