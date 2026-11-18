@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.8.3] - 2026-11-18
+
 ### Added
 
 - The public meter shows the loading screen on a first visit, as the app does.
