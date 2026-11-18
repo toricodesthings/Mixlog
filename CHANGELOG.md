@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-11-18
+
 ### Added
 
 - A full-screen button beside Close on the wide meters panel.
